@@ -5,6 +5,7 @@ from datetime import datetime
 
 from config import SYMBOLS, TIMEFRAMES
 from scanner import get_data, trend_signal, analyze
+from trendlines import find_pivots, create_trendline, check_break, line_value
 
 st.set_page_config(
     page_title="Trend Scanner",
@@ -170,9 +171,18 @@ try:
     with st.spinner(f"Loading {chart_symbol} {chart_tf}…"):
         df = get_data(chart_symbol, chart_tf)
 
-    sig = trend_signal(df)
-    prev_high = df.high.iloc[-20:-1].max()
-    prev_low  = df.low.iloc[-20:-1].min()
+    highs, lows = find_pivots(df)
+    down_line   = create_trendline(highs)
+    up_line     = create_trendline(lows)
+    long_signal  = check_break(df, down_line, "LONG")
+    short_signal = check_break(df, up_line,   "SHORT")
+
+    if long_signal == "LONG":
+        sig = "LONG"
+    elif short_signal == "SHORT":
+        sig = "SHORT"
+    else:
+        sig = "WAIT"
 
     sig_css   = SIGNAL_CLASS.get(sig, "cell-wait")
     sig_label = SIGNAL_ICON.get(sig, sig)
@@ -182,9 +192,11 @@ try:
     )
     st.markdown("")
 
+    times = pd.to_datetime(df["time"], unit="ms")
+
     fig = go.Figure()
     fig.add_trace(go.Candlestick(
-        x=pd.to_datetime(df["time"], unit="ms"),
+        x=times,
         open=df["open"], high=df["high"],
         low=df["low"],   close=df["close"],
         increasing_line_color="#00e676",
@@ -192,21 +204,51 @@ try:
         name="Price",
     ))
 
-    # Previous-high / previous-low breakout levels
-    fig.add_hline(
-        y=prev_high,
-        line_color="#00e676", line_dash="dash", line_width=1.5,
-        annotation_text="Prev High (LONG trigger)",
-        annotation_position="top left",
-        annotation_font_color="#00e676",
-    )
-    fig.add_hline(
-        y=prev_low,
-        line_color="#ff5252", line_dash="dash", line_width=1.5,
-        annotation_text="Prev Low (SHORT trigger)",
-        annotation_position="bottom left",
-        annotation_font_color="#ff5252",
-    )
+    # Draw descending trendline through pivot highs (LONG breakout)
+    if down_line:
+        x_end = len(df) - 1
+        x1, x2 = down_line["x1"], x_end
+        y1 = line_value(down_line, x1)
+        y2 = line_value(down_line, x2)
+        fig.add_trace(go.Scatter(
+            x=[times.iloc[x1], times.iloc[x2]],
+            y=[y1, y2],
+            mode="lines",
+            line=dict(color="#00e676", width=1.5, dash="dash"),
+            name="Resistance (LONG)",
+        ))
+
+    # Draw ascending trendline through pivot lows (SHORT breakout)
+    if up_line:
+        x_end = len(df) - 1
+        x1, x2 = up_line["x1"], x_end
+        y1 = line_value(up_line, x1)
+        y2 = line_value(up_line, x2)
+        fig.add_trace(go.Scatter(
+            x=[times.iloc[x1], times.iloc[x2]],
+            y=[y1, y2],
+            mode="lines",
+            line=dict(color="#ff5252", width=1.5, dash="dash"),
+            name="Support (SHORT)",
+        ))
+
+    # Mark pivot highs and lows
+    if highs:
+        fig.add_trace(go.Scatter(
+            x=[times.iloc[i] for i, _ in highs[-10:]],
+            y=[v for _, v in highs[-10:]],
+            mode="markers",
+            marker=dict(symbol="triangle-down", color="#00e676", size=8),
+            name="Pivot High",
+        ))
+    if lows:
+        fig.add_trace(go.Scatter(
+            x=[times.iloc[i] for i, _ in lows[-10:]],
+            y=[v for _, v in lows[-10:]],
+            mode="markers",
+            marker=dict(symbol="triangle-up", color="#ff5252", size=8),
+            name="Pivot Low",
+        ))
 
     fig.update_layout(
         paper_bgcolor="#0e1117",

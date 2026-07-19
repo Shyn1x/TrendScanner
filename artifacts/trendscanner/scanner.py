@@ -1,6 +1,8 @@
 import ccxt
 import pandas as pd
 
+from trendlines import find_pivots, create_trendline, check_break
+
 exchange = ccxt.kucoin()
 
 
@@ -14,13 +16,17 @@ def get_data(symbol: str, timeframe: str) -> pd.DataFrame:
 
 
 def trend_signal(df: pd.DataFrame) -> str:
-    last = df.close.iloc[-1]
-    previous_high = df.high.iloc[-20:-1].max()
-    previous_low  = df.low.iloc[-20:-1].min()
+    highs, lows = find_pivots(df)
 
-    if last > previous_high:
+    down_line = create_trendline(highs)
+    up_line   = create_trendline(lows)
+
+    long_signal  = check_break(df, down_line, "LONG")
+    short_signal = check_break(df, up_line,   "SHORT")
+
+    if long_signal == "LONG":
         return "LONG"
-    if last < previous_low:
+    if short_signal == "SHORT":
         return "SHORT"
     return "WAIT"
 
