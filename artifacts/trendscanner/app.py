@@ -61,7 +61,7 @@ with st.sidebar:
         st.rerun()
 
     st.markdown("---")
-    st.caption("Exchange: Bybit spot (public)\nNo API key required")
+    st.caption("Exchange: KuCoin (public)\nNo API key required")
 
 # ── Fetch + build results table ───────────────────────────────────────────────
 

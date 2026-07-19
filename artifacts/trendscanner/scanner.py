@@ -1,7 +1,7 @@
 import ccxt
 import pandas as pd
 
-exchange = ccxt.bybit({"options": {"defaultType": "spot"}})
+exchange = ccxt.kucoin()
 
 
 def get_data(symbol: str, timeframe: str) -> pd.DataFrame:
