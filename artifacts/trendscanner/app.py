@@ -206,15 +206,18 @@ for symbol in selected_symbols:
 
         final = analysis.get("FINAL", {})
 
-        signal = final.get("signal", "WAIT")
+        signal    = final.get("signal", "WAIT")
+        score     = final.get("score", 0)
+        max_score = final.get("max_score", 105)
+        confidence = final.get("confidence", 0)
+        long_tfs  = final.get("long_timeframes", 0)
+        short_tfs = final.get("short_timeframes", 0)
 
-        score = final.get("score", 0)
-
-        st.metric(
-            "Final Signal",
-            signal,
-            f"Score {score}"
-        )
+        m1, m2, m3, m4 = st.columns(4)
+        m1.metric("Final Signal", signal)
+        m2.metric("Confidence", f"{confidence}%")
+        m3.metric("Score", f"{score}/{max_score}")
+        m4.metric("🟢 / 🔴", f"{long_tfs} / {short_tfs}")
 
 st.markdown("---")
 

@@ -10,6 +10,16 @@ TIMEFRAMES = [
     "1h"
 ]
 
+WEIGHTS = {
+    "1M": 40,
+    "1w": 30,
+    "1d": 20,
+    "4h": 10,
+    "1h": 5
+}
+
+MAX_SCORE = sum(WEIGHTS.values())  # 105
+
 
 def multi_analysis(symbol):
 
@@ -36,16 +46,18 @@ def multi_analysis(symbol):
 
             result[tf] = analysis
 
-            # считаем общий баланс
+            weight = WEIGHTS.get(tf, 0)
+
+            # считаем взвешенный баланс
 
             if analysis["signal"] == "LONG":
 
-                total_score += 20
+                total_score += weight
                 long_count += 1
 
             elif analysis["signal"] == "SHORT":
 
-                total_score -= 20
+                total_score -= weight
                 short_count += 1
 
         except Exception as e:
@@ -57,7 +69,7 @@ def multi_analysis(symbol):
             }
 
 
-    # Финальное решение
+    # Финальное решение (порог 40 из 105)
 
     if total_score >= 40:
 
@@ -77,6 +89,10 @@ def multi_analysis(symbol):
         "signal": final_signal,
 
         "score": abs(total_score),
+
+        "max_score": MAX_SCORE,
+
+        "confidence": round(abs(total_score) / MAX_SCORE * 100),
 
         "long_timeframes": long_count,
 
