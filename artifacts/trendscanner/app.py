@@ -192,11 +192,9 @@ try:
     )
     st.markdown("")
 
-    times = pd.to_datetime(df["time"], unit="ms")
-
     fig = go.Figure()
     fig.add_trace(go.Candlestick(
-        x=times,
+        x=pd.to_datetime(df["time"], unit="ms"),
         open=df["open"], high=df["high"],
         low=df["low"],   close=df["close"],
         increasing_line_color="#00e676",
@@ -204,51 +202,39 @@ try:
         name="Price",
     ))
 
-    # Draw descending trendline through pivot highs (LONG breakout)
+    # Descending trendline (resistance)
     if down_line:
-        x_end = len(df) - 1
-        x1, x2 = down_line["x1"], x_end
-        y1 = line_value(down_line, x1)
-        y2 = line_value(down_line, x2)
-        fig.add_trace(go.Scatter(
-            x=[times.iloc[x1], times.iloc[x2]],
-            y=[y1, y2],
-            mode="lines",
-            line=dict(color="#00e676", width=1.5, dash="dash"),
-            name="Resistance (LONG)",
-        ))
+        fig.add_trace(
+            go.Scatter(
+                x=[
+                    df.time.iloc[down_line["x1"]],
+                    df.time.iloc[down_line["x2"]]
+                ],
+                y=[
+                    down_line["y1"],
+                    down_line["y2"]
+                ],
+                mode="lines",
+                name="Down Trend",
+            )
+        )
 
-    # Draw ascending trendline through pivot lows (SHORT breakout)
+    # Ascending trendline (support)
     if up_line:
-        x_end = len(df) - 1
-        x1, x2 = up_line["x1"], x_end
-        y1 = line_value(up_line, x1)
-        y2 = line_value(up_line, x2)
-        fig.add_trace(go.Scatter(
-            x=[times.iloc[x1], times.iloc[x2]],
-            y=[y1, y2],
-            mode="lines",
-            line=dict(color="#ff5252", width=1.5, dash="dash"),
-            name="Support (SHORT)",
-        ))
-
-    # Mark pivot highs and lows
-    if highs:
-        fig.add_trace(go.Scatter(
-            x=[times.iloc[i] for i, _ in highs[-10:]],
-            y=[v for _, v in highs[-10:]],
-            mode="markers",
-            marker=dict(symbol="triangle-down", color="#00e676", size=8),
-            name="Pivot High",
-        ))
-    if lows:
-        fig.add_trace(go.Scatter(
-            x=[times.iloc[i] for i, _ in lows[-10:]],
-            y=[v for _, v in lows[-10:]],
-            mode="markers",
-            marker=dict(symbol="triangle-up", color="#ff5252", size=8),
-            name="Pivot Low",
-        ))
+        fig.add_trace(
+            go.Scatter(
+                x=[
+                    df.time.iloc[up_line["x1"]],
+                    df.time.iloc[up_line["x2"]]
+                ],
+                y=[
+                    up_line["y1"],
+                    up_line["y2"]
+                ],
+                mode="lines",
+                name="Up Trend",
+            )
+        )
 
     fig.update_layout(
         paper_bgcolor="#0e1117",
