@@ -29,11 +29,3 @@ NODE_ENV = "production"
 
 [services.production.health.startup]
 path = "/api/healthz"
-
-[[services]]
-localPort = 5000
-name = "Trendscanner"
-paths = ["/"]
-
-[services.development]
-run = "streamlit run /home/runner/workspace/artifacts/trendscanner/app.py --server.port 5000"
