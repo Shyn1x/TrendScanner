@@ -6,6 +6,7 @@ from datetime import datetime
 from config import SYMBOLS, TIMEFRAMES
 from scanner import get_data, trend_signal, analyze
 from trendlines import find_pivots, create_trendline, check_break, line_value
+from multi_tf import multi_analysis
 
 st.set_page_config(
     page_title="Trend Scanner",
@@ -69,6 +70,10 @@ with st.sidebar:
 @st.cache_data(ttl=60, show_spinner=False)
 def cached_analyze(symbol: str) -> dict:
     return analyze(symbol)
+
+@st.cache_data(ttl=60, show_spinner=False)
+def cached_multi_analysis(symbol: str) -> dict:
+    return multi_analysis(symbol)
 
 st.markdown("# 🚀 Trend Scanner")
 st.markdown(
@@ -154,6 +159,61 @@ for row in rows:
         cols[j + 1].markdown(
             f"<div class='{css}'>{label}</div>",
             unsafe_allow_html=True,
+        )
+
+st.markdown("---")
+
+# ── Multi Timeframe Analysis ───────────────────────────────────────────────────
+st.subheader("🧠 Multi Timeframe Analysis")
+
+for symbol in selected_symbols:
+
+    with st.expander(
+        f"📌 {symbol}",
+        expanded=True
+    ):
+
+        analysis = cached_multi_analysis(symbol)
+
+        cols = st.columns(5)
+
+        for i, tf in enumerate(
+            ["1M", "1w", "1d", "4h", "1h"]
+        ):
+
+            data = analysis.get(tf, {})
+
+            signal = data.get("signal", "WAIT")
+
+            trend = data.get("trend", "-")
+
+            with cols[i]:
+
+                st.markdown(f"### {tf}")
+
+                if signal == "LONG":
+                    st.success("🟢 LONG")
+
+                elif signal == "SHORT":
+                    st.error("🔴 SHORT")
+
+                else:
+                    st.info("⚪ WAIT")
+
+                st.caption(trend)
+
+        st.markdown("---")
+
+        final = analysis.get("FINAL", {})
+
+        signal = final.get("signal", "WAIT")
+
+        score = final.get("score", 0)
+
+        st.metric(
+            "Final Signal",
+            signal,
+            f"Score {score}"
         )
 
 st.markdown("---")
