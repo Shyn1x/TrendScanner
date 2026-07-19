@@ -71,7 +71,7 @@ def cached_analyze(symbol: str) -> dict:
 
 st.markdown("# 🚀 Trend Scanner")
 st.markdown(
-    f"**Exchange:** `Binance` &nbsp;|&nbsp; "
+    f"**Exchange:** `KuCoin` &nbsp;|&nbsp; "
     f"**Updated:** `{datetime.now().strftime('%H:%M:%S')}`"
 )
 
