@@ -1,0 +1,392 @@
+Продолжаем аудит Trend Scanner.
+
+Текущий diagnostic_report показал:
+
+Total timeframe analyses: 110
+Trendline found: 108
+Breakout detected: 97
+Breakout confirmed: 12
+Confidence > 40: 5
+Final TAKE: 0
+Final WATCH: 0
+Final SKIP: 22
+
+Торговую логику, веса и пороги не изменять.
+
+Цель нового этапа:
+определить, отсутствие сигналов связано с текущим рынком или с ошибкой/чрезмерной строгостью pipeline.
+
+Создай Historical Pipeline Replay — диагностический прогон текущей системы по прошлым закрытым свечам.
+
+Перед изменениями создай checkpoint:
+
+commit message:
+v0.5.5-before-historical-replay-audit
+
+Не изменяй:
+
+- trendlines.py;
+- trend_quality.py;
+- volume_quality.py;
+- breakout_quality.py;
+- market_structure.py;
+- structure_quality.py;
+- confidence.py;
+- quality_pipeline.py;
+- analysis.py;
+- multi_tf.py;
+- decision_engine.py;
+- app.py;
+- текущие веса и пороги.
+
+────────────────────────────────────
+1. НОВЫЙ МОДУЛЬ
+────────────────────────────────────
+
+Создай:
+
+historical_replay.py
+
+Он должен использовать существующие функции анализа без копирования торговой логики.
+
+Основная функция:
+
+replay_timeframe(
+    df,
+    symbol: str,
+    timeframe: str,
+    warmup_bars: int = 120,
+    max_replay_bars: int = 200
+) -> dict
+
+Для каждой исторической точки:
+
+historical_df = df.iloc[:end_index + 1].copy()
+
+Затем вызвать существующий:
+
+analyze_timeframe(historical_df)
+
+Таким образом система должна видеть только данные, которые были доступны на тот момент.
+
+Запрещено использовать будущие свечи при построении pivot, линий, структуры или сигнала.
+
+────────────────────────────────────
+2. ЗАКРЫТАЯ СВЕЧА
+────────────────────────────────────
+
+Учти текущий контракт:
+
+последняя строка DataFrame может считаться незакрытой,
+а анализируемая сигнальная свеча обычно df.iloc[-2].
+
+Replay должен добавлять одну дополнительную свечу после анализируемой,
+чтобы историческая сигнальная свеча действительно находилась на позиции -2.
+
+Не допускать look-ahead bias.
+
+Добавь тест, доказывающий, что изменение будущих свечей
+не изменяет уже рассчитанный исторический результат.
+
+────────────────────────────────────
+3. ЧТО СОХРАНЯТЬ ДЛЯ КАЖДОЙ ТОЧКИ
+────────────────────────────────────
+
+Для каждого replay-шагa сохранить:
+
+{
+    "symbol": str,
+    "timeframe": str,
+    "replay_index": int,
+    "signal_timestamp": ...,
+    "signal": "LONG" | "SHORT" | "WAIT",
+    "confidence": float,
+    "decision": "TAKE" | "WATCH" | "SKIP",
+    "decision_direction": "LONG" | "SHORT" | "NONE",
+    "decision_score": float,
+    "decision_reason": str,
+    "long": {
+        "breakout_detected": bool,
+        "breakout_confirmed": bool,
+        "breakout_score": float | None,
+        "trend_quality": float | None,
+        "volume_quality": float | None,
+        "structure_quality": float | None,
+        "confidence": float | None,
+        "decision": str,
+        "blocker_codes": [str]
+    },
+    "short": {
+        ...
+    }
+}
+
+Не сохраняй весь DataFrame или огромные сырые словари.
+
+────────────────────────────────────
+4. ВОРОНКА ПОДТВЕРЖДЁННЫХ ПРОБОЕВ
+────────────────────────────────────
+
+Создай отдельную функцию:
+
+build_confirmed_breakout_funnel(replay_results: list[dict]) -> dict
+
+Она должна показать отдельно для LONG и SHORT:
+
+- total replay points;
+- breakout detected;
+- breakout confirmed;
+- trend quality >= 50;
+- volume quality >= 40;
+- structure available;
+- confidence >= 40;
+- confidence >= 50;
+- decision WATCH;
+- decision TAKE;
+- decision SKIP.
+
+Для каждого подтверждённого пробоя сохранить главную причину,
+по которой он не дошёл до WATCH/TAKE.
+
+Важно:
+один случай должен иметь одну primary rejection reason
+по приоритету:
+
+1. invalid pipeline data;
+2. breakout not confirmed;
+3. strong structure opposition;
+4. confidence below 40;
+5. confidence 40–49;
+6. weak breakout score;
+7. weak trend quality;
+8. weak volume;
+9. transitional/range structure;
+10. signal remained WAIT;
+11. other.
+
+────────────────────────────────────
+5. ЗАПУСК НА РЕАЛЬНОЙ ИСТОРИИ
+────────────────────────────────────
+
+Создай:
+
+run_historical_audit.py
+
+Проведи replay минимум для:
+
+BTC/USDT:
+- 1h
+- 4h
+- 1d
+
+ETH/USDT:
+- 1h
+- 4h
+
+SOL/USDT:
+- 1h
+- 4h
+
+XRP/USDT:
+- 1h
+- 4h
+
+Используй до 200 исторических replay-точек на timeframe
+после необходимого warmup.
+
+Если дневных данных недостаточно, используй максимально доступное количество
+и явно укажи его в отчёте.
+
+────────────────────────────────────
+6. КРИТЕРИИ ОЦЕНКИ PIPELINE
+────────────────────────────────────
+
+После replay выведи:
+
+HISTORICAL PIPELINE AUDIT
+
+Total replay points:
+Breakout detected:
+Breakout confirmed:
+Confidence >= 40:
+Confidence >= 50:
+WATCH:
+TAKE:
+SKIP:
+
+LONG:
+- confirmed:
+- WATCH:
+- TAKE:
+
+SHORT:
+- confirmed:
+- WATCH:
+- TAKE:
+
+Top rejection reasons:
+- ...
+
+Confidence distribution:
+0–19:
+20–39:
+40–49:
+50–69:
+70–84:
+85–100:
+
+Decision-score distribution:
+0–24:
+25–49:
+50–69:
+70–100:
+
+────────────────────────────────────
+7. HEALTH CLASSIFICATION
+────────────────────────────────────
+
+Не изменяй алгоритмы автоматически.
+
+Классифицируй результат:
+
+PIPELINE_LIKELY_HEALTHY
+
+если:
+- исторически встречаются подтверждённые LONG и SHORT;
+- встречается хотя бы WATCH;
+- confidence не всегда равен нулю;
+- результаты меняются по времени и инструментам;
+- нет одного технического blocker у почти 100% случаев.
+
+POSSIBLE_OVER_FILTERING
+
+если:
+- подтверждённые пробои встречаются;
+- но более 95% из них всегда становятся SKIP
+  по одному и тому же пороговому критерию.
+
+POSSIBLE_PIPELINE_BUG
+
+если:
+- подтверждённый пробой сопровождается confidence=0 без причины;
+- active signal нарушает invariant;
+- LONG и SHORT ведут себя несимметрично на зеркальных тестах;
+- все исторические точки возвращают практически идентичный результат;
+- ключевые поля постоянно отсутствуют;
+- появляется look-ahead bias.
+
+INSUFFICIENT_HISTORY
+
+если данных недостаточно для вывода.
+
+────────────────────────────────────
+8. ВЫВОД ПРИМЕРОВ
+────────────────────────────────────
+
+Выведи до 10 лучших исторических кандидатов,
+даже если они были SKIP:
+
+сортировка:
+1. decision_score;
+2. confidence;
+3. breakout_score.
+
+Формат:
+
+timestamp
+symbol
+timeframe
+direction
+signal
+decision
+decision score
+confidence
+breakout confirmed
+primary rejection reason
+
+Также выведи до 5 подтверждённых пробоев,
+которые ближе всего были к WATCH.
+
+Это позволит вручную открыть соответствующие участки графика.
+
+────────────────────────────────────
+9. ТЕСТЫ
+────────────────────────────────────
+
+Создай:
+
+test_historical_replay.py
+
+Проверить:
+
+- отсутствие look-ahead bias;
+- корректный warmup;
+- сигнальная свеча находится на позиции -2;
+- исходный DataFrame не изменяется;
+- пустой DataFrame;
+- недостаточно данных;
+- неполный analysis result;
+- LONG и SHORT учитываются отдельно;
+- primary rejection reason стабилен;
+- confidence distributions;
+- decision distributions;
+- отсутствие NaN/inf;
+- стабильный формат;
+- replay использует существующий analyze_timeframe,
+  а не дублирует торговую логику.
+
+Запусти все существующие тесты плюс:
+
+python test_historical_replay.py
+python run_historical_audit.py
+
+────────────────────────────────────
+10. ИТОГОВЫЙ ОТЧЁТ
+────────────────────────────────────
+
+HISTORICAL AUDIT STATUS: PASSED / FAILED
+
+Health classification:
+PIPELINE_LIKELY_HEALTHY /
+POSSIBLE_OVER_FILTERING /
+POSSIBLE_PIPELINE_BUG /
+INSUFFICIENT_HISTORY
+
+Historical sample:
+- symbols:
+- timeframes:
+- replay points:
+
+Breakouts:
+- detected:
+- confirmed:
+
+Decisions:
+- WATCH:
+- TAKE:
+- SKIP:
+
+Confirmed breakouts rejected:
+- primary reasons with counts
+
+Look-ahead test:
+PASSED / FAILED
+
+Signal invariant:
+PASSED / FAILED
+
+LONG/SHORT symmetry:
+PASSED / FAILED
+
+Conclusion:
+- current market likely explains empty Top Setups
+или
+- pipeline likely over-filtered
+или
+- probable implementation bug found
+
+Files created:
+- ...
+
+Files changed:
+- ...
