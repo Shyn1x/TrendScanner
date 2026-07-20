@@ -17,6 +17,11 @@ from ui_helpers import (
     normalize_timeframe_result,
     format_directional_score,
     extract_quality_summary,
+    normalize_decision_result,
+    format_score_percent,
+    decision_badge,
+    summarize_decision_factors,
+    paginate_items,
 )
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -637,6 +642,352 @@ def test_ds_with_normalize():
 #  ИТОГОВЫЙ ОТЧЁТ
 # ═════════════════════════════════════════════════════════════════════════════
 
+# ─────────────────────────────────────────────────────────────────────────────
+#  normalize_decision_result tests
+# ─────────────────────────────────────────────────────────────────────────────
+
+EXPECTED_DECISION_KEYS = {
+    "decision", "decision_direction", "decision_score",
+    "decision_directional_score", "decision_reason",
+    "decision_details", "decision_counts",
+}
+
+
+def _full_decision_dict(
+    decision="TAKE", direction="LONG", score=80.0, dd_score=80.0,
+    reason="test", details=None, counts=None,
+) -> dict:
+    return {
+        "decision":                   decision,
+        "decision_direction":         direction,
+        "decision_score":             score,
+        "decision_directional_score": dd_score,
+        "decision_reason":            reason,
+        "decision_details":           details or {},
+        "decision_counts":            counts or {},
+    }
+
+
+def test_ndr_full_dict():
+    section("NDR1 — normalize_decision_result: full dict")
+    r = normalize_decision_result(_full_decision_dict())
+    check(set(r.keys()) == EXPECTED_DECISION_KEYS, "NDR1.keys")
+    check(r["decision"] == "TAKE",  "NDR1.decision")
+    check(r["decision_direction"] == "LONG", "NDR1.direction")
+    check(r["decision_score"] == 80.0, "NDR1.score")
+
+
+def test_ndr_old_format():
+    section("NDR2 — normalize_decision_result: old format (no decision keys)")
+    old = {"signal": "LONG", "confidence": 65.0, "confidence_label": "MEDIUM"}
+    r = normalize_decision_result(old)
+    check(set(r.keys()) == EXPECTED_DECISION_KEYS, "NDR2.keys")
+    check(r["decision"] == "SKIP", "NDR2.defaults_to_SKIP")
+    check(r["decision_direction"] == "NONE", "NDR2.defaults_to_NONE")
+
+
+def test_ndr_missing_fields():
+    section("NDR3 — normalize_decision_result: partial fields")
+    partial = {"decision": "WATCH"}
+    r = normalize_decision_result(partial)
+    check(r["decision"] == "WATCH", "NDR3.decision_preserved")
+    check(r["decision_direction"] == "NONE", "NDR3.direction_default")
+    check(r["decision_score"] == 0.0, "NDR3.score_default")
+
+
+def test_ndr_none():
+    section("NDR4 — normalize_decision_result: None input")
+    r = normalize_decision_result(None)
+    check(set(r.keys()) == EXPECTED_DECISION_KEYS, "NDR4.keys")
+    check(r["decision"] == "SKIP", "NDR4.default_skip")
+
+
+def test_ndr_nan_inf():
+    section("NDR5 — normalize_decision_result: NaN/inf in score")
+    d = _full_decision_dict(score=float("nan"), dd_score=float("inf"))
+    r = normalize_decision_result(d)
+    check(math.isfinite(r["decision_score"]), "NDR5.score_finite",
+          f"score={r['decision_score']}")
+    check(math.isfinite(r["decision_directional_score"]),
+          "NDR5.dd_score_finite")
+
+
+def test_ndr_invalid_decision():
+    section("NDR6 — normalize_decision_result: unknown decision → SKIP")
+    r = normalize_decision_result({"decision": "MAYBE", "decision_direction": "LONG"})
+    check(r["decision"] == "SKIP", "NDR6.unknown_decision_to_SKIP")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  format_score_percent tests
+# ─────────────────────────────────────────────────────────────────────────────
+
+def test_fsp_normal():
+    section("FSP1 — format_score_percent: normal values")
+    check(format_score_percent(42.4) == "42%",  "FSP1.42.4")
+    check(format_score_percent(0.0)  == "0%",   "FSP1.0")
+    check(format_score_percent(100)  == "100%", "FSP1.100")
+    check(format_score_percent(75.6) == "76%",  "FSP1.75.6_rounds")
+
+
+def test_fsp_nan_inf():
+    section("FSP2 — format_score_percent: NaN/inf → N/A")
+    check(format_score_percent(float("nan")) == "N/A", "FSP2.nan")
+    check(format_score_percent(float("inf")) == "N/A", "FSP2.inf")
+    check(format_score_percent(float("-inf")) == "N/A", "FSP2.-inf")
+
+
+def test_fsp_none_bad():
+    section("FSP3 — format_score_percent: None / non-numeric")
+    check(format_score_percent(None) == "N/A",    "FSP3.None")
+    check(format_score_percent("abc") == "N/A",   "FSP3.str")
+    check(format_score_percent([]) == "N/A",      "FSP3.list")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  decision_badge tests
+# ─────────────────────────────────────────────────────────────────────────────
+
+EXPECTED_BADGE_KEYS = {"label", "css_class", "icon"}
+
+
+def test_badge_take_long():
+    section("DB1 — decision_badge: TAKE LONG")
+    b = decision_badge("TAKE", "LONG")
+    check(set(b.keys()) == EXPECTED_BADGE_KEYS, "DB1.keys")
+    check(b["label"]     == "TAKE LONG",      "DB1.label")
+    check(b["css_class"] == "decision-take",  "DB1.css")
+    check(b["icon"]      == "🟢",             "DB1.icon")
+
+
+def test_badge_take_short():
+    section("DB2 — decision_badge: TAKE SHORT")
+    b = decision_badge("TAKE", "SHORT")
+    check(b["label"]     == "TAKE SHORT",     "DB2.label")
+    check(b["css_class"] == "decision-take",  "DB2.css")
+    check(b["icon"]      == "🔴",             "DB2.icon")
+
+
+def test_badge_watch_long():
+    section("DB3 — decision_badge: WATCH LONG")
+    b = decision_badge("WATCH", "LONG")
+    check(b["label"]     == "WATCH LONG",      "DB3.label")
+    check(b["css_class"] == "decision-watch",  "DB3.css")
+    check(b["icon"]      == "🟢",              "DB3.icon")
+
+
+def test_badge_watch_short():
+    section("DB4 — decision_badge: WATCH SHORT")
+    b = decision_badge("WATCH", "SHORT")
+    check(b["label"]     == "WATCH SHORT",     "DB4.label")
+    check(b["css_class"] == "decision-watch",  "DB4.css")
+    check(b["icon"]      == "🔴",              "DB4.icon")
+
+
+def test_badge_skip():
+    section("DB5 — decision_badge: SKIP")
+    b = decision_badge("SKIP", "NONE")
+    check(b["label"]     == "SKIP",           "DB5.label")
+    check(b["css_class"] == "decision-skip",  "DB5.css")
+    check(b["icon"]      == "⚪",             "DB5.icon")
+
+
+def test_badge_watch_vs_take_different_css():
+    section("DB6 — decision_badge: WATCH css differs from TAKE")
+    bt = decision_badge("TAKE",  "LONG")
+    bw = decision_badge("WATCH", "LONG")
+    check(bt["css_class"] != bw["css_class"], "DB6.different_css_class",
+          f"take={bt['css_class']} watch={bw['css_class']}")
+
+
+def test_badge_invalid_inputs():
+    section("DB7 — decision_badge: invalid inputs default to SKIP")
+    b = decision_badge(None, None)
+    check(b["css_class"] == "decision-skip", "DB7.none_defaults_to_skip")
+
+    b2 = decision_badge("UNKNOWN", "UNKNOWN")
+    check(b2["css_class"] == "decision-skip", "DB7.unknown_defaults_to_skip")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  summarize_decision_factors tests
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _make_single_dir_result(pos=None, warn=None, blk=None, score=75.0) -> dict:
+    return {
+        "decision_score":   score,
+        "positive_factors": pos  or ["Breakout confirmed", "High confidence"],
+        "warning_factors":  warn or ["Low volume"],
+        "blockers":         blk  or [{"code": "BK1", "message": "No breakout"}],
+    }
+
+
+def _make_details_dict(long_score=75.0, short_score=40.0) -> dict:
+    return {
+        "LONG":  _make_single_dir_result(score=long_score),
+        "SHORT": _make_single_dir_result(
+            pos=["Pipeline matches SHORT"],
+            warn=[],
+            blk=[{"code": "SB1", "message": "Opposing structure"}],
+            score=short_score,
+        ),
+    }
+
+
+def test_sdf_single_direction():
+    section("SDF1 — summarize_decision_factors: single-direction dict")
+    src = _make_single_dir_result(
+        pos=["Breakout confirmed", "High confidence", "Volume confirms"],
+        warn=["Low volume warning"],
+        blk=[{"code": "B1", "message": "Breakout not confirmed"}],
+    )
+    r = summarize_decision_factors(src)
+    check(isinstance(r["positive"], list), "SDF1.positive_list")
+    check(isinstance(r["warnings"], list), "SDF1.warnings_list")
+    check(isinstance(r["blockers"], list), "SDF1.blockers_list")
+    check(len(r["positive"]) >= 1, "SDF1.has_positive")
+    check(len(r["warnings"]) >= 1, "SDF1.has_warnings")
+    check(r["blockers"][0] == "Breakout not confirmed", "SDF1.blocker_msg_extracted")
+
+
+def test_sdf_details_dict_picks_best():
+    section("SDF2 — summarize_decision_factors: picks highest-score direction")
+    details = _make_details_dict(long_score=90.0, short_score=20.0)
+    r = summarize_decision_factors(details)
+    # Should pick LONG (score=90) → its positive factors
+    check("Breakout confirmed" in r["positive"], "SDF2.long_pos_found")
+
+
+def test_sdf_max_items_limit():
+    section("SDF3 — summarize_decision_factors: max_items respected")
+    src = {
+        "positive_factors": [f"pos{i}" for i in range(10)],
+        "warning_factors":  [f"warn{i}" for i in range(10)],
+        "blockers":         [{"code": f"B{i}", "message": f"blk{i}"} for i in range(10)],
+    }
+    r = summarize_decision_factors(src, max_items=3)
+    check(len(r["positive"]) <= 3, "SDF3.positive_capped",
+          f"got {len(r['positive'])}")
+    check(len(r["warnings"]) <= 3, "SDF3.warnings_capped",
+          f"got {len(r['warnings'])}")
+    check(len(r["blockers"]) <= 3, "SDF3.blockers_capped",
+          f"got {len(r['blockers'])}")
+
+
+def test_sdf_none_input():
+    section("SDF4 — summarize_decision_factors: None input → empty")
+    r = summarize_decision_factors(None)
+    check(r["positive"] == [], "SDF4.positive_empty")
+    check(r["warnings"] == [], "SDF4.warnings_empty")
+    check(r["blockers"] == [], "SDF4.blockers_empty")
+
+
+def test_sdf_empty_dict():
+    section("SDF5 — summarize_decision_factors: empty dict")
+    r = summarize_decision_factors({})
+    check(r == {"positive": [], "warnings": [], "blockers": []},
+          "SDF5.all_empty")
+
+
+def test_sdf_string_blockers():
+    section("SDF6 — summarize_decision_factors: string blockers")
+    src = {
+        "positive_factors": ["Good signal"],
+        "warning_factors":  [],
+        "blockers":         ["plain string blocker"],
+    }
+    r = summarize_decision_factors(src)
+    check("plain string blocker" in r["blockers"], "SDF6.string_blocker_extracted")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  paginate_items tests
+# ─────────────────────────────────────────────────────────────────────────────
+
+EXPECTED_PAGE_KEYS = {
+    "items", "page", "page_size", "total_items",
+    "total_pages", "has_previous", "has_next",
+}
+
+
+def _items(n: int) -> list:
+    return list(range(n))
+
+
+def test_pg_first_page():
+    section("PG1 — paginate_items: first page")
+    r = paginate_items(_items(25), page=1, page_size=10)
+    check(set(r.keys()) == EXPECTED_PAGE_KEYS, "PG1.keys")
+    check(r["items"]       == list(range(10)), "PG1.items")
+    check(r["page"]        == 1,  "PG1.page")
+    check(r["total_items"] == 25, "PG1.total_items")
+    check(r["total_pages"] == 3,  "PG1.total_pages")
+    check(r["has_previous"] is False, "PG1.no_prev")
+    check(r["has_next"]     is True,  "PG1.has_next")
+
+
+def test_pg_middle_page():
+    section("PG2 — paginate_items: middle page")
+    r = paginate_items(_items(25), page=2, page_size=10)
+    check(r["items"]        == list(range(10, 20)), "PG2.items")
+    check(r["page"]         == 2,  "PG2.page")
+    check(r["has_previous"] is True, "PG2.has_prev")
+    check(r["has_next"]     is True, "PG2.has_next")
+
+
+def test_pg_last_page():
+    section("PG3 — paginate_items: last page")
+    r = paginate_items(_items(25), page=3, page_size=10)
+    check(r["items"]        == list(range(20, 25)), "PG3.items")
+    check(r["page"]         == 3,   "PG3.page")
+    check(r["has_previous"] is True,  "PG3.has_prev")
+    check(r["has_next"]     is False, "PG3.no_next")
+
+
+def test_pg_empty_list():
+    section("PG4 — paginate_items: empty list")
+    r = paginate_items([], page=1, page_size=10)
+    check(r["items"]       == [], "PG4.empty_items")
+    check(r["total_items"] == 0,  "PG4.total_zero")
+    check(r["total_pages"] == 1,  "PG4.one_page")
+    check(r["has_previous"] is False, "PG4.no_prev")
+    check(r["has_next"]     is False, "PG4.no_next")
+
+
+def test_pg_invalid_page_high():
+    section("PG5 — paginate_items: page > total_pages → clamped to last")
+    r = paginate_items(_items(5), page=999, page_size=10)
+    check(r["page"] == 1, "PG5.clamped_to_1", f"got page={r['page']}")
+
+
+def test_pg_invalid_page_zero():
+    section("PG6 — paginate_items: page=0 → clamped to 1")
+    r = paginate_items(_items(20), page=0, page_size=5)
+    check(r["page"] == 1, "PG6.page_clamped_to_1")
+
+
+def test_pg_invalid_page_size():
+    section("PG7 — paginate_items: page_size < 1 → clamped to 1")
+    r = paginate_items(_items(5), page=1, page_size=0)
+    check(r["page_size"] >= 1, "PG7.size_at_least_1",
+          f"got {r['page_size']}")
+
+
+def test_pg_page_size_exceeds_max():
+    section("PG8 — paginate_items: page_size > MAX → clamped")
+    from settings import MAX_RESULT_PAGE_SIZE
+    r = paginate_items(_items(200), page=1, page_size=MAX_RESULT_PAGE_SIZE + 100)
+    check(r["page_size"] <= MAX_RESULT_PAGE_SIZE, "PG8.capped",
+          f"got {r['page_size']}")
+
+
+def test_pg_exact_fit():
+    section("PG9 — paginate_items: total_items exactly divisible by page_size")
+    r = paginate_items(_items(20), page=2, page_size=10)
+    check(r["total_pages"] == 2, "PG9.two_pages")
+    check(r["has_next"] is False, "PG9.last_page_no_next")
+
+
 def main():
     print("\n" + "═" * 60)
     print("  STREAMLIT MAPPING TESTS (ui_helpers.py)")
@@ -682,6 +1033,42 @@ def main():
         ("D1  — chain: normalize → extract",              test_pipeline_through_normalize),
         ("D2  — chain: old string → extract → N/A",      test_old_string_through_normalize_then_extract),
         ("D3  — chain: ds + normalize",                   test_ds_with_normalize),
+        # normalize_decision_result (v0.5.5)
+        ("NDR1 — norm_decision: full dict",               test_ndr_full_dict),
+        ("NDR2 — norm_decision: old format",              test_ndr_old_format),
+        ("NDR3 — norm_decision: partial fields",          test_ndr_missing_fields),
+        ("NDR4 — norm_decision: None",                    test_ndr_none),
+        ("NDR5 — norm_decision: NaN/inf score",           test_ndr_nan_inf),
+        ("NDR6 — norm_decision: invalid decision",        test_ndr_invalid_decision),
+        # format_score_percent (v0.5.5)
+        ("FSP1 — fmt_score_pct: normal values",          test_fsp_normal),
+        ("FSP2 — fmt_score_pct: NaN/inf → N/A",          test_fsp_nan_inf),
+        ("FSP3 — fmt_score_pct: None/non-numeric",       test_fsp_none_bad),
+        # decision_badge (v0.5.5)
+        ("DB1  — badge: TAKE LONG",                       test_badge_take_long),
+        ("DB2  — badge: TAKE SHORT",                      test_badge_take_short),
+        ("DB3  — badge: WATCH LONG",                      test_badge_watch_long),
+        ("DB4  — badge: WATCH SHORT",                     test_badge_watch_short),
+        ("DB5  — badge: SKIP",                            test_badge_skip),
+        ("DB6  — badge: WATCH css ≠ TAKE css",           test_badge_watch_vs_take_different_css),
+        ("DB7  — badge: invalid inputs",                  test_badge_invalid_inputs),
+        # summarize_decision_factors (v0.5.5)
+        ("SDF1 — factors: single-direction dict",         test_sdf_single_direction),
+        ("SDF2 — factors: details dict picks best",       test_sdf_details_dict_picks_best),
+        ("SDF3 — factors: max_items limit",               test_sdf_max_items_limit),
+        ("SDF4 — factors: None input",                    test_sdf_none_input),
+        ("SDF5 — factors: empty dict",                    test_sdf_empty_dict),
+        ("SDF6 — factors: string blockers",               test_sdf_string_blockers),
+        # paginate_items (v0.5.5)
+        ("PG1  — paginate: first page",                   test_pg_first_page),
+        ("PG2  — paginate: middle page",                  test_pg_middle_page),
+        ("PG3  — paginate: last page",                    test_pg_last_page),
+        ("PG4  — paginate: empty list",                   test_pg_empty_list),
+        ("PG5  — paginate: page > total_pages",           test_pg_invalid_page_high),
+        ("PG6  — paginate: page=0",                       test_pg_invalid_page_zero),
+        ("PG7  — paginate: page_size < 1",                test_pg_invalid_page_size),
+        ("PG8  — paginate: page_size > MAX",              test_pg_page_size_exceeds_max),
+        ("PG9  — paginate: exact divisible",              test_pg_exact_fit),
     ]
 
     suite_results: list[tuple[str, bool]] = []
