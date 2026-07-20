@@ -81,6 +81,9 @@ VALID_LABELS  = {"LOW", "MEDIUM", "HIGH", "VERY HIGH"}
 EXPECTED_ANALYZE_KEYS = {
     "trend", "signal", "score", "confidence",
     "confidence_label", "reason", "quality",
+    # v0.5 decision integration
+    "decision", "decision_direction", "decision_score",
+    "decision_reason", "decision_details",
 }
 
 EXPECTED_FINAL_KEYS = {
