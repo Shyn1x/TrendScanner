@@ -10,8 +10,10 @@ Orchestration module — собирает все Quality Engines для одно
         ↓  calc_trend_quality
         ↓  score_volume
         ↓  calculate_breakout_quality
+        ↓  analyze_market_structure          (один раз на df)
+        ↓  score_structure_for_direction     (по одному на каждое direction)
         ↓  calculate_confidence
-        →  {direction, signal, confirmed, line, tq, vq, bq, conf, reason}
+        →  {direction, signal, confirmed, line, tq, vq, bq, ms, sq, conf, reason}
 
 Функции:
     analyze_quality(df, direction)        → dict (LONG или SHORT)
@@ -27,17 +29,19 @@ import math
 
 import pandas as pd
 
-from trendlines       import find_pivots, create_trendline
-from trend_quality    import calc_trend_quality
-from volume_quality   import score_volume
-from breakout_quality import calculate_breakout_quality
-from confidence       import calculate_confidence, confidence_label
+from trendlines        import find_pivots, create_trendline
+from trend_quality     import calc_trend_quality
+from volume_quality    import score_volume
+from breakout_quality  import calculate_breakout_quality
+from market_structure  import analyze_market_structure
+from structure_quality import score_structure_for_direction
+from confidence        import calculate_confidence, confidence_label
 
 
 # ─── константы ────────────────────────────────────────────────────────────────
 
 #: Версия пайплайна. Изменение версии инвалидирует кэш Streamlit.
-PIPELINE_VERSION = "0.4-live-audit-1"
+PIPELINE_VERSION = "0.5-market-structure-1"
 
 #: Минимальный Confidence Score для подтверждения сигнала.
 #: Изменять только после тестов.
@@ -52,6 +56,10 @@ MIN_ROWS = 2 * PIVOT_WINDOW + 1   # 11
 
 #: Обязательные OHLCV-колонки (volume — необязательна, обрабатывается gracefully).
 REQUIRED_COLUMNS = {"open", "high", "low", "close"}
+
+#: Порог сильного противодействия структуры.
+#: Если alignment == OPPOSED и structure_score < этого значения → принудительный WAIT.
+STRONG_OPPOSITION_THRESHOLD = 25.0
 
 
 # ─── вспомогательные ─────────────────────────────────────────────────────────
@@ -79,6 +87,8 @@ def _wait_result(direction: str, reason: str) -> dict:
                 "rejection_wick": 0.0,
             },
         },
+        "market_structure": None,
+        "structure_quality": None,
         "confidence": {
             "confidence":           0.0,
             "label":                "LOW",
@@ -111,45 +121,21 @@ def _validate_df(df) -> tuple[bool, str]:
     return True, "ok"
 
 
-# ─── основная функция одного направления ─────────────────────────────────────
+# ─── приватная функция одного направления ────────────────────────────────────
 
-def analyze_quality(df, direction: str) -> dict:
+def _analyze_direction(
+    df,
+    direction: str,
+    market_structure_result: dict | None,
+) -> dict:
     """
     Запускает все Quality Engines для одного направления.
+    Принимает уже вычисленный market_structure_result.
 
-    Параметры:
-        df        — DataFrame с колонками open, high, low, close [, volume]
-        direction — "LONG" (нисходящая линия сопротивления, pivot highs)
-                  или "SHORT" (восходящая линия поддержки, pivot lows)
-
-    Возвращает:
-        {
-            "direction":        "LONG" | "SHORT",
-            "signal":           "LONG" | "SHORT" | "WAIT",
-            "confirmed":        bool,
-            "line":             dict | None,
-            "trend_quality":    dict,
-            "volume_quality":   dict,
-            "breakout_quality": dict,
-            "confidence":       dict,
-            "reason":           str
-        }
-
-    Исключения:
-        ValueError — если direction не "LONG" и не "SHORT".
-        Во всех остальных случаях функция не падает.
+    Внутренняя функция — не является частью публичного API.
+    Публичный контракт: analyze_quality(df, direction).
     """
-    # ── валидация direction ────────────────────────────────────────────────────
-    if not isinstance(direction, str) or direction.upper() not in ("LONG", "SHORT"):
-        raise ValueError(
-            f"direction должен быть 'LONG' или 'SHORT', получено: {direction!r}"
-        )
     direction = direction.upper()
-
-    # ── валидация DataFrame ────────────────────────────────────────────────────
-    is_valid, df_reason = _validate_df(df)
-    if not is_valid:
-        return _wait_result(direction, df_reason)
 
     try:
         # ── построение линии ──────────────────────────────────────────────────
@@ -204,12 +190,29 @@ def analyze_quality(df, direction: str) -> dict:
                 },
             }
 
+        # ── Market Structure (directional adapter) ────────────────────────────
+        try:
+            sq = score_structure_for_direction(market_structure_result, direction)
+        except Exception as exc:
+            sq = {
+                "structure_score":     0.0,
+                "raw_structure_score": 0.0,
+                "structure":           "UNKNOWN",
+                "direction":           direction,
+                "alignment":           "UNKNOWN",
+                "bos_direction":       "NONE",
+                "choch":               "NONE",
+                "available":           False,
+                "reason":              str(exc),
+            }
+
         # ── Confidence Engine ─────────────────────────────────────────────────
         try:
             conf = calculate_confidence(
                 trend_quality=tq,
                 volume_quality=vq,
                 breakout_quality=bq,
+                structure_quality=sq,
             )
         except Exception as exc:
             conf = {
@@ -227,7 +230,26 @@ def analyze_quality(df, direction: str) -> dict:
         if not math.isfinite(conf_score):
             conf_score = 0.0
 
-        if bq_confirmed and conf_score >= SIGNAL_THRESHOLD:
+        # Защитный фильтр: сильное противодействие структуры → WAIT
+        # Применяется только при alignment == OPPOSED и score < порога.
+        # Не применяется при RANGE, UNKNOWN, TRANSITION.
+        sq_alignment = sq.get("alignment", "UNKNOWN")
+        sq_score_val = sq.get("structure_score", 100.0)
+        strong_opposition = (
+            sq_alignment == "OPPOSED"
+            and sq_score_val < STRONG_OPPOSITION_THRESHOLD
+        )
+
+        if strong_opposition:
+            signal    = "WAIT"
+            confirmed = False
+            reason    = (
+                f"WAIT: Strong market-structure opposition "
+                f"(structure={sq.get('structure', '?')}, "
+                f"structure_score={sq_score_val:.1f} < {STRONG_OPPOSITION_THRESHOLD}, "
+                f"alignment=OPPOSED)"
+            )
+        elif bq_confirmed and conf_score >= SIGNAL_THRESHOLD:
             signal    = direction
             confirmed = True
             reason    = (
@@ -250,15 +272,17 @@ def analyze_quality(df, direction: str) -> dict:
                 )
 
         return {
-            "direction":        direction,
-            "signal":           signal,
-            "confirmed":        confirmed,
-            "line":             line,
-            "trend_quality":    tq,
-            "volume_quality":   vq,
-            "breakout_quality": bq,
-            "confidence":       conf,
-            "reason":           reason,
+            "direction":         direction,
+            "signal":            signal,
+            "confirmed":         confirmed,
+            "line":              line,
+            "trend_quality":     tq,
+            "volume_quality":    vq,
+            "breakout_quality":  bq,
+            "market_structure":  market_structure_result,
+            "structure_quality": sq,
+            "confidence":        conf,
+            "reason":            reason,
         }
 
     except ValueError:
@@ -267,16 +291,68 @@ def analyze_quality(df, direction: str) -> dict:
         return _wait_result(direction, f"Внутренняя ошибка: {exc}")
 
 
+# ─── публичная функция одного направления ────────────────────────────────────
+
+def analyze_quality(df, direction: str) -> dict:
+    """
+    Запускает все Quality Engines для одного направления.
+
+    Параметры:
+        df        — DataFrame с колонками open, high, low, close [, volume]
+        direction — "LONG" (нисходящая линия сопротивления, pivot highs)
+                  или "SHORT" (восходящая линия поддержки, pivot lows)
+
+    Возвращает:
+        {
+            "direction":         "LONG" | "SHORT",
+            "signal":            "LONG" | "SHORT" | "WAIT",
+            "confirmed":         bool,
+            "line":              dict | None,
+            "trend_quality":     dict,
+            "volume_quality":    dict,
+            "breakout_quality":  dict,
+            "market_structure":  dict | None,
+            "structure_quality": dict,
+            "confidence":        dict,
+            "reason":            str
+        }
+
+    Исключения:
+        ValueError — если direction не "LONG" и не "SHORT".
+        Во всех остальных случаях функция не падает.
+    """
+    # ── валидация direction ────────────────────────────────────────────────────
+    if not isinstance(direction, str) or direction.upper() not in ("LONG", "SHORT"):
+        raise ValueError(
+            f"direction должен быть 'LONG' или 'SHORT', получено: {direction!r}"
+        )
+    direction = direction.upper()
+
+    # ── валидация DataFrame ────────────────────────────────────────────────────
+    is_valid, df_reason = _validate_df(df)
+    if not is_valid:
+        return _wait_result(direction, df_reason)
+
+    # ── вычисляем Market Structure один раз ───────────────────────────────────
+    try:
+        ms_result = analyze_market_structure(df)
+    except Exception:
+        ms_result = None
+
+    return _analyze_direction(df, direction, ms_result)
+
+
 # ─── анализ обоих направлений ─────────────────────────────────────────────────
 
 def analyze_both_directions(df) -> dict:
     """
     Запускает analyze_quality для LONG и SHORT, выбирает итоговый сигнал.
+    Market Structure вычисляется ОДИН РАЗ и передаётся в оба направления.
 
     Возвращает:
         {
-            "LONG":  { результат analyze_quality("LONG") },
-            "SHORT": { результат analyze_quality("SHORT") },
+            "LONG":  { результат _analyze_direction("LONG") },
+            "SHORT": { результат _analyze_direction("SHORT") },
             "FINAL": {
                 "signal":     "LONG" | "SHORT" | "WAIT",
                 "confidence": float,
@@ -293,13 +369,37 @@ def analyze_both_directions(df) -> dict:
         • оба подтверждены, SHORT conf > LONG → SHORT
         • оба подтверждены, conf равны      → WAIT + "Conflicting equal-confidence signals"
     """
+    # ── валидация df (ранний выход) ───────────────────────────────────────────
+    is_valid, df_reason = _validate_df(df)
+    if not is_valid:
+        long_result  = _wait_result("LONG",  df_reason)
+        short_result = _wait_result("SHORT", df_reason)
+        return {
+            "LONG":  long_result,
+            "SHORT": short_result,
+            "FINAL": {
+                "signal":     "WAIT",
+                "confidence": 0.0,
+                "label":      "LOW",
+                "reason":     df_reason,
+            },
+        }
+
+    # ── Market Structure вычисляется один раз ─────────────────────────────────
     try:
-        long_result = analyze_quality(df, "LONG")
+        ms_result = analyze_market_structure(df)
+    except Exception:
+        ms_result = None
+
+    # ── LONG ──────────────────────────────────────────────────────────────────
+    try:
+        long_result = _analyze_direction(df, "LONG", ms_result)
     except Exception as exc:
         long_result = _wait_result("LONG", f"Ошибка LONG-анализа: {exc}")
 
+    # ── SHORT ─────────────────────────────────────────────────────────────────
     try:
-        short_result = analyze_quality(df, "SHORT")
+        short_result = _analyze_direction(df, "SHORT", ms_result)
     except Exception as exc:
         short_result = _wait_result("SHORT", f"Ошибка SHORT-анализа: {exc}")
 

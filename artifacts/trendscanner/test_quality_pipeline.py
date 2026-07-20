@@ -250,6 +250,7 @@ def make_no_pivot_df(n: int = 15) -> pd.DataFrame:
 EXPECTED_ANALYZE_KEYS = {
     "direction", "signal", "confirmed", "line",
     "trend_quality", "volume_quality", "breakout_quality",
+    "market_structure", "structure_quality",
     "confidence", "reason",
 }
 

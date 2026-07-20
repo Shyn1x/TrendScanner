@@ -513,8 +513,8 @@ def test_confidence():
     section("CONFIDENCE — WEIGHTS, перенормировка, все три компонента")
 
     # Ожидаемые базовые веса
-    W_TQ = WEIGHTS["trend_quality"]      # 0.50
-    W_VQ = WEIGHTS["volume_quality"]     # 0.20
+    W_TQ = WEIGHTS["trend_quality"]      # 0.40
+    W_VQ = WEIGHTS["volume_quality"]     # 0.15
     W_BQ = WEIGHTS["breakout_quality"]   # 0.30
 
     # ─ 1. Проверка WEIGHTS ──────────────────────────────────────────────────
@@ -522,8 +522,8 @@ def test_confidence():
     check(abs(w_sum - 1.0) < 1e-9,
           f"CONF.WEIGHTS_sum == 1.0  (sum={w_sum:.4f})",
           f"got {w_sum}")
-    assert_approx(W_TQ, 0.50, "CONF.WEIGHTS.trend_quality == 0.50",  tol=1e-9)
-    assert_approx(W_VQ, 0.20, "CONF.WEIGHTS.volume_quality == 0.20", tol=1e-9)
+    assert_approx(W_TQ, 0.40, "CONF.WEIGHTS.trend_quality == 0.40",  tol=1e-9)
+    assert_approx(W_VQ, 0.15, "CONF.WEIGHTS.volume_quality == 0.15", tol=1e-9)
     assert_approx(W_BQ, 0.30, "CONF.WEIGHTS.breakout_quality == 0.30", tol=1e-9)
 
     tq_d  = {"trend_quality_score":  80}
@@ -541,9 +541,16 @@ def test_confidence():
           f"got {r_all['available_components']}")
     check(isinstance(r_all["reason"], str) and len(r_all["reason"]) > 0,
           "CONF.all3.reason non-empty")
-    check("все 3" in r_all["reason"].lower() or "все 3" in r_all["reason"],
-          "CONF.all3.reason mentions all 3",
-          f"got: {r_all['reason']!r}")
+    # Причина содержит информацию о доступных компонентах
+    # (v0.5: 3/4 — структура отсутствует; v0.4 — "все 3")
+    check(
+        "все 3" in r_all["reason"] or
+        "available" in r_all["reason"].lower() or
+        "доступн" in r_all["reason"].lower() or
+        "компонент" in r_all["reason"].lower(),
+        "CONF.all3.reason mentions components",
+        f"got: {r_all['reason']!r}"
+    )
 
     # ─ 3. Нет breakout (None) ────────────────────────────────────────────────
     # Ожидается: (80*0.50 + 60*0.20) / (0.50+0.20) = 52/0.70 ≈ 74.29
@@ -563,10 +570,12 @@ def test_confidence():
           "CONF.no_bq.breakout_quality.contribution == 0")
 
     # ─ 4. Нет volume ({}) ────────────────────────────────────────────────────
-    # Ожидается: (80*0.50 + 70*0.30) / (0.50+0.30) = 61/0.80 = 76.25
+    # Ожидается: (80*W_TQ + 70*W_BQ) / (W_TQ+W_BQ)
+    # v0.5 weights: (80*0.40 + 70*0.30) / (0.40+0.30) = 53/0.70 ≈ 75.71
     r_no_vq = calculate_confidence(tq_d, {}, breakout_quality=bq_d)
-    assert_approx(r_no_vq["confidence"], 76.25,
-                  "CONF.no_vq.confidence ≈ 76.25", tol=0.5)
+    _no_vq_expected = (80 * W_TQ + 70 * W_BQ) / (W_TQ + W_BQ)
+    assert_approx(r_no_vq["confidence"], _no_vq_expected,
+                  f"CONF.no_vq.confidence ≈ {_no_vq_expected:.2f}", tol=0.5)
     check(r_no_vq["available_components"] == 2,
           "CONF.no_vq.available_components == 2",
           f"got {r_no_vq['available_components']}")
@@ -574,10 +583,12 @@ def test_confidence():
           "CONF.no_vq.volume_quality.available == False")
 
     # ─ 5. Нет trend (None) ───────────────────────────────────────────────────
-    # Ожидается: (60*0.20 + 70*0.30) / (0.20+0.30) = 33/0.50 = 66.0
+    # Ожидается: (60*W_VQ + 70*W_BQ) / (W_VQ+W_BQ)
+    # v0.5 weights: (60*0.15 + 70*0.30) / (0.15+0.30) = 30/0.45 ≈ 66.67
     r_no_tq = calculate_confidence(None, vq_d, breakout_quality=bq_d)
-    assert_approx(r_no_tq["confidence"], 66.0,
-                  "CONF.no_tq.confidence ≈ 66.0", tol=0.5)
+    _no_tq_expected = (60 * W_VQ + 70 * W_BQ) / (W_VQ + W_BQ)
+    assert_approx(r_no_tq["confidence"], _no_tq_expected,
+                  f"CONF.no_tq.confidence ≈ {_no_tq_expected:.2f}", tol=0.5)
     check(r_no_tq["available_components"] == 2,
           "CONF.no_tq.available_components == 2",
           f"got {r_no_tq['available_components']}")
@@ -687,8 +698,14 @@ def test_confidence():
               f"expected {expected_comp_fields}, got {actual_fields}")
         assert_type(comp["available"], bool,
                     f"CONF.all3.{comp_name}.available is bool")
-        assert_in_range(comp["score"],            0, 100,
-                        f"CONF.all3.{comp_name}.score in [0,100]")
+        # score может быть None для недоступных компонентов — проверяем только float
+        if comp["score"] is not None:
+            assert_in_range(comp["score"],            0, 100,
+                            f"CONF.all3.{comp_name}.score in [0,100]")
+        else:
+            check(not comp["available"],
+                  f"CONF.all3.{comp_name}.score None → available==False",
+                  f"available={comp['available']}")
         assert_in_range(comp["effective_weight"], 0, 1,
                         f"CONF.all3.{comp_name}.effective_weight in [0,1]")
         assert_in_range(comp["contribution"],     0, 100,

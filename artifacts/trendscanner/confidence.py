@@ -4,14 +4,14 @@ confidence.py
 Объединяет оценки независимых модулей качества и рассчитывает
 итоговую уверенность сигнала (Confidence Score, 0–100).
 
-Компоненты и базовые веса (при наличии всех трёх, сумма = 1.0):
-    • trend_quality    — качество трендовой линии   (базовый вес 50%)
-    • volume_quality   — подтверждение объёмом       (базовый вес 20%)
-    • breakout_quality — сила и чёткость пробоя      (базовый вес 30%)
+Компоненты и базовые веса (при наличии всех четырёх, сумма = 1.0):
+    • trend_quality     — качество трендовой линии       (базовый вес 40%)
+    • volume_quality    — подтверждение объёмом           (базовый вес 15%)
+    • breakout_quality  — сила и чёткость пробоя          (базовый вес 30%)
+    • structure_quality — рыночная структура HH/HL, LH/LL (базовый вес 15%)
 
 Планируемые компоненты (добавляются без изменения сигнатуры):
     • atr_quality       — качество пробоя в единицах ATR
-    • market_structure  — структура рынка (HH/HL, LH/LL)
     • multi_tf_quality  — согласованность таймфреймов
     • ml_score          — оценка ML-модели
 
@@ -20,10 +20,11 @@ confidence.py
     пропорционально между доступными компонентами.
     Confidence не занижается при неполных данных.
 
-    Примеры:
-        все три         → w_tq=0.50, w_vq=0.20, w_bq=0.30
-        нет volume      → w_tq=0.625, w_bq=0.375     (0.50/0.80, 0.30/0.80)
-        только breakout → w_bq=1.0
+    Примеры (три первых компонента без structure):
+        все четыре         → w_tq=0.40, w_vq=0.15, w_bq=0.30, w_sq=0.15
+        нет structure      → w_tq=0.471, w_vq=0.176, w_bq=0.353
+        нет volume         → w_tq=0.471, w_bq=0.353, w_sq=0.176
+        только breakout    → w_bq=1.0
 
 КРИТЕРИИ ДОСТУПНОСТИ КОМПОНЕНТА:
     Компонент считается доступным только если:
@@ -31,7 +32,8 @@ confidence.py
     2. в нём присутствует ожидаемый ключ score;
     3. значение score приводится к float;
     4. значение является конечным числом (не NaN, не inf);
-    5. score приводится к диапазону 0–100 (clamp, не отклонение).
+    5. score приводится к диапазону 0–100 (clamp, не отклонение);
+    6. для structure_quality: дополнительно available == True.
 
 НУЛЕВЫЕ ЗАВИСИМОСТИ: scanner.py, Streamlit, analysis.py, multi_tf.py не импортируются.
 """
@@ -45,20 +47,21 @@ import math
 # При добавлении нового компонента — перераспределить веса здесь.
 
 WEIGHTS: dict[str, float] = {
-    "trend_quality":    0.50,
-    "volume_quality":   0.20,
-    "breakout_quality": 0.30,
-    # "atr_quality":       0.00,
-    # "market_structure":  0.00,
-    # "multi_tf_quality":  0.00,
-    # "ml_score":          0.00,
+    "trend_quality":     0.40,
+    "volume_quality":    0.15,
+    "breakout_quality":  0.30,
+    "structure_quality": 0.15,
+    # "atr_quality":      0.00,
+    # "multi_tf_quality": 0.00,
+    # "ml_score":         0.00,
 }
 
 # Отображение компонентов на ключи их словарей
 _SCORE_KEYS: dict[str, str] = {
-    "trend_quality":    "trend_quality_score",
-    "volume_quality":   "volume_score",
-    "breakout_quality": "breakout_score",
+    "trend_quality":     "trend_quality_score",
+    "volume_quality":    "volume_score",
+    "breakout_quality":  "breakout_score",
+    "structure_quality": "structure_score",
 }
 
 
@@ -101,6 +104,9 @@ def _parse_component(
         3. значение приводится к конечному float
         4. значение приводится к диапазону 0–100 (clamp)
 
+    Для structure_quality дополнительно проверяется ключ available:
+        Если available == False — компонент недоступен даже при score == 0.
+
     При is_available=True score — float в [0, 100].
     При is_available=False score — None.
     """
@@ -115,6 +121,13 @@ def _parse_component(
 
     if not quality_input:
         return None, False, f"{comp_name}: передан пустой dict"
+
+    # Для structure_quality: проверяем ключ available до чтения score
+    if comp_name == "structure_quality":
+        available_flag = quality_input.get("available", True)
+        if available_flag is False:
+            sq_reason = quality_input.get("reason", "недоступен")
+            return None, False, f"{comp_name}: available=False ({sq_reason})"
 
     if score_key not in quality_input:
         return None, False, (
@@ -147,37 +160,36 @@ def _parse_component(
 # ─── основная функция ────────────────────────────────────────────────────────
 
 def calculate_confidence(
-    trend_quality:    dict | None = None,
-    volume_quality:   dict | None = None,
-    breakout_quality: dict | None = None,
+    trend_quality:     dict | None = None,
+    volume_quality:    dict | None = None,
+    breakout_quality:  dict | None = None,
+    structure_quality: dict | None = None,
 ) -> dict:
     """
     Объединяет оценки всех модулей качества и рассчитывает
     итоговый Confidence Score с перенормировкой весов.
 
     Параметры:
-        trend_quality    — dict от calc_trend_quality()
-                           Ключ: "trend_quality_score"
-        volume_quality   — dict от score_volume()
-                           Ключ: "volume_score"
-        breakout_quality — dict от calculate_breakout_quality() или None
-                           Ключ: "breakout_score"
+        trend_quality     — dict от calc_trend_quality()
+                            Ключ: "trend_quality_score"
+        volume_quality    — dict от score_volume()
+                            Ключ: "volume_score"
+        breakout_quality  — dict от calculate_breakout_quality() или None
+                            Ключ: "breakout_score"
+        structure_quality — dict от score_structure_for_direction() или None
+                            Ключ: "structure_score"
+                            Дополнительно: "available" (bool)
 
     Возвращает:
         {
             "confidence":          float  — итоговая оценка 0–100,
             "label":               str    — "LOW" / "MEDIUM" / "HIGH" / "VERY HIGH",
             "components": {
-                "trend_quality": {
-                    "score":            float | None,
-                    "base_weight":      float,
-                    "effective_weight": float,
-                    "contribution":     float,
-                    "available":        bool,
-                    "reason":           str,
-                },
-                "volume_quality":   { ... },
-                "breakout_quality": { ... }
+                "trend_quality":     { score, base_weight, effective_weight,
+                                       contribution, available, reason },
+                "volume_quality":    { ... },
+                "breakout_quality":  { ... },
+                "structure_quality": { ... },
             },
             "available_components": int — количество доступных компонентов,
             "reason":               str — описание результата
@@ -192,9 +204,10 @@ def calculate_confidence(
 
     # ── входные данные компонентов ────────────────────────────────────────────
     _inputs: dict[str, object] = {
-        "trend_quality":    trend_quality,
-        "volume_quality":   volume_quality,
-        "breakout_quality": breakout_quality,
+        "trend_quality":     trend_quality,
+        "volume_quality":    volume_quality,
+        "breakout_quality":  breakout_quality,
+        "structure_quality": structure_quality,
     }
 
     # ── парсинг каждого компонента ────────────────────────────────────────────
