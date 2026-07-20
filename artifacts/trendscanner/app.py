@@ -97,6 +97,8 @@ if "selected_detail_symbol" not in st.session_state:
     st.session_state["selected_detail_symbol"] = None
 if "market_results_page" not in st.session_state:
     st.session_state["market_results_page"] = 1
+if "last_scan_completed" not in st.session_state:
+    st.session_state["last_scan_completed"] = None
 
 # ── Sidebar ────────────────────────────────────────────────────────────────────
 with st.sidebar:
@@ -158,10 +160,6 @@ def cached_get_data(symbol: str, timeframe: str) -> pd.DataFrame:
 
 # ── Header ─────────────────────────────────────────────────────────────────────
 st.markdown("# 🚀 Trend Scanner")
-st.markdown(
-    f"**Exchange:** `KuCoin` &nbsp;|&nbsp; "
-    f"**Updated:** `{datetime.now().strftime('%H:%M:%S')}`"
-)
 
 if not selected_symbols:
     st.info("Add at least one symbol in the sidebar.")
@@ -171,17 +169,38 @@ if not selected_tfs:
     st.info("Select at least one timeframe in the sidebar.")
     st.stop()
 
+# Compact info panel — 3 columns: Exchange | Last scan | Status
+_hdr_c1, _hdr_c2, _hdr_c3 = st.columns(3)
+_hdr_c1.markdown("**Exchange**  \nKuCoin")
+_last_scan_str = st.session_state["last_scan_completed"] or "No completed scan yet"
+_hdr_c2.markdown(f"**Last scan**  \n{_last_scan_str}")
+_status_ph = _hdr_c3.empty()   # updated live during + after scan
+
+# Scan progress area
+_scan_msg_ph  = st.empty()     # "Scanning X / N" or "Scan completed successfully."
+_progress_ph  = st.empty()     # progress bar
+
 # ── Fetch all results — ONE call per symbol ────────────────────────────────────
-progress = st.progress(0, text="Scanning markets…")
 all_results: dict[str, dict] = {}
-for i, symbol in enumerate(selected_symbols):
-    progress.progress((i + 1) / len(selected_symbols), text=f"Scanning {symbol}…")
+_total = len(selected_symbols)
+for _i, symbol in enumerate(selected_symbols):
+    _frac = (_i + 1) / _total
+    _status_ph.markdown(f"**Status**  \n🔄 Scanning {symbol}…")
+    _scan_msg_ph.markdown(f"Scanning **{symbol}**  \n{_i + 1} / {_total} symbols")
+    _progress_ph.progress(_frac)
     try:
         all_results[symbol] = cached_multi_analysis(symbol)
     except Exception as e:
         all_results[symbol] = {"_error": str(e), "FINAL": {}}
     time.sleep(0.05)
-progress.empty()
+
+# ── Scan complete — update timestamp only after full cycle ─────────────────────
+_completed_at = datetime.now().strftime("%H:%M:%S")
+st.session_state["last_scan_completed"] = _completed_at
+_hdr_c2.markdown(f"**Last scan**  \n{_completed_at}")
+_status_ph.markdown("**Status**  \n✅ Ready")
+_scan_msg_ph.success("Scan completed successfully.")
+_progress_ph.empty()
 
 # Ensure all_results values have FINAL key for safety
 for sym, res in all_results.items():
