@@ -255,10 +255,11 @@ else:
             card_cls = "setup-card-take" if setup["decision"] == "TAKE" else "setup-card-watch"
 
             with col:
+                badge_css = badge["css_class"]
                 st.markdown(
                     f"<div class='setup-card {card_cls}'>"
                     f"<b>#{setup['rank']} {setup['symbol']}</b><br>"
-                    f"<span class='{badge[\"css_class\"]}'>"
+                    f"<span class='{badge_css}'>"
                     f"{badge['icon']} {badge['label']}</span>"
                     f"<div class='setup-meta'>"
                     f"Decision: <b>{d_pct}</b> &nbsp;·&nbsp; "
@@ -403,8 +404,9 @@ else:
 
         r_cols = st.columns([2, 2, 1, 1, 1])
         r_cols[0].markdown(f"**{row['symbol']}**")
+        badge_css = badge["css_class"]
         r_cols[1].markdown(
-            f"<span class='{badge[\"css_class\"]}'>{badge['icon']} {badge['label']}</span>",
+            f"<span class='{badge_css}'>{badge['icon']} {badge['label']}</span>",
             unsafe_allow_html=True,
         )
         r_cols[2].markdown(d_pct)
@@ -579,8 +581,9 @@ else:
                 f"<span class='{sig_css}'>{sig_lbl}</span>",
                 unsafe_allow_html=True,
             )
+            tbadge_css = tbadge["css_class"]
             tf_row[2].markdown(
-                f"<span class='{tbadge[\"css_class\"]}'>"
+                f"<span class='{tbadge_css}'>"
                 f"{tbadge['icon']} {tbadge['label']}</span>",
                 unsafe_allow_html=True,
             )
