@@ -142,12 +142,16 @@ def make_long_breakout_df(quality: str = "good") -> pd.DataFrame:
         highs[38]  = 105.0    # большая верхняя тень
         lows[38]   = 101.8
 
-    # ── last candle (39) с высоким объёмом ───────────────────────────────────
+    # ── сигнальная свеча (38) с высоким объёмом ─────────────────────────────
+    # score_volume(signal_index=-2) читает iloc[-2]=индекс 38, а не 39
+    vols[38]   = avg_vol * 2.5    # ratio=2.5 → volume_score=100
+
+    # ── last candle (39) — открытая незакрытая свеча ─────────────────────────
     opens[39]  = closes[38]
     closes[39] = closes[38] + 0.5
     highs[39]  = closes[38] + 1.0
     lows[39]   = closes[38] - 0.3
-    vols[39]   = avg_vol * 2.5    # ratio=2.5 → volume_score=100
+    vols[39]   = avg_vol          # последняя свеча: нейтральный объём
 
     return pd.DataFrame({
         "open": opens, "high": highs, "low": lows,
@@ -206,12 +210,16 @@ def make_short_breakout_df(quality: str = "good") -> pd.DataFrame:
         highs[38]  = 98.5
         lows[38]   = 95.0     # огромная нижняя тень
 
-    # ── last candle (39) с высоким объёмом ───────────────────────────────────
+    # ── сигнальная свеча (38) с высоким объёмом ─────────────────────────────
+    # score_volume(signal_index=-2) читает iloc[-2]=индекс 38
+    vols[38]   = avg_vol * 2.5    # ratio=2.5 → volume_score=100
+
+    # ── last candle (39) — открытая незакрытая свеча ─────────────────────────
     opens[39]  = closes[38]
     closes[39] = closes[38] - 0.5
     highs[39]  = closes[38] + 0.3
     lows[39]   = closes[38] - 1.0
-    vols[39]   = avg_vol * 2.5
+    vols[39]   = avg_vol          # последняя свеча: нейтральный объём
 
     return pd.DataFrame({
         "open": opens, "high": highs, "low": lows,

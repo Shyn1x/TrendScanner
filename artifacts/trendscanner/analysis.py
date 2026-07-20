@@ -20,6 +20,13 @@ analysis.py
             "FINAL": {...}
         }
     }
+
+ИНВАРИАНТ:
+    Если signal == "LONG" или signal == "SHORT", то одновременно:
+    • confidence >= 50
+    • качество соответствующего направления имеет confirmed=True
+    • pipeline FINAL.signal совпадает с signal
+    При нарушении инварианта — принудительно WAIT с причиной.
 """
 
 from quality_pipeline import analyze_both_directions
@@ -118,6 +125,39 @@ def analyze_timeframe(df) -> dict:
         if label not in ("LOW", "MEDIUM", "HIGH", "VERY HIGH"):
             label = _fallback_label(confidence)
         reason = str(final.get("reason", ""))
+
+        # ── ИНВАРИАНТ: активный сигнал должен иметь confidence>=50 и confirmed=True ──
+        if final_signal in ("LONG", "SHORT"):
+            # Проверка 1: confidence >= 50
+            if confidence < 50.0:
+                return _error_result(
+                    f"Invariant violation prevented active signal: "
+                    f"signal={final_signal} but confidence={confidence:.1f} < 50. "
+                    f"Forced WAIT."
+                )
+
+            # Проверка 2: соответствующее направление должно быть confirmed=True
+            dir_quality  = quality_result.get(final_signal, {})
+            dir_confirmed = (
+                isinstance(dir_quality, dict)
+                and bool(dir_quality.get("confirmed", False))
+            )
+            if not dir_confirmed:
+                return _error_result(
+                    f"Invariant violation prevented active signal: "
+                    f"signal={final_signal} but {final_signal}.confirmed=False. "
+                    f"Forced WAIT."
+                )
+
+            # Проверка 3: pipeline FINAL.signal совпадает с final_signal
+            pipeline_fs = final.get("signal", "WAIT")
+            if pipeline_fs != final_signal:
+                return _error_result(
+                    f"Invariant violation prevented active signal: "
+                    f"final_signal={final_signal} != pipeline FINAL.signal={pipeline_fs}. "
+                    f"Forced WAIT."
+                )
+        # ── конец инварианта ─────────────────────────────────────────────────
 
         if final_signal == "LONG":
             trend = "BULLISH"

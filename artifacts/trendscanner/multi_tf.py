@@ -31,6 +31,10 @@ multi_tf.py
             ...
         }
     }
+
+ИНВАРИАНТ (агрегация):
+    Таймфрейм с signal=LONG/SHORT и confidence<50 не участвует как активный
+    сигнал — он учитывается как WAIT при расчёте directional_score.
 """
 
 import math
@@ -145,7 +149,6 @@ def multi_analysis(symbol: str) -> dict:
         reason_tf = a.get("reason", "")
 
         # Таймфрейм считается недоступным, если trend == "ERROR"
-        # (означает исключение при получении/анализе данных).
         available = (trend != "ERROR") and (conf_raw is not None)
         conf      = _safe_float(conf_raw) if available else None
 
@@ -174,7 +177,6 @@ def multi_analysis(symbol: str) -> dict:
         for tf in TIMEFRAMES:
             components[tf]["effective_weight"] = 0.0
             components[tf]["contribution"]     = 0.0
-        # добавить компоненты в FINAL
         result["FINAL"]["timeframe_components"] = components
         return result
 
@@ -190,6 +192,14 @@ def multi_analysis(symbol: str) -> dict:
             conf = components[tf]["confidence"]
             if conf is None:
                 conf = 0.0
+
+            # ── ИНВАРИАНТ агрегации ───────────────────────────────────────────
+            # Активный сигнал с confidence < 50 не участвует как LONG/SHORT —
+            # он счи`тается WAIT для расчёта directional_score.
+            if sig in ("LONG", "SHORT") and conf < 50.0:
+                sig = "WAIT"
+                components[tf]["signal"] = "WAIT"
+            # ── конец инварианта ─────────────────────────────────────────────
 
             if sig == "LONG":
                 contrib = +conf * eff_w

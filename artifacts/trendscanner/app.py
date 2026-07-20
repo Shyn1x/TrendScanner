@@ -3,10 +3,11 @@ import pandas as pd
 import time
 from datetime import datetime
 
-from config    import SYMBOLS, TIMEFRAMES
-from scanner   import get_data
-from trendlines import find_pivots, create_trendline, line_value
-from multi_tf  import multi_analysis
+from config          import SYMBOLS, TIMEFRAMES
+from scanner         import get_data
+from trendlines      import find_pivots, create_trendline, line_value
+from multi_tf        import multi_analysis
+from quality_pipeline import PIPELINE_VERSION
 from ui_helpers import (
     normalize_timeframe_result,
     format_directional_score,
@@ -76,7 +77,8 @@ with st.sidebar:
 # ── Cache wrappers ─────────────────────────────────────────────────────────────
 
 @st.cache_data(ttl=60, show_spinner=False)
-def cached_multi_analysis(symbol: str) -> dict:
+def cached_multi_analysis(symbol: str, pipeline_version: str = PIPELINE_VERSION) -> dict:
+    """Cache key includes pipeline_version — изменение версии инвалидирует кэш."""
     return multi_analysis(symbol)
 
 

@@ -495,13 +495,15 @@ def test_multi_mixed():
 def test_multi_threshold_long():
     section("MF4 — directional_score >= 40 → LONG (без конфликта HTF)")
 
-    # Все LONG с conf=40: ds = 40 ✓ (LONG все, нет конфликта)
-    tf_map = {tf: make_analyze_result("LONG", 40.0) for tf in TIMEFRAMES}
+    # Все LONG с conf=50 (минимально допустимый активный сигнал).
+    # Инвариант: conf < 50 → treated as WAIT; conf=50 проходит.
+    # ds = 50 * 1.0 = 50 ≥ 40 → LONG ✓
+    tf_map = {tf: make_analyze_result("LONG", 50.0) for tf in TIMEFRAMES}
     r = _run_multi(tf_map)
 
     final = r["FINAL"]
     ds = final["directional_score"]
-    assert_approx(ds, 40.0, "MF4.directional_score == 40.0", tol=0.05)
+    assert_approx(ds, 50.0, "MF4.directional_score == 50.0", tol=0.05)
     check(final["signal"] == "LONG", "MF4.signal == LONG",
           f"ds={ds:.3f}, signal={final['signal']!r}")
     print(f"     ds={ds:.4f} → signal={final['signal']}")
@@ -510,12 +512,13 @@ def test_multi_threshold_long():
 def test_multi_threshold_short():
     section("MF5 — directional_score <= -40 → SHORT (без конфликта HTF)")
 
-    tf_map = {tf: make_analyze_result("SHORT", 40.0) for tf in TIMEFRAMES}
+    # Аналогично MF4: все SHORT с conf=50 → ds=-50 ≤ -40 → SHORT
+    tf_map = {tf: make_analyze_result("SHORT", 50.0) for tf in TIMEFRAMES}
     r = _run_multi(tf_map)
 
     final = r["FINAL"]
     ds = final["directional_score"]
-    assert_approx(ds, -40.0, "MF5.directional_score == -40.0", tol=0.05)
+    assert_approx(ds, -50.0, "MF5.directional_score == -50.0", tol=0.05)
     check(final["signal"] == "SHORT", "MF5.signal == SHORT",
           f"ds={ds:.3f}, signal={final['signal']!r}")
     print(f"     ds={ds:.4f} → signal={final['signal']}")
@@ -524,24 +527,42 @@ def test_multi_threshold_short():
 def test_multi_below_threshold():
     section("MF6 — directional_score < 40 → WAIT")
 
-    # Все LONG conf=39 → ds ≈ 39 < 40 → WAIT
-    tf_map = {tf: make_analyze_result("LONG", 39.0) for tf in TIMEFRAMES}
-    r = _run_multi(tf_map)
+    # Sub-case A: conf=49 < 50 → инвариант превращает в WAIT → ds=0 → WAIT
+    tf_map_inv = {tf: make_analyze_result("LONG", 49.0) for tf in TIMEFRAMES}
+    r_inv = _run_multi(tf_map_inv)
+    ds_inv = r_inv["FINAL"]["directional_score"]
+    assert_approx(ds_inv, 0.0, "MF6.inv.directional_score == 0 (conf<50→WAIT)", tol=0.05)
+    check(r_inv["FINAL"]["signal"] == "WAIT",
+          "MF6.inv.signal == WAIT (conf<50 → invariant)",
+          f"ds={ds_inv:.3f}")
 
-    final = r["FINAL"]
-    ds = final["directional_score"]
-    assert_approx(ds, 39.0, "MF6.directional_score ≈ 39", tol=0.05)
-    check(final["signal"] == "WAIT", "MF6.signal == WAIT (below threshold)",
-          f"ds={ds:.3f}")
+    # Sub-case B: только 1h+4h LONG(conf=50), остальные WAIT
+    # ds = 50*(0.08+0.12) = 10.0 < 40 → WAIT  (тест порога агрегации)
+    tf_map_partial = {
+        "1M": make_analyze_result("WAIT",  0.0),
+        "1w": make_analyze_result("WAIT",  0.0),
+        "1d": make_analyze_result("WAIT",  0.0),
+        "4h": make_analyze_result("LONG", 50.0),
+        "1h": make_analyze_result("LONG", 50.0),
+    }
+    r_p = _run_multi(tf_map_partial)
+    ds_p = r_p["FINAL"]["directional_score"]
+    # Ожидаем ds = 50*(0.12+0.08)/1.0 = 10.0 (веса нормированы на total_base=1.0)
+    assert_in_range(ds_p, 0.0, 39.9, "MF6.partial.directional_score < 40")
+    check(r_p["FINAL"]["signal"] == "WAIT",
+          "MF6.partial.signal == WAIT (ds < 40)",
+          f"ds={ds_p:.3f}")
 
-    # Все SHORT conf=39 → ds ≈ -39 > -40 → WAIT
-    tf_map_s = {tf: make_analyze_result("SHORT", 39.0) for tf in TIMEFRAMES}
-    r_s = _run_multi(tf_map_s)
-    ds_s = r_s["FINAL"]["directional_score"]
-    assert_approx(ds_s, -39.0, "MF6.SHORT.directional_score ≈ -39", tol=0.05)
-    check(r_s["FINAL"]["signal"] == "WAIT", "MF6.SHORT.signal == WAIT (above -40)",
-          f"ds={ds_s:.3f}")
-    print(f"     LONG ds={ds:.3f}, SHORT ds={ds_s:.3f} → both WAIT")
+    # Sub-case C: SHORT зеркально
+    tf_map_inv_s = {tf: make_analyze_result("SHORT", 49.0) for tf in TIMEFRAMES}
+    r_inv_s = _run_multi(tf_map_inv_s)
+    ds_inv_s = r_inv_s["FINAL"]["directional_score"]
+    assert_approx(ds_inv_s, 0.0, "MF6.SHORT.inv.directional_score == 0", tol=0.05)
+    check(r_inv_s["FINAL"]["signal"] == "WAIT",
+          "MF6.SHORT.inv.signal == WAIT (conf<50 → invariant)",
+          f"ds={ds_inv_s:.3f}")
+
+    print(f"     inv ds={ds_inv:.3f}, partial ds={ds_p:.3f}, short inv ds={ds_inv_s:.3f} → all WAIT")
 
 
 # ── MF7-MF9: отсутствующие таймфреймы ────────────────────────────────────

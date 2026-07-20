@@ -3,61 +3,80 @@ volume_quality.py
 ~~~~~~~~~~~~~~~~~
 Оценка качества объёма для подтверждения пробоя трендовой линии.
 
-Архитектура модульная — модуль не зависит от trend_quality.py.
-В будущем можно добавить:
-  • score_obv(df)           — On-Balance Volume
-  • score_volume_profile(df) — Volume Profile
-  • score_delta_volume(df)  — Delta Volume (ask - bid)
-  • score_cumulative(df)    — Cumulative Volume
+ВАЖНО: score_volume принимает параметр signal_index (default=-2).
+Это гарантирует, что объём измеряется на той же ЗАКРЫТОЙ сигнальной свече,
+что и breakout_quality (которая использует iloc[-2]).
 
-Использование:
-    from volume_quality import score_volume
-
-    result = score_volume(df)
-    # → {
-    #       "volume_score":   80,
-    #       "current_volume": 12500.0,
-    #       "average_volume": 8900.0,
-    #       "volume_ratio":   1.40
-    #   }
+Параметр signal_index:
+    -2  (default) → предпоследняя свеча (закрытая сигнальная свеча)
+    -1            → последняя свеча (может быть незакрытой, старое поведение)
 """
+
+import math
 
 
 # ─── вспомогательные функции ──────────────────────────────────────────────────
 
-def _get_average_volume(df, period: int = 20) -> float:
+def _get_current_volume(df, signal_index: int = -2) -> float:
     """
-    Вычисляет средний объём за последние `period` свечей
-    (не включая последнюю, чтобы не смешивать с текущей).
+    Возвращает объём сигнальной свечи.
 
     Параметры:
-        df     — pandas DataFrame с колонкой 'volume'
-        period — количество свечей для расчёта среднего (по умолчанию 20)
+        df           — pandas DataFrame с колонкой 'volume'
+        signal_index — индекс сигнальной свечи (по умолчанию -2 = предпоследняя)
+
+    Возвращает:
+        float — объём; 0.0 если DataFrame пуст или индекс за пределами
+    """
+    if len(df) == 0:
+        return 0.0
+    try:
+        return float(df["volume"].iloc[signal_index])
+    except (IndexError, KeyError, TypeError, ValueError):
+        return 0.0
+
+
+def _get_average_volume(df, period: int = 20, signal_index: int = -2) -> float:
+    """
+    Вычисляет средний объём за `period` свечей ДО сигнальной свечи
+    (не включая её саму, чтобы не смешивать с измеряемой).
+
+    Параметры:
+        df           — pandas DataFrame с колонкой 'volume'
+        period       — количество свечей для расчёта среднего
+        signal_index — индекс сигнальной свечи (по умолчанию -2)
 
     Возвращает:
         float — средний объём; 0.0 если данных недостаточно
     """
-    if len(df) < period + 1:
+    n = len(df)
+    if n == 0:
         return 0.0
 
-    avg = df["volume"].iloc[-(period + 1):-1].mean()
-    return float(avg)
+    # Приводим signal_index к абсолютному
+    if signal_index < 0:
+        abs_sig = n + signal_index
+    else:
+        abs_sig = signal_index
 
+    start = abs_sig - period
+    end   = abs_sig       # не включаем сигнальную свечу
 
-def _get_current_volume(df) -> float:
-    """
-    Возвращает объём последней (закрытой) свечи.
-
-    Параметры:
-        df — pandas DataFrame с колонкой 'volume'
-
-    Возвращает:
-        float — объём последней свечи; 0.0 если DataFrame пуст
-    """
-    if len(df) == 0:
+    if start < 0 or end <= 0 or start >= end:
         return 0.0
 
-    return float(df["volume"].iloc[-1])
+    try:
+        avg = df["volume"].iloc[start:end].mean()
+    except Exception:
+        return 0.0
+
+    if avg is None:
+        return 0.0
+    try:
+        f = float(avg)
+    except (TypeError, ValueError):
+        return 0.0
+    return f if math.isfinite(f) else 0.0
 
 
 def _ratio_to_score(ratio: float) -> int:
@@ -70,12 +89,6 @@ def _ratio_to_score(ratio: float) -> int:
         1.0  – 1.2    →  60  (около среднего)
         1.2  – 1.5    →  80  (выше среднего — хороший пробой)
         ≥ 1.5         → 100  (сильный всплеск — подтверждённый пробой)
-
-    Параметры:
-        ratio — float, отношение текущего объёма к среднему
-
-    Возвращает:
-        int — оценка от 0 до 100
     """
     if ratio < 0.8:
         return 20
@@ -91,25 +104,27 @@ def _ratio_to_score(ratio: float) -> int:
 
 # ─── основная функция ─────────────────────────────────────────────────────────
 
-def score_volume(df, period: int = 20) -> dict:
+def score_volume(df, period: int = 20, signal_index: int = -2) -> dict:
     """
     Оценивает, подтверждает ли объём текущий пробой трендовой линии.
 
     Алгоритм:
-        1. Берёт объём последней свечи (current_volume).
-        2. Считает средний объём за последние `period` свечей (average_volume).
+        1. Берёт объём сигнальной свечи (signal_index, default=-2).
+        2. Считает средний объём за `period` свечей ДО сигнальной свечи.
         3. Вычисляет ratio = current / average.
         4. Переводит ratio в оценку volume_score (0–100).
 
     Параметры:
-        df     — pandas DataFrame с колонками ['open','high','low','close','volume']
-        period — окно для расчёта среднего объёма (по умолчанию 20)
+        df           — pandas DataFrame с колонками ['open','high','low','close','volume']
+        period       — окно для расчёта среднего объёма (по умолчанию 20)
+        signal_index — индекс сигнальной свечи (по умолчанию -2 = предпоследняя,
+                       совпадает с сигнальной свечой breakout_quality)
 
     Возвращает:
         dict:
             volume_score    — int,   итоговая оценка 0–100
-            current_volume  — float, объём последней свечи
-            average_volume  — float, средний объём за period свечей
+            current_volume  — float, объём сигнальной свечи
+            average_volume  — float, средний объём за period свечей до сигнала
             volume_ratio    — float, current / average (округлено до 2 знаков)
 
     Пример:
@@ -122,7 +137,7 @@ def score_volume(df, period: int = 20) -> dict:
             "volume_ratio":   1.40
         }
     """
-    # FIX: guard against missing 'volume' column — return controlled result, do not raise
+    # Guard: missing 'volume' column
     if "volume" not in df.columns:
         return {
             "volume_score":   0,
@@ -132,14 +147,14 @@ def score_volume(df, period: int = 20) -> dict:
             "reason":         "Колонка 'volume' отсутствует в DataFrame",
         }
 
-    current = _get_current_volume(df)
-    average = _get_average_volume(df, period)
+    current = _get_current_volume(df, signal_index)
+    average = _get_average_volume(df, period, signal_index)
 
     if average == 0.0:
         # Недостаточно данных — возвращаем нейтральный результат
         return {
             "volume_score":   0,
-            "current_volume": current,
+            "current_volume": round(current, 2),
             "average_volume": 0.0,
             "volume_ratio":   0.0,
         }

@@ -27,7 +27,7 @@ import math
 
 import pandas as pd
 
-from trendlines       import find_pivots, create_trendline, check_break  # noqa: F401
+from trendlines       import find_pivots, create_trendline
 from trend_quality    import calc_trend_quality
 from volume_quality   import score_volume
 from breakout_quality import calculate_breakout_quality
@@ -35,6 +35,9 @@ from confidence       import calculate_confidence, confidence_label
 
 
 # ─── константы ────────────────────────────────────────────────────────────────
+
+#: Версия пайплайна. Изменение версии инвалидирует кэш Streamlit.
+PIPELINE_VERSION = "0.4-live-audit-1"
 
 #: Минимальный Confidence Score для подтверждения сигнала.
 #: Изменять только после тестов.

@@ -448,7 +448,8 @@ def test_volume_quality():
     section("VOLUME QUALITY — ключи и диапазон 0–100")
 
     df = make_baseline_df(n=25, avg_volume=1000.0)
-    df.at[24, "volume"] = 1700.0
+    # signal_index=-2 (default) → сигнальная свеча = iloc[-2] = индекс 23
+    df.at[23, "volume"] = 1700.0   # ставим высокий объём на сигнальную свечу (n-2)
 
     result = score_volume(df)
 
