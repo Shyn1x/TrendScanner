@@ -3,7 +3,24 @@ import pandas as pd
 
 from trendlines import find_pivots, create_trendline, check_break
 
-exchange = ccxt.kucoin()
+exchange = ccxt.kucoinfutures()
+
+
+def get_futures_symbols():
+
+    markets = exchange.load_markets()
+
+    symbols = []
+
+    for symbol, data in markets.items():
+
+        if (
+            symbol.endswith("/USDT")
+            and data.get("active")
+        ):
+            symbols.append(symbol)
+
+    return symbols
 
 
 def get_data(symbol: str, timeframe: str) -> pd.DataFrame:
