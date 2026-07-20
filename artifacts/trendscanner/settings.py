@@ -47,3 +47,9 @@ MAX_RESULT_PAGE_SIZE: int = 50
 # How long (seconds) cached_multi_analysis results are kept.
 # Increasing this reduces API calls; decreasing gives fresher data.
 CACHE_TTL_SECONDS: int = 60
+
+# ── Display timezone ───────────────────────────────────────────────────────────
+
+# IANA timezone string used for scan timestamps shown in the UI.
+# Falls back to UTC if the timezone cannot be loaded.
+DISPLAY_TIMEZONE: str = "Europe/Moscow"

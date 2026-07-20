@@ -1,14 +1,13 @@
 import streamlit as st
 import pandas as pd
 import time
-from datetime import datetime
 
 from config          import SYMBOLS, TIMEFRAMES
 from scanner         import get_data
 from trendlines      import find_pivots, create_trendline, line_value
 from multi_tf        import multi_analysis
 from quality_pipeline import PIPELINE_VERSION
-from settings        import (
+from settings import (
     CACHE_TTL_SECONDS,
     TOP_SETUPS_LIMIT,
     TOP_SETUPS_MIN_DECISION_SCORE,
@@ -29,6 +28,16 @@ from ui_helpers import (
     decision_badge,
     summarize_decision_factors,
     paginate_items,
+)
+from product_helpers import (
+    get_local_datetime,
+    format_scan_timestamp,
+    build_product_diagnostic,
+    build_mobile_tf_card,
+    order_decision_factors,
+    build_empty_state_summary,
+    count_final_signals,
+    count_final_decisions,
 )
 
 st.set_page_config(
@@ -84,8 +93,31 @@ st.markdown("""
     .reason-warning  { color:#ffd740; font-size:0.85rem; }
     .reason-blocker  { color:#ff5252; font-size:0.85rem; }
 
-    /* Market list rows */
-    .market-row { padding:6px 0; border-bottom:1px solid #1e2230; }
+    /* Mobile market cards */
+    .market-card {
+        background:#1a1d26; border-radius:8px;
+        padding:12px 14px; margin-bottom:8px;
+        border-left:3px solid #37474f;
+    }
+    .market-card-take  { border-left-color:#00e676; }
+    .market-card-watch { border-left-color:#ffcc02; }
+    .market-card-skip  { border-left-color:#37474f; }
+    .market-card-error { border-left-color:#ffa726; }
+    .mc-sym  { font-weight:700; font-size:1rem; }
+    .mc-field { color:#90a4ae; font-size:0.83rem; margin-top:3px; }
+    .mc-reason { color:#78909c; font-size:0.81rem;
+                 margin-top:6px; font-style:italic; }
+
+    /* Empty state */
+    .empty-state {
+        background:#1a1d26; border-radius:8px;
+        padding:12px 14px; color:#78909c; font-size:0.9rem;
+    }
+
+    /* Info panel */
+    .info-label { color:#546e7a; font-size:0.78rem; text-transform:uppercase;
+                  letter-spacing:0.05em; margin-bottom:2px; }
+    .info-value { font-size:0.95rem; font-weight:500; }
 
     /* Prevent horizontal overflow */
     .stMarkdown { overflow-wrap:break-word; word-break:break-word; }
@@ -98,7 +130,7 @@ if "selected_detail_symbol" not in st.session_state:
 if "market_results_page" not in st.session_state:
     st.session_state["market_results_page"] = 1
 if "last_scan_completed" not in st.session_state:
-    st.session_state["last_scan_completed"] = None
+    st.session_state["last_scan_completed"] = None  # stored as "HH:MM:SS TZ" string
 
 # ── Sidebar ────────────────────────────────────────────────────────────────────
 with st.sidebar:
@@ -143,13 +175,12 @@ with st.sidebar:
         st.rerun()
 
     st.markdown("---")
-    st.caption("Exchange: KuCoin (public)\nNo API key required")
+    st.caption("Exchange: KuCoin Futures\nNo API key required")
 
 # ── Cache wrappers ─────────────────────────────────────────────────────────────
 
 @st.cache_data(ttl=CACHE_TTL_SECONDS, show_spinner=False)
 def cached_multi_analysis(symbol: str, pipeline_version: str = PIPELINE_VERSION) -> dict:
-    """Cache key includes pipeline_version — изменение версии инвалидирует кэш."""
     return multi_analysis(symbol)
 
 
@@ -169,24 +200,38 @@ if not selected_tfs:
     st.info("Select at least one timeframe in the sidebar.")
     st.stop()
 
-# Compact info panel — 3 columns: Exchange | Last scan | Status
+# ── Compact info panel — 3 columns, all using empty() to prevent duplication ──
 _hdr_c1, _hdr_c2, _hdr_c3 = st.columns(3)
-_hdr_c1.markdown("**Exchange**  \nKuCoin")
-_last_scan_str = st.session_state["last_scan_completed"] or "No completed scan yet"
-_hdr_c2.markdown(f"**Last scan**  \n{_last_scan_str}")
-_status_ph = _hdr_c3.empty()   # updated live during + after scan
+_hdr_c1.markdown("<div class='info-label'>Exchange</div>"
+                 "<div class='info-value'>KuCoin Futures</div>",
+                 unsafe_allow_html=True)
 
-# Scan progress area
-_scan_msg_ph  = st.empty()     # "Scanning X / N" or "Scan completed successfully."
-_progress_ph  = st.empty()     # progress bar
+_last_scan_ph = _hdr_c2.empty()   # ← placeholder avoids duplicate renders
+_last_scan_str = st.session_state["last_scan_completed"] or "No completed scan yet"
+_last_scan_ph.markdown(
+    f"<div class='info-label'>Last scan</div>"
+    f"<div class='info-value'>{_last_scan_str}</div>",
+    unsafe_allow_html=True,
+)
+
+_status_ph = _hdr_c3.empty()      # ← updated live during and after scan
+
+# ── Scan progress area ─────────────────────────────────────────────────────────
+_scan_msg_ph = st.empty()
+_progress_ph = st.empty()
 
 # ── Fetch all results — ONE call per symbol ────────────────────────────────────
 all_results: dict[str, dict] = {}
 _total = len(selected_symbols)
+
 for _i, symbol in enumerate(selected_symbols):
     _frac = (_i + 1) / _total
-    _status_ph.markdown(f"**Status**  \n🔄 Scanning {symbol}…")
-    _scan_msg_ph.markdown(f"Scanning **{symbol}**  \n{_i + 1} / {_total} symbols")
+    _status_ph.markdown(
+        f"<div class='info-label'>Status</div>"
+        f"<div class='info-value'>🔄 Scanning {symbol} — {_i+1}/{_total}</div>",
+        unsafe_allow_html=True,
+    )
+    _scan_msg_ph.markdown(f"Scanning **{symbol}**  \n{_i+1} / {_total} symbols")
     _progress_ph.progress(_frac)
     try:
         all_results[symbol] = cached_multi_analysis(symbol)
@@ -194,45 +239,46 @@ for _i, symbol in enumerate(selected_symbols):
         all_results[symbol] = {"_error": str(e), "FINAL": {}}
     time.sleep(0.05)
 
-# ── Scan complete — update timestamp only after full cycle ─────────────────────
-_completed_at = datetime.now().strftime("%H:%M:%S")
-st.session_state["last_scan_completed"] = _completed_at
-_hdr_c2.markdown(f"**Last scan**  \n{_completed_at}")
-_status_ph.markdown("**Status**  \n✅ Ready")
+# ── Scan complete — update timestamp ONCE after full cycle ─────────────────────
+_completed_dt  = get_local_datetime()
+_completed_str = format_scan_timestamp(_completed_dt)
+st.session_state["last_scan_completed"] = _completed_str
+
+_last_scan_ph.markdown(
+    f"<div class='info-label'>Last scan</div>"
+    f"<div class='info-value'>{_completed_str}</div>",
+    unsafe_allow_html=True,
+)
+_status_ph.markdown(
+    "<div class='info-label'>Status</div>"
+    "<div class='info-value'>✅ Ready</div>",
+    unsafe_allow_html=True,
+)
 _scan_msg_ph.success("Scan completed successfully.")
 _progress_ph.empty()
 
-# Ensure all_results values have FINAL key for safety
-for sym, res in all_results.items():
-    if isinstance(res, dict) and "FINAL" not in res:
-        res["FINAL"] = {}
+# Ensure all_results values have FINAL key
+for _sym, _res in all_results.items():
+    if isinstance(_res, dict) and "FINAL" not in _res:
+        _res["FINAL"] = {}
 
-# ── Summary metrics ────────────────────────────────────────────────────────────
+# ── Summary metrics — always from FINAL ────────────────────────────────────────
 _ALL_TFS = ["1M", "1w", "1d", "4h", "1h"]
 
-flat_signals = [
-    normalize_timeframe_result(all_results.get(sym, {}).get(tf, {}))["signal"]
-    for sym in selected_symbols
-    for tf in selected_tfs
-]
-longs  = flat_signals.count("LONG")
-shorts = flat_signals.count("SHORT")
-waits  = flat_signals.count("WAIT")
+sig_counts = count_final_signals(all_results, selected_symbols)
+dec_counts = count_final_decisions(all_results, selected_symbols)
 
-# Decision summary
-d_take  = sum(1 for r in all_results.values()
-              if isinstance(r, dict) and
-              r.get("FINAL", {}).get("decision") == "TAKE")
-d_watch = sum(1 for r in all_results.values()
-              if isinstance(r, dict) and
-              r.get("FINAL", {}).get("decision") == "WATCH")
+c1, c2, c3 = st.columns(3)
+c1.metric("🟢 LONG",   sig_counts["LONG"])
+c2.metric("🔴 SHORT",  sig_counts["SHORT"])
+c3.metric("⚪ WAIT",   sig_counts["WAIT"])
 
-c1, c2, c3, c4 = st.columns(4)
-c1.metric("🟢 LONG",   longs)
-c2.metric("🔴 SHORT",  shorts)
-c3.metric("🔥 TAKE",   d_take)
-c4.metric("👀 WATCH",  d_watch)
+c4, c5, c6 = st.columns(3)
+c4.metric("🔥 TAKE",   dec_counts["TAKE"])
+c5.metric("👀 WATCH",  dec_counts["WATCH"])
+c6.metric("⬜ SKIP",   dec_counts["SKIP"])
 
+st.caption("Final symbol results")
 st.markdown("---")
 
 # ── Top Setups ─────────────────────────────────────────────────────────────────
@@ -253,33 +299,51 @@ if st.session_state["selected_detail_symbol"] is None:
     elif selected_symbols:
         st.session_state["selected_detail_symbol"] = selected_symbols[0]
 
+SIGNAL_CLASS = {"LONG": "cell-long", "SHORT": "cell-short",
+                "WAIT": "cell-wait", "ERROR": "cell-error"}
+SIGNAL_ICON  = {"LONG": "🟢 LONG", "SHORT": "🔴 SHORT",
+                "WAIT": "⚪ WAIT", "ERROR": "⚠️ ERR"}
+
 if not top_setups:
-    st.info(
-        "No TAKE or qualifying WATCH setups found.  \n"
-        "The scanner is working, but current conditions do not meet "
-        "the selected quality filters."
+    ess = build_empty_state_summary(all_results, top_setups)
+    blocker_line = (
+        f"Most common blocker: {ess['most_common_blocker']}"
+        if ess["most_common_blocker"] else ""
+    )
+    st.markdown(
+        f"<div class='empty-state'>"
+        f"No qualifying setups right now.<br>"
+        f"<small>TAKE: {ess['take_count']} &nbsp;·&nbsp; "
+        f"WATCH: {ess['watch_count']}</small>"
+        + (f"<br><small>{blocker_line}</small>" if blocker_line else "")
+        + "</div>",
+        unsafe_allow_html=True,
     )
 else:
-    # Render cards in 2 columns
-    n_setups = len(top_setups)
+    n_setups  = len(top_setups)
     col_pairs = [top_setups[i:i+2] for i in range(0, n_setups, 2)]
 
     for pair in col_pairs:
         cols = st.columns(len(pair))
         for col, setup in zip(cols, pair):
-            badge  = decision_badge(setup["decision"], setup["direction"])
-            d_pct  = format_score_percent(setup["decision_score"])
-            c_pct  = format_score_percent(setup["confidence"])
-            reason = setup["decision_reason"][:90] + ("…" if len(setup["decision_reason"]) > 90 else "")
-            card_cls = "setup-card-take" if setup["decision"] == "TAKE" else "setup-card-watch"
+            badge     = decision_badge(setup["decision"], setup["direction"])
+            badge_css = badge["css_class"]
+            d_pct     = format_score_percent(setup["decision_score"])
+            c_pct     = format_score_percent(setup["confidence"])
+            reason    = setup["decision_reason"][:90] + (
+                "…" if len(setup["decision_reason"]) > 90 else ""
+            )
+            card_cls = (
+                "setup-card-take"  if setup["decision"] == "TAKE" else
+                "setup-card-watch" if setup["decision"] == "WATCH" else
+                ""
+            )
 
             with col:
-                badge_css = badge["css_class"]
                 st.markdown(
                     f"<div class='setup-card {card_cls}'>"
                     f"<b>#{setup['rank']} {setup['symbol']}</b><br>"
-                    f"<span class='{badge_css}'>"
-                    f"{badge['icon']} {badge['label']}</span>"
+                    f"<span class='{badge_css}'>{badge['icon']} {badge['label']}</span>"
                     f"<div class='setup-meta'>"
                     f"Decision: <b>{d_pct}</b> &nbsp;·&nbsp; "
                     f"Conf: <b>{c_pct}</b> &nbsp;·&nbsp; "
@@ -299,45 +363,38 @@ else:
 
 st.markdown("---")
 
-# ── Signal Grid ────────────────────────────────────────────────────────────────
-st.subheader("📊 Signal Grid")
+# ── Legacy Signal Grid — collapsed by default ──────────────────────────────────
+with st.expander("📊 Legacy Signal Grid", expanded=False):
+    grid_rows = []
+    for symbol in selected_symbols:
+        ma  = all_results.get(symbol, {})
+        row = {"Symbol": symbol}
+        for tf in selected_tfs:
+            row[tf] = normalize_timeframe_result(ma.get(tf, {}))["signal"]
+        grid_rows.append(row)
 
-SIGNAL_CLASS = {"LONG": "cell-long", "SHORT": "cell-short",
-                "WAIT": "cell-wait", "ERROR": "cell-error"}
-SIGNAL_ICON  = {"LONG": "🟢 LONG", "SHORT": "🔴 SHORT",
-                "WAIT": "⚪ WAIT", "ERROR": "⚠️ ERR"}
-
-grid_rows = []
-for symbol in selected_symbols:
-    ma  = all_results.get(symbol, {})
-    row = {"Symbol": symbol}
-    for tf in selected_tfs:
-        row[tf] = normalize_timeframe_result(ma.get(tf, {}))["signal"]
-    grid_rows.append(row)
-
-header_cols = st.columns([2] + [1] * len(selected_tfs))
-header_cols[0].markdown("**Symbol**")
-for j, tf in enumerate(selected_tfs):
-    header_cols[j + 1].markdown(f"**{tf}**")
-
-st.markdown("<hr style='margin:4px 0 8px 0'>", unsafe_allow_html=True)
-
-for row in grid_rows:
-    cols = st.columns([2] + [1] * len(selected_tfs))
-    cols[0].markdown(f"**{row['Symbol']}**")
+    header_cols = st.columns([2] + [1] * len(selected_tfs))
+    header_cols[0].markdown("**Symbol**")
     for j, tf in enumerate(selected_tfs):
-        sig   = row.get(tf, "WAIT")
-        css   = SIGNAL_CLASS.get(sig, "cell-wait")
-        label = SIGNAL_ICON.get(sig, sig)
-        cols[j + 1].markdown(f"<div class='{css}'>{label}</div>",
-                              unsafe_allow_html=True)
+        header_cols[j + 1].markdown(f"**{tf}**")
+    st.markdown("<hr style='margin:4px 0 8px 0'>", unsafe_allow_html=True)
+
+    for row in grid_rows:
+        cols = st.columns([2] + [1] * len(selected_tfs))
+        cols[0].markdown(f"**{row['Symbol']}**")
+        for j, tf in enumerate(selected_tfs):
+            sig   = row.get(tf, "WAIT")
+            css   = SIGNAL_CLASS.get(sig, "cell-wait")
+            label = SIGNAL_ICON.get(sig, sig)
+            cols[j + 1].markdown(f"<div class='{css}'>{label}</div>",
+                                  unsafe_allow_html=True)
 
 st.markdown("---")
 
-# ── Market Results (compact, paginated) ────────────────────────────────────────
+# ── Market Results — mobile-friendly vertical cards ────────────────────────────
 st.subheader("📋 Market Results")
 
-# Build a flat list of all symbol results
+
 def _make_market_row(symbol: str, result: dict) -> dict | None:
     if not isinstance(result, dict):
         return None
@@ -350,6 +407,7 @@ def _make_market_row(symbol: str, result: dict) -> dict | None:
             "symbol": symbol, "decision": "ERROR", "direction": "NONE",
             "decision_score": 0.0, "confidence": 0.0,
             "confidence_label": "LOW", "signal": "ERROR",
+            "decision_reason": result.get("_error", ""),
         }
 
     dec  = normalize_decision_result(final)
@@ -362,6 +420,7 @@ def _make_market_row(symbol: str, result: dict) -> dict | None:
         "confidence":       norm["confidence"],
         "confidence_label": norm["confidence_label"],
         "signal":           norm["signal"],
+        "decision_reason":  dec["decision_reason"],
     }
 
 
@@ -370,7 +429,7 @@ all_market_rows = [
     if (r := _make_market_row(sym, all_results.get(sym, {}))) is not None
 ]
 
-# Filter
+
 def _passes_market_filter(row: dict) -> bool:
     if show_all:
         return True
@@ -388,6 +447,7 @@ def _passes_market_filter(row: dict) -> bool:
         return True
     return False
 
+
 visible_rows = [r for r in all_market_rows if _passes_market_filter(r)]
 
 if not visible_rows:
@@ -398,47 +458,43 @@ else:
         page=st.session_state["market_results_page"],
         page_size=DEFAULT_RESULT_PAGE_SIZE,
     )
-    # Correct page if out of range after filter change
     if st.session_state["market_results_page"] != page_result["page"]:
         st.session_state["market_results_page"] = page_result["page"]
 
-    # Header row
-    hdr = st.columns([2, 2, 1, 1, 1])
-    hdr[0].markdown("**Symbol**")
-    hdr[1].markdown("**Decision**")
-    hdr[2].markdown("**Score**")
-    hdr[3].markdown("**Conf**")
-    hdr[4].markdown("**Signal**")
-    st.markdown("<hr style='margin:2px 0 6px 0'>", unsafe_allow_html=True)
-
     for row in page_result["items"]:
-        badge = decision_badge(row["decision"], row["direction"])
-        d_pct = format_score_percent(row["decision_score"])
-        c_pct = format_score_percent(row["confidence"])
-        sig   = row["signal"]
-        sig_html = (
-            f"<span class='{SIGNAL_CLASS.get(sig, 'cell-wait')}'>"
-            f"{SIGNAL_ICON.get(sig, sig)}</span>"
-        )
-
-        r_cols = st.columns([2, 2, 1, 1, 1])
-        r_cols[0].markdown(f"**{row['symbol']}**")
+        badge     = decision_badge(row["decision"], row["direction"])
         badge_css = badge["css_class"]
-        r_cols[1].markdown(
-            f"<span class='{badge_css}'>{badge['icon']} {badge['label']}</span>",
+        d_pct     = format_score_percent(row["decision_score"])
+        c_pct     = format_score_percent(row["confidence"])
+        reason    = str(row.get("decision_reason", ""))[:120]
+
+        # Border colour per decision
+        border_cls = {
+            "TAKE":  "market-card-take",
+            "WATCH": "market-card-watch",
+            "SKIP":  "market-card-skip",
+            "ERROR": "market-card-error",
+        }.get(row["decision"], "market-card-skip")
+
+        st.markdown(
+            f"<div class='market-card {border_cls}'>"
+            f"<div class='mc-sym'>{row['symbol']}</div>"
+            f"<div class='mc-field'>"
+            f"<span class='{badge_css}'>{badge['icon']} {badge['label']}</span>"
+            f"</div>"
+            f"<div class='mc-field'>Signal: <b>{row['signal']}</b>"
+            f" &nbsp;·&nbsp; Score: <b>{d_pct}</b>"
+            f" &nbsp;·&nbsp; Conf: <b>{c_pct}</b></div>"
+            + (f"<div class='mc-reason'>{reason}</div>" if reason else "")
+            + "</div>",
             unsafe_allow_html=True,
         )
-        r_cols[2].markdown(d_pct)
-        r_cols[3].markdown(c_pct)
-        r_cols[4].markdown(sig_html, unsafe_allow_html=True)
 
-        if st.button("Details", key=f"mkt_{row['symbol']}", use_container_width=False):
+        btn_col, _ = st.columns([1, 3])
+        if btn_col.button("Details", key=f"mkt_{row['symbol']}"):
             st.session_state["selected_detail_symbol"] = row["symbol"]
             st.session_state["market_results_page"] = page_result["page"]
             st.rerun()
-
-        st.markdown("<hr style='margin:2px 0 2px 0; opacity:0.3'>",
-                    unsafe_allow_html=True)
 
     # Pagination controls
     if page_result["total_pages"] > 1:
@@ -464,7 +520,6 @@ st.markdown("---")
 # ── Detail Panel ───────────────────────────────────────────────────────────────
 detail_sym = st.session_state.get("selected_detail_symbol")
 
-# Symbol selector for detail
 detail_sym = st.selectbox(
     "📌 Detail view",
     options=selected_symbols,
@@ -477,16 +532,15 @@ detail_result = all_results.get(detail_sym, {})
 if not isinstance(detail_result, dict):
     detail_result = {}
 
-detail_final  = detail_result.get("FINAL", {})
+detail_final = detail_result.get("FINAL", {})
 if not isinstance(detail_final, dict):
     detail_final = {}
 
 if "_error" in detail_result:
     st.error(f"⚠️ Error loading {detail_sym}: {detail_result.get('_error', '')}")
 else:
-    # ── FINAL metrics ──────────────────────────────────────────────────────────
-    norm_final = normalize_timeframe_result(detail_final)
-    dec_final  = normalize_decision_result(detail_final)
+    norm_final  = normalize_timeframe_result(detail_final)
+    dec_final   = normalize_decision_result(detail_final)
     badge_final = decision_badge(dec_final["decision"], dec_final["decision_direction"])
 
     f_signal = norm_final["signal"]
@@ -498,11 +552,10 @@ else:
     st.markdown(f"### 📌 {detail_sym}")
 
     m1, m2, m3, m4 = st.columns(4)
-    m1.metric("Signal",       f_signal)
-    m2.metric("Confidence",   f"{f_conf:.0f}% ({f_label})")
-    m3.metric("Dir Score",    ds_str)
-    m4.metric("Decision",
-              f"{badge_final['icon']} {badge_final['label']}")
+    m1.metric("Signal",     f_signal)
+    m2.metric("Confidence", f"{f_conf:.0f}% ({f_label})")
+    m3.metric("Dir Score",  ds_str)
+    m4.metric("Decision",   f"{badge_final['icon']} {badge_final['label']}")
 
     d_score_pct = format_score_percent(dec_final["decision_score"])
     st.caption(
@@ -511,8 +564,7 @@ else:
         f"{dec_final['decision_reason']}"
     )
 
-    # ── Why this decision? ─────────────────────────────────────────────────────
-    # Find the TF with highest decision_score matching FINAL direction
+    # ── Why this decision? — factor order depends on decision ─────────────────
     chosen_direction = dec_final["decision_direction"]
     best_tf_details  = None
     best_tf_score    = -1.0
@@ -526,7 +578,6 @@ else:
             continue
         dir_data = dd.get(chosen_direction) if chosen_direction != "NONE" else None
         if dir_data is None:
-            # fall back to any direction
             for d in ("LONG", "SHORT"):
                 dir_data = dd.get(d)
                 if dir_data:
@@ -543,74 +594,64 @@ else:
     else:
         factors = {"positive": [], "warnings": [], "blockers": []}
 
+    ordered_sections = order_decision_factors(factors, dec_final["decision"])
+
     with st.expander("💡 Why this decision?", expanded=True):
+        st.caption(
+            "Final decision is determined by blockers first, then by quality score."
+        )
         if not any(factors.values()):
             st.caption("No factor detail available for this symbol.")
         else:
-            fcol1, fcol2, fcol3 = st.columns(3)
-            with fcol1:
-                st.markdown("**✓ Positive**")
-                for p in factors["positive"]:
-                    st.markdown(f"<div class='reason-positive'>✓ {p}</div>",
-                                unsafe_allow_html=True)
-                if not factors["positive"]:
-                    st.caption("—")
-            with fcol2:
-                st.markdown("**⚠ Warnings**")
-                for w in factors["warnings"]:
-                    st.markdown(f"<div class='reason-warning'>⚠ {w}</div>",
-                                unsafe_allow_html=True)
-                if not factors["warnings"]:
-                    st.caption("—")
-            with fcol3:
-                st.markdown("**✕ Blockers**")
-                for b in factors["blockers"]:
-                    st.markdown(f"<div class='reason-blocker'>✕ {b}</div>",
-                                unsafe_allow_html=True)
-                if not factors["blockers"]:
-                    st.caption("—")
+            fcols = st.columns(3)
+            for fcol, section in zip(fcols, ordered_sections):
+                with fcol:
+                    st.markdown(f"**{section['title']}**")
+                    for item in section["items"]:
+                        pfx = section["prefix"]
+                        css = section["css_class"]
+                        st.markdown(
+                            f"<div class='{css}'>{pfx} {item}</div>",
+                            unsafe_allow_html=True,
+                        )
+                    if not section["items"]:
+                        st.caption("—")
 
-    # ── Per-TF breakdown ───────────────────────────────────────────────────────
+    # ── Multi-TF Breakdown — vertical mobile-friendly expanders ───────────────
     st.markdown("**Multi-Timeframe Breakdown**")
 
     avail_tfs_detail = [tf for tf in _ALL_TFS if isinstance(detail_result.get(tf), dict)]
 
     if avail_tfs_detail:
-        tf_header = st.columns([1, 2, 2, 1, 1, 2])
-        for i, h in enumerate(["TF", "Signal", "Decision", "D.Score", "Conf", "Trend"]):
-            tf_header[i].markdown(f"**{h}**")
-        st.markdown("<hr style='margin:2px 0 4px 0'>", unsafe_allow_html=True)
-
         for tf in _ALL_TFS:
             tf_raw = detail_result.get(tf)
             if not isinstance(tf_raw, dict):
                 continue
-            tnorm   = normalize_timeframe_result(tf_raw)
-            tdec    = normalize_decision_result(tf_raw)
-            tbadge  = decision_badge(tdec["decision"], tdec["decision_direction"])
-            tds_pct = format_score_percent(tdec["decision_score"])
-            tc_pct  = format_score_percent(tnorm["confidence"])
-            tsig    = tnorm["signal"]
-            sig_lbl = SIGNAL_ICON.get(tsig, tsig)
-            sig_css = SIGNAL_CLASS.get(tsig, "cell-wait")
 
-            tf_row = st.columns([1, 2, 2, 1, 1, 2])
-            tf_row[0].markdown(f"**{tf}**")
-            tf_row[1].markdown(
-                f"<span class='{sig_css}'>{sig_lbl}</span>",
-                unsafe_allow_html=True,
+            card = build_mobile_tf_card(tf, tf_raw)
+            badge_css = card["badge"]["css_class"]
+            hdr_label = (
+                f"**{tf}** — "
+                f"<span class='{badge_css}'>"
+                f"{card['badge']['icon']} {card['decision_label']}</span>"
             )
-            tbadge_css = tbadge["css_class"]
-            tf_row[2].markdown(
-                f"<span class='{tbadge_css}'>"
-                f"{tbadge['icon']} {tbadge['label']}</span>",
-                unsafe_allow_html=True,
-            )
-            tf_row[3].markdown(tds_pct)
-            tf_row[4].markdown(tc_pct)
-            tf_row[5].markdown(tnorm["trend"])
 
-        st.markdown("<hr style='margin:4px 0'>", unsafe_allow_html=True)
+            with st.expander(
+                f"{tf} — {card['badge']['icon']} {card['decision_label']}",
+                expanded=card["should_expand"],
+            ):
+                tfr1, tfr2 = st.columns(2)
+                with tfr1:
+                    st.markdown(
+                        f"Signal: **{card['signal_icon']} {card['signal']}**  \n"
+                        f"Decision score: **{card['decision_score']}**  \n"
+                        f"Trend: **{card['trend']}**"
+                    )
+                with tfr2:
+                    st.markdown(
+                        f"Confidence: **{card['confidence']}** ({card['confidence_label']})  \n"
+                        f"Decision: **{card['decision_label']}**"
+                    )
     else:
         st.caption("No timeframe data available.")
 
@@ -691,6 +732,41 @@ else:
 
 st.markdown("---")
 
+# ── Scanner Diagnostics — collapsed ───────────────────────────────────────────
+with st.expander("🔍 Scanner diagnostics", expanded=False):
+    diag = build_product_diagnostic(all_results)
+
+    d1, d2, d3 = st.columns(3)
+    d1.metric("Total symbols",   diag["symbols_total"])
+    d2.metric("Valid results",   diag["valid_results"])
+    d3.metric("Errors",          diag["error_results"])
+
+    st.markdown("**Final signals (LONG/SHORT/WAIT)**")
+    ds1, ds2, ds3 = st.columns(3)
+    ds1.metric("LONG",  diag["final_signals"]["LONG"])
+    ds2.metric("SHORT", diag["final_signals"]["SHORT"])
+    ds3.metric("WAIT",  diag["final_signals"]["WAIT"])
+
+    st.markdown("**Decisions (TAKE/WATCH/SKIP)**")
+    dd1, dd2, dd3 = st.columns(3)
+    dd1.metric("TAKE",  diag["decisions"]["TAKE"])
+    dd2.metric("WATCH", diag["decisions"]["WATCH"])
+    dd3.metric("SKIP",  diag["decisions"]["SKIP"])
+
+    st.markdown("**Top Setups exclusion reasons**")
+    ex = diag["excluded_reasons"]
+    e1, e2, e3, e4 = st.columns(4)
+    e1.metric("SKIP decisions",         ex["skip"])
+    e2.metric("WATCH below threshold",  ex["watch_below_threshold"])
+    e3.metric("Direction NONE",         ex["direction_none"])
+    e4.metric("Invalid data",           ex["invalid_data"])
+    st.caption(
+        f"WATCH above min score ({TOP_SETUPS_MIN_DECISION_SCORE}%): "
+        f"{diag['watch_above_min_score']}"
+    )
+
+st.markdown("---")
+
 # ── Price Chart — only for selected_detail_symbol ──────────────────────────────
 st.subheader("📈 Price Chart")
 
@@ -734,7 +810,7 @@ try:
 
     fig = go.Figure()
     has_time = "time" in df.columns
-    x_vals = pd.to_datetime(df["time"], unit="ms") if has_time else df.index
+    x_vals   = pd.to_datetime(df["time"], unit="ms") if has_time else df.index
 
     fig.add_trace(go.Candlestick(
         x=x_vals,

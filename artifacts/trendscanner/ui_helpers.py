@@ -17,6 +17,7 @@ ui_helpers.py
 """
 
 import math
+from datetime import datetime, timezone
 from settings import DEFAULT_RESULT_PAGE_SIZE, MAX_RESULT_PAGE_SIZE
 
 # ─────────────────────────────────────────────────────────────────────────────
