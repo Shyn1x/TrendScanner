@@ -5,32 +5,39 @@ confidence.py
 итоговую уверенность сигнала (Confidence Score, 0–100).
 
 Текущие компоненты:
-    • trend_quality  — качество трендовой линии  (вес 70%)
-    • volume_quality — подтверждение объёмом      (вес 30%)
+    • trend_quality   — качество трендовой линии  (базовый вес 70%)
+    • volume_quality  — подтверждение объёмом      (базовый вес 30%)
+    • breakout_quality — сила и чёткость пробоя   (пока None; зарезервирован)
 
 Планируемые компоненты (добавляются без изменения существующего кода):
     • atr_quality       — качество пробоя в единицах ATR
-    • breakout_quality  — сила и чёткость пробоя
     • market_structure  — структура рынка (HH/HL, LH/LL)
     • multi_tf_quality  — согласованность таймфреймов
     • ml_score          — оценка ML-модели
+
+ВАЖНО — перенормировка весов:
+    Если компонент отсутствует (None или {}), его вес перераспределяется
+    пропорционально между доступными компонентами.
+    Это не допускает искусственного занижения confidence при неполных данных.
 
 Нет зависимостей от scanner.py, Streamlit или любых других модулей проекта.
 Принимает только готовые словари с оценками.
 """
 
+from __future__ import annotations
+import math
 
-# ─── веса компонентов (сумма должна равняться 1.0) ───────────────────────────
 
-WEIGHTS = {
-    "trend_quality":  0.70,
-    "volume_quality": 0.30,
+# ─── базовые веса компонентов ─────────────────────────────────────────────────
+# Сумма активных (не None) весов при полном наборе = 1.0.
+# При добавлении нового компонента перераспределить веса здесь,
+# не меняя сигнатуры calculate_confidence.
 
-    # Зарезервированные веса для будущих компонентов.
-    # Когда добавляется новый компонент — перераспределить веса здесь,
-    # не меняя сигнатуры calculate_confidence.
+WEIGHTS: dict[str, float] = {
+    "trend_quality":   0.70,
+    "volume_quality":  0.30,
+    "breakout_quality": 0.00,   # зарезервирован; при включении: перераспределить веса
     # "atr_quality":       0.00,
-    # "breakout_quality":  0.00,
     # "market_structure":  0.00,
     # "multi_tf_quality":  0.00,
     # "ml_score":          0.00,
@@ -92,91 +99,102 @@ def _extract_score(quality_dict: dict, key: str) -> float:
 # ─── основная функция ─────────────────────────────────────────────────────────
 
 def calculate_confidence(
-    trend_quality: dict,
-    volume_quality: dict,
+    trend_quality:    dict,
+    volume_quality:   dict,
+    breakout_quality: dict | None = None,   # зарезервирован для будущей интеграции
 ) -> dict:
     """
     Объединяет оценки всех модулей качества и рассчитывает
-    итоговый Confidence Score.
+    итоговый Confidence Score с перенормировкой весов.
 
-    Формула:
-        confidence = trend_quality_score * 0.70
-                   + volume_score        * 0.30
+    Перенормировка:
+        Компонент считается «отсутствующим», если его dict пустой ({}) или None.
+        В этом случае его вес перераспределяется пропорционально между
+        остальными доступными компонентами — confidence не занижается.
 
-    Результат ограничен диапазоном 0–100.
+    Пример:
+        trend_quality={}   → вес 0.70 убирается, volume_quality получает вес 1.0
+        breakout_quality={} → не учитывается, пока WEIGHTS["breakout_quality"]=0.00
 
     Параметры:
-        trend_quality  — dict от trend_quality.calc_trend_quality()
-                         Ожидаемый ключ: "trend_quality_score"
-        volume_quality — dict от volume_quality.score_volume()
-                         Ожидаемый ключ: "volume_score"
+        trend_quality    — dict от trend_quality.calc_trend_quality()
+                           Ожидаемый ключ: "trend_quality_score"
+        volume_quality   — dict от volume_quality.score_volume()
+                           Ожидаемый ключ: "volume_score"
+        breakout_quality — dict от breakout_quality.calculate_breakout_quality()
+                           Ожидаемый ключ: "breakout_score"  (по умолчанию None)
 
     Возвращает:
         dict:
-            confidence  — int,  итоговая оценка 0–100
-            label       — str,  текстовая метка ("LOW" / "MEDIUM" / "HIGH" / "VERY HIGH")
-            components  — dict, вклад каждого компонента (оценка и вес)
-
-    Пример вывода:
-        {
-            "confidence": 79,
-            "label": "HIGH",
-            "components": {
-                "trend_quality": {
-                    "score":  85,
-                    "weight": 0.70,
-                    "contribution": 59.5
-                },
-                "volume_quality": {
-                    "score":  65,
-                    "weight": 0.30,
-                    "contribution": 19.5
-                }
-            }
-        }
+            confidence       — int,  итоговая оценка 0–100
+            label            — str,  текстовая метка ("LOW" / "MEDIUM" / "HIGH" / "VERY HIGH")
+            components       — dict, вклад каждого компонента (оценка, базовый вес, эффективный вес, contribution)
+            renormalized     — bool, True если хотя бы один компонент отсутствовал
 
     Добавление нового компонента в будущем:
-        1. Добавить новый параметр в сигнатуру функции с дефолтом None:
-               def calculate_confidence(..., atr_quality: dict | None = None):
-                   atr_quality = atr_quality or {}
-        2. Добавить строку в словарь scores ниже
-        3. Обновить WEIGHTS в начале файла (сумма = 1.0)
+        1. Добавить параметр с дефолтом None: `atr_quality: dict | None = None`
+        2. Добавить его в _all_components ниже
+        3. Обновить WEIGHTS (перераспределить сумму = 1.0 при полном наборе)
     """
 
-    # Извлекаем оценки из словарей компонентов
-    scores = {
-        "trend_quality":  _extract_score(trend_quality,  "trend_quality_score"),
-        "volume_quality": _extract_score(volume_quality, "volume_score"),
+    # ── регистр всех компонентов ──────────────────────────────────────────────
+    # Порядок: (имя, dict_или_None, score_key)
+    _all: list[tuple[str, dict | None, str]] = [
+        ("trend_quality",    trend_quality,    "trend_quality_score"),
+        ("volume_quality",   volume_quality,   "volume_score"),
+        ("breakout_quality", breakout_quality, "breakout_score"),
+    ]
 
-        # Будущие компоненты добавляются здесь:
-        # "atr_quality":      _extract_score(atr_quality,      "atr_score"),
-        # "breakout_quality": _extract_score(breakout_quality, "breakout_score"),
-        # "market_structure": _extract_score(market_structure, "structure_score"),
-        # "multi_tf_quality": _extract_score(multi_tf_quality, "multi_tf_score"),
-        # "ml_score":         _extract_score(ml_score,         "ml_score"),
-    }
+    # ── фильтруем доступные компоненты (non-None и non-empty) ─────────────────
+    available: list[tuple[str, dict, str]] = [
+        (name, d, key)
+        for name, d, key in _all
+        if d and WEIGHTS.get(name, 0.0) > 0.0
+    ]
 
-    # Взвешенная сумма
-    raw = sum(
-        scores[component] * WEIGHTS[component]
-        for component in scores
-    )
+    if not available:
+        return {
+            "confidence":   0,
+            "label":        "LOW",
+            "components":   {},
+            "renormalized": False,
+        }
+
+    # ── перенормировка весов ──────────────────────────────────────────────────
+    total_base_weight = sum(WEIGHTS.get(name, 0.0) for name, _, _ in available)
+    renormalized = total_base_weight < (sum(WEIGHTS.values()) - 1e-9)
+
+    # ── взвешенная сумма (перенормированная) ──────────────────────────────────
+    raw = 0.0
+    components: dict[str, dict] = {}
+
+    for name, d, key in available:
+        score = _extract_score(d, key)
+        base_w = WEIGHTS.get(name, 0.0)
+        eff_w  = base_w / total_base_weight if total_base_weight > 0 else 0.0
+        contribution = score * eff_w
+
+        if not math.isfinite(score):
+            score = 0.0
+        if not math.isfinite(contribution):
+            contribution = 0.0
+
+        raw += contribution
+        components[name] = {
+            "score":          int(score),
+            "weight":         round(base_w, 4),
+            "effective_weight": round(eff_w, 4),
+            "contribution":   round(contribution, 1),
+        }
 
     # Ограничиваем диапазон 0–100
+    if not math.isfinite(raw):
+        raw = 0.0
     confidence = int(max(0.0, min(100.0, raw)))
 
-    # Формируем детализацию компонентов
-    components = {
-        component: {
-            "score":        int(scores[component]),
-            "weight":       WEIGHTS[component],
-            "contribution": round(scores[component] * WEIGHTS[component], 1),
-        }
-        for component in scores
-    }
-
     return {
-        "confidence": confidence,
-        "label":      confidence_label(confidence),
-        "components": components,
+        "confidence":   confidence,
+        "label":        confidence_label(confidence),
+        "components":   components,
+        "renormalized": renormalized,
     }

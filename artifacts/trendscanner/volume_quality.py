@@ -122,6 +122,16 @@ def score_volume(df, period: int = 20) -> dict:
             "volume_ratio":   1.40
         }
     """
+    # FIX: guard against missing 'volume' column — return controlled result, do not raise
+    if "volume" not in df.columns:
+        return {
+            "volume_score":   0,
+            "current_volume": 0.0,
+            "average_volume": 0.0,
+            "volume_ratio":   0.0,
+            "reason":         "Колонка 'volume' отсутствует в DataFrame",
+        }
+
     current = _get_current_volume(df)
     average = _get_average_volume(df, period)
 
