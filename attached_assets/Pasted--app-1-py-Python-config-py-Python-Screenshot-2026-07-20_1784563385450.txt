@@ -1,0 +1,1096 @@
+
+
+app (1).py
+Python
+
+config.py
+Python
+
+Screenshot_2026-07-20-13-46-24-733_com.android.chrome.jpg
+Screenshot_2026-07-20-13-46-29-178_com.android.chrome.jpg
+Screenshot_2026-07-20-13-46-37-459_com.android.chrome.jpg
+Screenshot_2026-07-20-13-47-03-768_com.android.chrome.jpg
+Screenshot_2026-07-20-13-47-10-103_com.android.chrome.jpg
+Screenshot_2026-07-20-13-48-27-703_com.android.chrome.jpg
+Пока что взял подписку, чтобы мог улучшать с телефона и совмещать с работой
+
+Поделюсь скринами того, как это выглядит сейчас. На данный момент, смущает лишь длинный список, не очень удобно листать
+
+Screenshot_2026-07-20-14-49-07-420_com.android.chrome.jpg
+Screenshot_2026-07-20-14-50-27-297_com.android.chrome.jpg
+Готово
+
+Из того что заметил сам при проверке, сейчас везде confidence 0, итоговый confidence 5 
+
+Супер. И знаешь, мне кажется, сейчас произошёл очень важный момент.
+
+До этого мы строили аналитический движок.
+
+Сейчас мы начинаем строить помощника трейдера.
+
+Это разные вещи.
+
+Если посмотреть на архитектуру сейчас
+Получается примерно так:
+
+Биржа
+        │
+        ▼
+scanner.py
+        │
+        ▼
+trendlines.py
+        │
+        ▼
+trend_quality.py
+        │
+        ▼
+volume_quality.py
+        │
+        ▼
+breakout_quality.py
+        │
+        ▼
+market_structure.py
+        │
+        ▼
+structure_quality.py
+        │
+        ▼
+confidence.py
+        │
+        ▼
+quality_pipeline.py
+        │
+        ▼
+analysis.py
+        │
+        ▼
+multi_tf.py
+        │
+        ▼
+decision_engine.py
+        │
+        ▼
+Streamlit
+Если честно...
+
+Для проекта, который начинался как "сканер трендовых линий", это уже очень серьёзная архитектура.
+
+Но сейчас я бы изменил приоритеты
+И это, наверное, первое место, где я сознательно предлагаю отойти от первоначального плана.
+
+Я НЕ хочу сразу делать:
+❌ ML
+
+❌ ATR
+
+❌ OBV
+
+❌ новые индикаторы
+
+Потому что...
+
+Сейчас самая большая проблема приложения уже не алгоритм.
+Она выглядит так.
+
+Представим:
+
+BTC
+
+Signal
+
+LONG
+
+Confidence
+
+74
+
+Decision
+
+WATCH
+
+----------------
+
+ETH
+
+Signal
+
+WAIT
+
+Confidence
+
+28
+
+Decision
+
+SKIP
+
+----------------
+
+SOL
+
+Signal
+
+SHORT
+
+Confidence
+
+81
+
+Decision
+
+TAKE
+Это уже невероятно полезная информация.
+
+Но...
+
+Она теряется в длинном списке.
+
+Поэтому я предлагаю...
+v0.5.5
+Вообще не добавлять ни одного нового движка.
+
+Вообще.
+
+Вместо этого сделать UX-обновление.
+
+И, как ни странно, я думаю, оно увеличит практическую пользу приложения больше, чем ещё один индикатор.
+
+Что бы я сделал
+Экран №1
+🔥 TODAY'S SETUPS
+↓
+
+🟢 SOL
+
+TAKE
+
+82%
+
+Open
+↓
+
+🟢 BTC
+
+WATCH
+
+71%
+
+Open
+↓
+
+🔴 XRP
+
+WATCH
+
+63%
+
+Open
+↓
+
+⚪ остальные
+
+Hidden
+То есть пользователь открывает приложение.
+
+И за две секунды понимает:
+
+Сегодня реально интересны только три инструмента.
+
+ВСЁ.
+
+Экран №2
+Нажал
+
+BTC
+↓
+
+полностью открывается
+
+BTC
+
+LONG
+
+Confidence
+
+74%
+
+Decision
+
+WATCH
+↓
+
+график
+
+↓
+
+Trend
+
+↓
+
+Volume
+
+↓
+
+Breakout
+
+↓
+
+Structure
+
+↓
+
+Decision
+
+↓
+
+Risk
+
+(в будущем)
+
+То есть
+не 200 строк.
+
+А одна сделка.
+
+Вот здесь начинается продукт
+Не код.
+
+Именно продукт.
+
+И ещё одна вещь
+Я думаю, пришло время сделать то, что мы откладывали почти с самого начала.
+
+settings.py
+Сейчас многие вещи зашиты.
+
+Например
+
+Confidence
+
+50
+или
+
+Decision
+
+70
+или
+
+Weights
+Я бы сделал
+
+settings.py
+Например
+
+CONFIDENCE_SIGNAL = 50
+
+DECISION_TAKE = 70
+
+DECISION_WATCH = 50
+
+MAX_RISK = 1.0
+И всё.
+
+Потому что через месяц ты наверняка захочешь сказать
+
+"Давайте попробуем 65."
+
+И не придётся искать это по двадцати файлам.
+
+А теперь мысль, которая мне нравится больше всего
+Мы почти подошли к моменту, когда можно начать собирать реальную статистику.
+
+Не ML.
+
+Не нейросеть.
+
+А обычную статистику.
+
+Например:
+
+За неделю
+
+Найдено
+
+143 сигнала
+
+----------------
+
+TAKE
+
+17
+
+WATCH
+
+41
+
+SKIP
+
+85
+
+----------------
+
+Открыто
+
+9
+
+----------------
+
+Закрыто
+
+7
+
+----------------
+
+Win
+
+5
+
+Loss
+
+2
+Это будет первой настоящей обратной связью. Мы перестанем гадать, какие веса лучше, и начнём принимать решения на основе собственных результатов.
+
+Мой следующий шаг был бы именно таким
+Я бы не писал новый аналитический модуль.
+
+Я бы сделал v0.5.5 — Product Layer.
+
+Она включала бы всего три задачи:
+
+1. Settings Engine
+Все пороги и веса вынести в один файл конфигурации.
+
+2. Top Setups
+Главный экран показывает только лучшие сделки (TAKE и сильные WATCH), а остальные можно раскрыть по желанию.
+
+3. Decision UI
+В интерфейсе сделать акцент не на "LONG/SHORT", а на цепочке:
+
+LONG
+↓
+
+Confidence 78%
+
+↓
+
+Decision
+
+TAKE
+
+↓
+
+Reason
+
+✓ Trend aligned
+✓ Breakout confirmed
+✓ Volume confirmed
+⚠ Structure transitional
+И напоследок
+Хочу отметить одну вещь, которая меня действительно радует.
+
+Ты ни разу не просил: «Давай добавим ещё пять индикаторов, чтобы сигналов стало больше».
+
+Наоборот, весь проект с самого начала строится вокруг идеи:
+
+Лучше пять качественных сделок в неделю, чем пятьдесят сомнительных.
+
+На мой взгляд, именно эта идея может стать главным преимуществом твоего приложения. Если мы её сохраним, то через несколько месяцев у тебя будет не просто сканер, а инструмент, который действительно помогает принимать более дисциплинированные решения, а не просто показывает направление рынка.
+
+
+Да, отличная идея, на самом деле самое время для этого
+
+Приступим?
+
+Приступаем. Сейчас делаем Product Layer v0.5.5: подключаем Decision Engine к интерфейсу и решаем проблему длинного списка, не затрагивая торговую логику.
+
+Лучше разделить работу на два этапа. Первый — чистые настройки и подготовка данных для Top Setups. Второй — непосредственно мобильный интерфейс. Сейчас выполняем первый, чтобы не смешивать вычисления и отображение.
+
+Перед изменениями нужен checkpoint:
+
+v0.5-decision-integration-passed
+Запрос для Replit
+Продолжаем Trend Scanner v0.5.5 — Product Layer.
+
+Текущий статус:
+- Decision Engine создан и протестирован;
+- Decision Engine интегрирован в analysis.py и multi_tf.py;
+- signal и decision остаются независимыми;
+- приложение пока не отображает новые decision-поля;
+- главный экран содержит длинный список символов и большое количество WAIT/SKIP.
+
+Перед изменениями создай Git checkpoint:
+
+commit message:
+v0.5-decision-integration-passed
+
+Не занимайся сейчас:
+- Risk Manager;
+- Entry / Stop / Take Profit;
+- расчётом плеча;
+- журналом сделок;
+- ML;
+- ATR/OBV;
+- изменением аналитических формул;
+- изменением весов Confidence;
+- изменением порогов сигналов;
+- масштабированием Plotly.
+
+Основная задача этого этапа:
+
+1. Создать единый settings.py с пользовательскими порогами отображения.
+2. Создать Top Setups ranking engine.
+3. Подключить Decision Engine к Streamlit.
+4. Сделать длинный список компактным и скрывать неинтересные результаты.
+5. Не менять торговую логику анализаторов.
+
+────────────────────────────────────
+ЧАСТЬ 1. SETTINGS.PY
+────────────────────────────────────
+
+1. Создай новый файл:
+
+settings.py
+
+2. Перенеси туда только настройки Product/UI Layer:
+
+TOP_SETUPS_LIMIT = 10
+
+TOP_SETUPS_MIN_DECISION_SCORE = 25.0
+
+SHOW_WATCH_IN_TOP_SETUPS = True
+
+SHOW_SKIP_IN_TOP_SETUPS = False
+
+SHOW_WAIT_SIGNALS_BY_DEFAULT = False
+
+SHOW_ALL_SYMBOLS_BY_DEFAULT = False
+
+DEFAULT_RESULT_PAGE_SIZE = 10
+
+MAX_RESULT_PAGE_SIZE = 50
+
+CACHE_TTL_SECONDS = 60
+
+3. Пока не переноси в settings.py внутренние веса аналитических движков.
+
+Confidence weights и торговые пороги остаются в своих текущих модулях.
+
+4. Добавь комментарии:
+
+- эти значения управляют отображением и ранжированием;
+- они не меняют торговую логику;
+- TAKE/WATCH/SKIP по-прежнему определяет decision_engine.py.
+
+────────────────────────────────────
+ЧАСТЬ 2. TOP SETUPS ENGINE
+────────────────────────────────────
+
+5. Создай независимый файл:
+
+top_setups.py
+
+Он не должен импортировать Streamlit.
+
+6. Создай функцию:
+
+build_top_setups(
+    symbol_results: dict,
+    limit: int = TOP_SETUPS_LIMIT,
+    min_decision_score: float = TOP_SETUPS_MIN_DECISION_SCORE,
+    include_watch: bool = SHOW_WATCH_IN_TOP_SETUPS,
+    include_skip: bool = SHOW_SKIP_IN_TOP_SETUPS,
+) -> list[dict]
+
+7. Входной формат:
+
+symbol_results = {
+    "BTC/USDT": multi_analysis_result,
+    "ETH/USDT": multi_analysis_result,
+    ...
+}
+
+8. Для каждого символа безопасно извлекай из result["FINAL"]:
+
+- signal;
+- confidence;
+- confidence_label;
+- directional_score;
+- decision;
+- decision_direction;
+- decision_score;
+- decision_directional_score;
+- decision_reason;
+- decision_counts;
+- available_timeframes.
+
+9. В Top Setups допускаются:
+
+TAKE — всегда, если данные валидны.
+
+WATCH — только если include_watch=True
+и decision_score >= min_decision_score.
+
+SKIP — только если include_skip=True.
+
+10. По умолчанию не включай:
+
+- ERROR;
+- полностью отсутствующие данные;
+- SKIP;
+- WATCH с decision_score ниже порога;
+- записи с decision_direction == NONE,
+  кроме случая, когда явно включён include_skip.
+
+11. Верни каждую запись в формате:
+
+{
+    "rank": int,
+    "symbol": str,
+    "decision": "TAKE" | "WATCH" | "SKIP",
+    "direction": "LONG" | "SHORT" | "NONE",
+    "decision_score": float,
+    "confidence": float,
+    "confidence_label": str,
+    "signal": "LONG" | "SHORT" | "WAIT",
+    "directional_score": float,
+    "decision_reason": str,
+    "available_timeframes": int,
+    "take_count": int,
+    "watch_count": int,
+    "raw_result": dict
+}
+
+12. raw_result нужен для перехода к подробному отображению,
+но не должен напрямую выводиться пользователю.
+
+13. Сортировка:
+
+Основной приоритет:
+
+TAKE выше WATCH выше SKIP.
+
+Внутри одной категории:
+
+1. decision_score по убыванию;
+2. confidence по убыванию;
+3. available_timeframes по убыванию;
+4. symbol по алфавиту для стабильности.
+
+14. После сортировки присвой rank начиная с 1.
+
+15. Ограничь результат limit.
+
+Некорректные limit:
+- меньше 1 → использовать 1;
+- больше MAX_RESULT_PAGE_SIZE → ограничить MAX_RESULT_PAGE_SIZE.
+
+16. Не изменяй переданные symbol_results.
+
+────────────────────────────────────
+ЧАСТЬ 3. UI HELPERS
+────────────────────────────────────
+
+17. Расширь ui_helpers.py чистыми функциями:
+
+normalize_decision_result(value) -> dict
+
+format_score_percent(value) -> str
+
+decision_badge(decision, direction) -> dict
+
+summarize_decision_factors(decision_details, max_items=4) -> dict
+
+paginate_items(items, page, page_size) -> dict
+
+18. normalize_decision_result должен корректно обрабатывать:
+
+- полный новый dict;
+- отсутствующие decision-поля;
+- старый формат;
+- None;
+- NaN;
+- inf;
+- неверные типы.
+
+19. decision_badge возвращает только данные,
+не HTML и не Streamlit-объекты:
+
+{
+    "label": "TAKE LONG" / "WATCH SHORT" / "SKIP",
+    "css_class": "decision-take" / "decision-watch" / "decision-skip",
+    "icon": "🟢" / "🔴" / "🟡" / "⚪"
+}
+
+20. Для TAKE/WATCH:
+
+LONG → зелёный directional icon;
+SHORT → красный directional icon.
+
+WATCH дополнительно должен визуально отличаться от TAKE,
+например через css_class decision-watch.
+
+21. summarize_decision_factors возвращает:
+
+{
+    "positive": [не более max_items],
+    "warnings": [не более max_items],
+    "blockers": [не более max_items]
+}
+
+22. paginate_items возвращает:
+
+{
+    "items": [...],
+    "page": int,
+    "page_size": int,
+    "total_items": int,
+    "total_pages": int,
+    "has_previous": bool,
+    "has_next": bool
+}
+
+────────────────────────────────────
+ЧАСТЬ 4. APP.PY — DATA FLOW
+────────────────────────────────────
+
+23. Прочитай app.py полностью.
+
+24. Убедись, что multi_analysis(symbol) вызывается только один раз
+на символ за один цикл рендера.
+
+Создай или используй:
+
+@st.cache_data(ttl=CACHE_TTL_SECONDS, show_spinner=False)
+def cached_multi_analysis(symbol: str) -> dict:
+    return multi_analysis(symbol)
+
+25. Построй один словарь:
+
+all_symbol_results = {
+    symbol: cached_multi_analysis(symbol)
+    for symbol in selected_symbols
+}
+
+26. Этот словарь должен использоваться одновременно для:
+
+- общих метрик;
+- Top Setups;
+- компактного списка;
+- Multi-Timeframe detail.
+
+Не вызывай multi_analysis повторно внутри каждого блока интерфейса.
+
+27. Ошибка одного символа должна превращаться
+в безопасный ERROR-result, не ломая остальные символы.
+
+────────────────────────────────────
+ЧАСТЬ 5. ГЛАВНЫЙ ЭКРАН — TOP SETUPS
+────────────────────────────────────
+
+28. Перед старым Signal Grid добавь новый главный раздел:
+
+🔥 Top Setups
+
+29. Используй build_top_setups(all_symbol_results).
+
+30. В sidebar добавь Product/UI filters:
+
+- Show WATCH setups;
+- Show SKIP results;
+- Show WAIT signals;
+- Show all symbols;
+- Number of Top Setups: от 3 до 20.
+
+Значения по умолчанию бери из settings.py.
+
+31. Каждая Top Setup карточка должна быть компактной.
+
+Показывать:
+
+- rank;
+- symbol;
+- TAKE / WATCH;
+- LONG / SHORT;
+- Decision Score;
+- Confidence;
+- короткий Decision Reason;
+- кнопку или выбор "Open details".
+
+Пример:
+
+#1 SOL/USDT
+
+🟢 TAKE LONG
+
+Decision: 82
+Confidence: 76%
+
+Breakout confirmed; structure aligned.
+
+32. Не используй пять колонок на мобильном экране.
+
+Для Top Setups используй вертикальные карточки
+или максимум две компактные колонки на широком экране.
+
+33. Если Top Setups отсутствуют:
+
+покажи:
+
+"No TAKE or qualifying WATCH setups found.
+The scanner is working, but current conditions do not meet the selected quality filters."
+
+Не показывай это как ошибку.
+
+────────────────────────────────────
+ЧАСТЬ 6. ВЫБОР ДЕТАЛЬНОГО СИМВОЛА
+────────────────────────────────────
+
+34. Добавь session state:
+
+st.session_state["selected_detail_symbol"]
+
+35. По умолчанию:
+
+- первый символ из Top Setups;
+- если Top Setups пуст — первый selected_symbol.
+
+36. При выборе Open details:
+
+обновить selected_detail_symbol
+и показать детальный блок для выбранного символа.
+
+37. Не создавай отдельные страницы Streamlit на этом этапе.
+
+Оставь single-page приложение,
+но детали показывай только для одного выбранного символа.
+
+────────────────────────────────────
+ЧАСТЬ 7. COMPACT MARKET LIST
+────────────────────────────────────
+
+38. Старый длинный Multi Timeframe Analysis
+не должен автоматически раскрывать каждый символ.
+
+39. Замени его на раздел:
+
+Market Results
+
+40. По умолчанию показывай только:
+
+- TAKE;
+- WATCH;
+- активные LONG/SHORT;
+- ERROR при наличии.
+
+WAIT/SKIP скрывать,
+если соответствующие переключатели выключены.
+
+41. Добавь пагинацию:
+
+DEFAULT_RESULT_PAGE_SIZE элементов на страницу.
+
+42. Строка рынка должна быть компактной:
+
+Symbol | Decision | Direction | Score | Confidence | Signal
+
+На телефоне допустим вертикальный формат:
+
+BTC/USDT
+WATCH LONG · Score 63 · Confidence 58%
+
+43. По нажатию или выбору символа
+он становится selected_detail_symbol.
+
+44. Не выводи подробные пять таймфреймов
+для всех монет одновременно.
+
+────────────────────────────────────
+ЧАСТЬ 8. DETAIL PANEL
+────────────────────────────────────
+
+45. Для selected_detail_symbol покажи:
+
+- symbol;
+- FINAL signal;
+- FINAL confidence;
+- FINAL decision;
+- decision direction;
+- decision score;
+- reason.
+
+46. Добавь блок:
+
+Why this decision?
+
+Показывать:
+
+- positive_factors с ✓;
+- warning_factors с ⚠;
+- blockers с ✕.
+
+Используй FINAL или выбранное направление
+из decision_details.
+
+47. Ниже оставь Multi-Timeframe Analysis,
+но только для выбранного символа.
+
+48. Для каждого timeframe показывай:
+
+- signal;
+- confidence;
+- decision;
+- decision direction;
+- decision score;
+- trend / structure, если доступно.
+
+49. Quality breakdown и Debug data
+оставь collapsed.
+
+50. График показывай только для selected_detail_symbol.
+
+Селектор таймфрейма сохранить.
+
+51. Не меняй пока Plotly zoom.
+
+────────────────────────────────────
+ЧАСТЬ 9. CSS
+────────────────────────────────────
+
+52. Добавь классы:
+
+.decision-take
+.decision-watch
+.decision-skip
+.setup-card
+.setup-meta
+.reason-positive
+.reason-warning
+.reason-blocker
+
+53. TAKE должен быть визуально сильнее WATCH.
+
+Но не используй яркие мигающие эффекты,
+анимации или огромные цветные блоки.
+
+54. Не делай горизонтальную прокрутку.
+
+55. Текст reason должен переноситься.
+
+────────────────────────────────────
+ЧАСТЬ 10. TESTS
+────────────────────────────────────
+
+56. Создай:
+
+test_top_setups.py
+
+57. Расширь:
+
+test_streamlit_mapping.py
+
+58. Не изменяй и не ослабляй существующие тесты.
+
+59. Тесты Top Setups:
+
+- TAKE выше WATCH;
+- WATCH выше SKIP;
+- сортировка по decision_score;
+- сортировка по confidence при равном score;
+- стабильная сортировка по symbol;
+- include_watch=False;
+- include_skip=False;
+- минимальный score;
+- limit;
+- limit меньше 1;
+- limit выше максимума;
+- неполный FINAL;
+- None;
+- ERROR;
+- NaN/inf;
+- исходный словарь не изменяется;
+- rank последовательный;
+- raw_result сохраняется;
+- формат записи стабилен.
+
+60. Тесты UI helpers:
+
+- полный Decision result;
+- старый формат;
+- отсутствующие поля;
+- TAKE LONG badge;
+- TAKE SHORT badge;
+- WATCH LONG;
+- WATCH SHORT;
+- SKIP;
+- factor summary limit;
+- pagination first page;
+- middle page;
+- last page;
+- пустой список;
+- неверный page;
+- неверный page_size;
+- NaN/inf formatting.
+
+61. Запусти все существующие тесты плюс:
+
+python test_top_setups.py
+python test_streamlit_mapping.py
+
+62. После unit-тестов запусти Streamlit
+и вручную проверь на телефоне:
+
+- Top Setups находятся вверху;
+- длинного раскрытого списка больше нет;
+- WAIT скрыты по умолчанию;
+- WATCH можно включать и выключать;
+- Open details меняет выбранный символ;
+- детали показываются только для одного символа;
+- график соответствует выбранному символу;
+- приложение не делает повторные вызовы multi_analysis;
+- пустой Top Setups отображается корректно;
+- мобильная ширина не создаёт горизонтальный скролл.
+
+────────────────────────────────────
+ЧАСТЬ 11. ИТОГОВЫЙ ОТЧЁТ
+────────────────────────────────────
+
+PRODUCT LAYER STATUS: PASSED / FAILED
+
+Existing tests:
+- перечислить X/X
+
+Top Setups tests:
+X/Y
+
+UI mapping tests:
+X/Y
+
+Ranking:
+PASSED / FAILED
+
+Filtering:
+PASSED / FAILED
+
+Pagination:
+PASSED / FAILED
+
+Single-analysis-per-symbol:
+PASSED / FAILED
+
+Mobile manual checks:
+- Top Setups: PASSED / FAILED
+- WAIT hidden by default: PASSED / FAILED
+- Market Results compact: PASSED / FAILED
+- Open details: PASSED / FAILED
+- Single symbol details: PASSED / FAILED
+- No horizontal overflow: PASSED / FAILED
+
+Files created:
+- ...
+
+Files changed:
+- ...
+
+Ready for Risk Manager planning:
+YES / NO
+После выполнения интерфейс должен перестать быть длинным отчётом по всем монетам и стать рабочим экраном:
+
+Top Setups
+→ компактный рынок
+→ один выбранный инструмент
+→ причины решения
+→ график
+Это хороший момент, чтобы приложение впервые стало действительно удобным для ежедневной проверки с телефона.
+
+
+Готово
+
+Смущает только то, что последний апдейт показывает в 15:41
+
+Да, и это как раз хороший признак того, что ты внимательно тестируешь приложение. По скриншоту вижу несколько вещей.
+
+Что вижу
+Сам сканер ещё работает:
+
+есть строка Scanning ADA/USDT...;
+
+прогресс-бар не завершён;
+
+значит цикл анализа ещё не закончился.
+
+При этом отображается:
+
+Updated: 15:41:50
+а на телефоне уже
+
+18:42
+То есть время обновления явно не соответствует текущему.
+
+Скорее всего причина одна из двух
+Вариант 1 (самый вероятный) — время берётся в момент первого рендера
+Например, сейчас где-то есть что-то вроде:
+
+updated = datetime.now().strftime("%H:%M:%S")
+st.write(updated)
+или
+
+UPDATED = datetime.now()
+Если страница не перерисовывается полностью, это время больше не меняется.
+
+Вариант 2 — используется серверное время Replit
+Иногда Replit показывает время контейнера (обычно UTC), а телефон — локальное.
+
+Но здесь разница почти 3 часа, что очень похоже именно на часовой пояс.
+
+Я бы сейчас сделал лучше
+Вообще отказаться от текста
+
+Updated: 15:41:50
+и заменить его на более полезную информацию.
+
+Например:
+
+🟢 Last successful scan
+
+18:42:17
+или
+
+Last completed scan:
+2 sec ago
+или
+
+Scanning...
+Current symbol:
+ADA/USDT
+А после завершения:
+
+Last completed:
+18:42:31
+Это гораздо информативнее.
+
+Что я бы попросил Replit сделать
+Небольшим отдельным патчем:
+
+Исправь отображение времени последнего обновления.
+
+Не используй время первого рендера страницы.
+
+После успешного завершения полного цикла сканирования сохрани timestamp окончания анализа:
+
+st.session_state["last_scan_completed"]
+Отображай:
+
+Last scan:
+HH:MM:SS
+Пока сканирование идёт, показывай:
+
+🔄 Scanning...
+Current symbol: ADA/USDT
+После завершения автоматически заменить статус на:
+
+✅ Last scan completed:
+HH:MM:SS
+Используй локальное время сервера выполнения и не обновляй timestamp до завершения полного прохода по всем символам.
+
