@@ -643,12 +643,19 @@ def test_confidence():
                       f"CONF.{label}.sum(contribution)≈confidence", tol=1.0)
 
     # ─ 12. Нет NaN / inf ─────────────────────────────────────────────────────
+    # score может быть None для недоступных компонентов — пропускаем None,
+    # но проверяем все float-значения.
     for label, r in [("all3", r_all), ("no_bq", r_no_bq), ("none", r_none)]:
         assert_no_nan_inf(float(r["confidence"]), f"CONF.{label}.confidence not NaN/Inf")
         for comp_name, comp in r["components"].items():
             for field in ("score", "effective_weight", "contribution"):
-                assert_no_nan_inf(float(comp[field]),
-                                  f"CONF.{label}.{comp_name}.{field} not NaN/Inf")
+                v = comp[field]
+                if v is None:
+                    ok(f"CONF.{label}.{comp_name}.{field} is None (unavailable)",
+                       "skipping NaN/Inf check for None")
+                else:
+                    assert_no_nan_inf(float(v),
+                                      f"CONF.{label}.{comp_name}.{field} not NaN/Inf")
 
     # ─ 13. Label корректен ───────────────────────────────────────────────────
     # При одинаковых score во всех компонентах → confidence = score (вес=1.0)
@@ -669,8 +676,9 @@ def test_confidence():
               f"got {r_l['label']!r}")
 
     # ─ 14. Структура components ──────────────────────────────────────────────
+    # "reason" добавлен в формат v0.4 — каждый компонент содержит объяснение
     expected_comp_fields = {"score", "base_weight", "effective_weight",
-                            "contribution", "available"}
+                            "contribution", "available", "reason"}
     for comp_name, comp in r_all["components"].items():
         actual_fields = set(comp.keys())
         check(expected_comp_fields == actual_fields,
@@ -699,6 +707,156 @@ def test_confidence():
     print(f"     only_tq={r_only_tq['confidence']}, "
           f"only_vq={r_only_vq['confidence']}, "
           f"only_bq={r_only_bq['confidence']}")
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  CONFIDENCE — НЕВАЛИДНЫЕ ВХОДНЫЕ ДАННЫЕ
+# ══════════════════════════════════════════════════════════════════════════════
+
+def test_confidence_invalid_inputs():
+    section("CONFIDENCE — невалидные входные данные (None/NaN/inf/clamp/type)")
+
+    # ─ score = None (ключ присутствует, значение None) ────────────────────────
+    r = calculate_confidence({"trend_quality_score": None}, {}, breakout_quality=None)
+    check(r["components"]["trend_quality"]["available"] is False,
+          "INV.score_None → available==False",
+          f"got {r['components']['trend_quality']['available']}")
+    assert_approx(r["confidence"], 0.0, "INV.score_None → confidence==0", tol=0.01)
+    assert_no_nan_inf(r["confidence"], "INV.score_None → confidence finite")
+
+    # ─ score = NaN ───────────────────────────────────────────────────────────
+    r = calculate_confidence({"trend_quality_score": float("nan")}, {}, breakout_quality=None)
+    check(r["components"]["trend_quality"]["available"] is False,
+          "INV.score_NaN → available==False",
+          f"got {r['components']['trend_quality']['available']}")
+    assert_no_nan_inf(r["confidence"], "INV.score_NaN → confidence finite")
+    assert_in_range(r["confidence"], 0, 100, "INV.score_NaN → confidence in [0,100]")
+
+    # ─ score = inf ───────────────────────────────────────────────────────────
+    r = calculate_confidence({"trend_quality_score": float("inf")}, {}, breakout_quality=None)
+    check(r["components"]["trend_quality"]["available"] is False,
+          "INV.score_inf → available==False",
+          f"got {r['components']['trend_quality']['available']}")
+    assert_no_nan_inf(r["confidence"], "INV.score_inf → confidence finite")
+    assert_in_range(r["confidence"], 0, 100, "INV.score_inf → confidence in [0,100]")
+
+    # ─ score = -inf ──────────────────────────────────────────────────────────
+    r = calculate_confidence({"trend_quality_score": float("-inf")}, {}, breakout_quality=None)
+    check(r["components"]["trend_quality"]["available"] is False,
+          "INV.score_neg_inf → available==False",
+          f"got {r['components']['trend_quality']['available']}")
+    assert_no_nan_inf(r["confidence"], "INV.score_neg_inf → confidence finite")
+
+    # ─ score < 0 → clamp до 0, компонент ДОСТУПЕН ────────────────────────────
+    r = calculate_confidence({"trend_quality_score": -20.0}, {}, breakout_quality=None)
+    check(r["components"]["trend_quality"]["available"] is True,
+          "INV.score_neg → available==True (clamped)",
+          f"got {r['components']['trend_quality']['available']}")
+    check(r["components"]["trend_quality"]["score"] == 0.0,
+          "INV.score_neg → score clamped to 0.0",
+          f"got {r['components']['trend_quality']['score']}")
+    assert_approx(r["confidence"], 0.0,
+                  "INV.score_neg → confidence==0 (clamped)", tol=0.01)
+
+    # ─ score > 100 → clamp до 100, компонент ДОСТУПЕН ────────────────────────
+    r = calculate_confidence({"trend_quality_score": 150.0}, {}, breakout_quality=None)
+    check(r["components"]["trend_quality"]["available"] is True,
+          "INV.score_over100 → available==True (clamped)",
+          f"got {r['components']['trend_quality']['available']}")
+    check(r["components"]["trend_quality"]["score"] == 100.0,
+          "INV.score_over100 → score clamped to 100.0",
+          f"got {r['components']['trend_quality']['score']}")
+    assert_approx(r["confidence"], 100.0,
+                  "INV.score_over100 → confidence==100", tol=0.01)
+
+    # ─ неверный тип: int ─────────────────────────────────────────────────────
+    r = calculate_confidence(42, {}, breakout_quality=None)
+    check(r["components"]["trend_quality"]["available"] is False,
+          "INV.non_dict_int → available==False",
+          f"got {r['components']['trend_quality']['available']}")
+    assert_approx(r["confidence"], 0.0, "INV.non_dict_int → confidence==0", tol=0.01)
+
+    # ─ неверный тип: str ─────────────────────────────────────────────────────
+    r = calculate_confidence("bad_input", {}, breakout_quality=None)
+    check(r["components"]["trend_quality"]["available"] is False,
+          "INV.non_dict_str → available==False",
+          f"got {r['components']['trend_quality']['available']}")
+
+    # ─ неверный тип: list ────────────────────────────────────────────────────
+    r = calculate_confidence([1, 2, 3], {}, breakout_quality=None)
+    check(r["components"]["trend_quality"]["available"] is False,
+          "INV.non_dict_list → available==False",
+          f"got {r['components']['trend_quality']['available']}")
+
+    # ─ effective_weight отсутствующих компонентов == 0.0 ─────────────────────
+    r_no_bq = calculate_confidence(
+        {"trend_quality_score": 80},
+        {"volume_score": 60},
+        breakout_quality=None,
+    )
+    check(r_no_bq["components"]["breakout_quality"]["effective_weight"] == 0.0,
+          "INV.absent_bq.effective_weight == 0.0",
+          f"got {r_no_bq['components']['breakout_quality']['effective_weight']}")
+    check(r_no_bq["components"]["volume_quality"]["effective_weight"] > 0.0,
+          "INV.present_vq.effective_weight > 0",
+          f"got {r_no_bq['components']['volume_quality']['effective_weight']}")
+
+    # ─ сумма effective_weight доступных = 1.0 ────────────────────────────────
+    eff_sum = sum(
+        c["effective_weight"]
+        for c in r_no_bq["components"].values()
+        if c["available"]
+    )
+    assert_approx(eff_sum, 1.0,
+                  "INV.no_bq.sum(available effective_weight)==1.0", tol=1e-6)
+
+    # ─ сумма contributions == confidence ─────────────────────────────────────
+    contrib_sum = sum(c["contribution"] for c in r_no_bq["components"].values())
+    assert_approx(contrib_sum, r_no_bq["confidence"],
+                  "INV.no_bq.sum(contribution)≈confidence", tol=1.0)
+
+    # ─ confidence всегда в [0, 100] ──────────────────────────────────────────
+    for tag, args in [
+        ("score_neg",   ({"trend_quality_score": -20},  {},                   None)),
+        ("score_over",  ({"trend_quality_score": 150},  {},                   None)),
+        ("nan_input",   ({"trend_quality_score": float("nan")}, {},           None)),
+        ("all_missing", ({},                             {},                   None)),
+        ("non_dict",    (42,                             {},                   None)),
+    ]:
+        r_t = calculate_confidence(*args)
+        assert_in_range(r_t["confidence"], 0, 100,
+                        f"INV.{tag}.confidence in [0,100]")
+
+    # ─ label соответствует итоговому confidence ───────────────────────────────
+    label_edge_cases = [
+        (0,   "LOW"),
+        (39,  "LOW"),
+        (40,  "MEDIUM"),
+        (69,  "MEDIUM"),
+        (70,  "HIGH"),
+        (84,  "HIGH"),
+        (85,  "VERY HIGH"),
+        (100, "VERY HIGH"),
+    ]
+    for val, expected in label_edge_cases:
+        r_l = calculate_confidence(
+            {"trend_quality_score": val},
+            {"volume_score":        val},
+            breakout_quality={"breakout_score": val},
+        )
+        assert_approx(r_l["confidence"], float(val),
+                      f"INV.label_math({val})", tol=0.5)
+        check(r_l["label"] == expected,
+              f"INV.label({val})=={expected!r}",
+              f"got {r_l['label']!r}")
+
+    # ─ базовые WEIGHTS в сумме = 1.0 ─────────────────────────────────────────
+    w_sum = sum(v for v in WEIGHTS.values() if v > 0.0)
+    check(abs(w_sum - 1.0) < 1e-9,
+          f"INV.WEIGHTS_sum==1.0  (sum={w_sum:.6f})",
+          f"got {w_sum}")
+
+    print(f"\n     Все тесты невалидных входов выполнены.")
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -772,20 +930,21 @@ def main():
     print("═" * 60)
 
     suites = [
-        ("SCENARIO A — quality LONG",       test_scenario_a),
-        ("SCENARIO B — fake LONG",           test_scenario_b),
-        ("SCENARIO C — quality SHORT",       test_scenario_c),
-        ("SCENARIO D — no crossing",         test_scenario_d),
-        ("SCENARIO E — insufficient data",   test_scenario_e),
-        ("SCENARIO F — line=None",           test_scenario_f),
-        ("SCENARIO G — no volume column",    test_scenario_g),
-        ("RANGES & TYPES",                   test_assert_ranges_and_types),
-        ("SYMMETRY LONG/SHORT",              test_assert_symmetry),
-        ("TREND QUALITY",                    test_trend_quality),
-        ("VOLUME QUALITY",                   test_volume_quality),
-        ("MUTABLE DEFAULTS",                 test_no_mutable_defaults),
-        ("CONFIDENCE (3 components)",        test_confidence),
-        ("FORMAT COMPATIBILITY",             test_format_compatibility),
+        ("SCENARIO A — quality LONG",         test_scenario_a),
+        ("SCENARIO B — fake LONG",             test_scenario_b),
+        ("SCENARIO C — quality SHORT",         test_scenario_c),
+        ("SCENARIO D — no crossing",           test_scenario_d),
+        ("SCENARIO E — insufficient data",     test_scenario_e),
+        ("SCENARIO F — line=None",             test_scenario_f),
+        ("SCENARIO G — no volume column",      test_scenario_g),
+        ("RANGES & TYPES",                     test_assert_ranges_and_types),
+        ("SYMMETRY LONG/SHORT",                test_assert_symmetry),
+        ("TREND QUALITY",                      test_trend_quality),
+        ("VOLUME QUALITY",                     test_volume_quality),
+        ("MUTABLE DEFAULTS",                   test_no_mutable_defaults),
+        ("CONFIDENCE (3 components)",          test_confidence),
+        ("CONFIDENCE INVALID INPUTS",          test_confidence_invalid_inputs),
+        ("FORMAT COMPATIBILITY",               test_format_compatibility),
     ]
 
     suite_results: list[tuple[str, bool]] = []
@@ -826,12 +985,15 @@ def main():
     print(f"    • trend_quality:    {WEIGHTS['trend_quality']}")
     print(f"    • volume_quality:   {WEIGHTS['volume_quality']}")
     print(f"    • breakout_quality: {WEIGHTS['breakout_quality']}")
-    renorm_suites = [s for s, ok in suite_results
-                     if "CONFIDENCE" in s.upper() and ok]
-    renorm_status = "PASSED" if any("CONFIDENCE" in s for s, ok in suite_results
-                                     if ok) else "FAILED"
-    print(f"  Renormalization tests: {renorm_status}")
-    print(f"  Ready for UI integration: {'YES' if not _failed else 'NO'}")
+    renorm_status  = "PASSED" if any(
+        "CONFIDENCE (3" in s for s, passed in suite_results if passed
+    ) else "FAILED"
+    invalid_status = "PASSED" if any(
+        "INVALID" in s.upper() for s, passed in suite_results if passed
+    ) else "FAILED"
+    print(f"  Renormalization tests:  {renorm_status}")
+    print(f"  Invalid input tests:    {invalid_status}")
+    print(f"  Ready for pipeline integration: {'YES' if not _failed else 'NO'}")
     print("═" * 60 + "\n")
 
     sys.exit(0 if not _failed else 1)

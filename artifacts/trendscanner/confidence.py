@@ -5,9 +5,9 @@ confidence.py
 итоговую уверенность сигнала (Confidence Score, 0–100).
 
 Компоненты и базовые веса (при наличии всех трёх, сумма = 1.0):
-    • trend_quality   — качество трендовой линии   (базовый вес 50%)
-    • volume_quality  — подтверждение объёмом       (базовый вес 20%)
-    • breakout_quality — сила и чёткость пробоя    (базовый вес 30%)
+    • trend_quality    — качество трендовой линии   (базовый вес 50%)
+    • volume_quality   — подтверждение объёмом       (базовый вес 20%)
+    • breakout_quality — сила и чёткость пробоя      (базовый вес 30%)
 
 Планируемые компоненты (добавляются без изменения сигнатуры):
     • atr_quality       — качество пробоя в единицах ATR
@@ -16,14 +16,22 @@ confidence.py
     • ml_score          — оценка ML-модели
 
 ПЕРЕНОРМИРОВКА ВЕСОВ:
-    Если компонент отсутствует (None или {}), его базовый вес перераспределяется
+    Если компонент недоступен, его базовый вес перераспределяется
     пропорционально между доступными компонентами.
-    confidence не занижается при неполных данных.
+    Confidence не занижается при неполных данных.
 
     Примеры:
         все три         → w_tq=0.50, w_vq=0.20, w_bq=0.30
         нет volume      → w_tq=0.625, w_bq=0.375     (0.50/0.80, 0.30/0.80)
         только breakout → w_bq=1.0
+
+КРИТЕРИИ ДОСТУПНОСТИ КОМПОНЕНТА:
+    Компонент считается доступным только если:
+    1. передан непустой dict (не None, не {}, не другой тип);
+    2. в нём присутствует ожидаемый ключ score;
+    3. значение score приводится к float;
+    4. значение является конечным числом (не NaN, не inf);
+    5. score приводится к диапазону 0–100 (clamp, не отклонение).
 
 НУЛЕВЫЕ ЗАВИСИМОСТИ: scanner.py, Streamlit, analysis.py, multi_tf.py не импортируются.
 """
@@ -64,6 +72,8 @@ def confidence_label(confidence: float) -> str:
         "MEDIUM"    — 40–69
         "HIGH"      — 70–84
         "VERY HIGH" — 85–100
+
+    Каждое значение от 0 до 100 однозначно попадает ровно в одну категорию.
     """
     if confidence >= 85:
         return "VERY HIGH"
@@ -75,25 +85,70 @@ def confidence_label(confidence: float) -> str:
         return "LOW"
 
 
-# ─── безопасное извлечение оценки ────────────────────────────────────────────
+# ─── парсинг одного компонента ────────────────────────────────────────────────
 
-def _extract_score(quality_dict: dict, key: str) -> float:
+def _parse_component(
+    quality_input,
+    score_key: str,
+    comp_name: str,
+) -> tuple[float | None, bool, str]:
     """
-    Безопасно извлекает числовую оценку из словаря качества.
-    Возвращает 0.0 если ключ отсутствует или значение некорректно.
+    Разбирает входной словарь компонента и возвращает (score, is_available, reason).
+
+    Возвращает is_available=True только при выполнении всех условий:
+        1. quality_input — непустой dict
+        2. score_key присутствует в словаре
+        3. значение приводится к конечному float
+        4. значение приводится к диапазону 0–100 (clamp)
+
+    При is_available=True score — float в [0, 100].
+    При is_available=False score — None.
     """
+    if quality_input is None:
+        return None, False, f"{comp_name}: не передан (None)"
+
+    if not isinstance(quality_input, dict):
+        return None, False, (
+            f"{comp_name}: ожидается dict, "
+            f"получен {type(quality_input).__name__}"
+        )
+
+    if not quality_input:
+        return None, False, f"{comp_name}: передан пустой dict"
+
+    if score_key not in quality_input:
+        return None, False, (
+            f"{comp_name}: ключ '{score_key}' отсутствует "
+            f"(ключи: {list(quality_input.keys())})"
+        )
+
+    raw = quality_input[score_key]
     try:
-        val = float(quality_dict.get(key, 0.0))
-        return val if math.isfinite(val) else 0.0
+        val = float(raw)
     except (TypeError, ValueError):
-        return 0.0
+        return None, False, (
+            f"{comp_name}: не удалось привести к float: {raw!r}"
+        )
+
+    if not math.isfinite(val):
+        return None, False, f"{comp_name}: значение не конечно ({val})"
+
+    # Приводим к диапазону 0–100 (clamp, не отклонение)
+    clamped = max(0.0, min(100.0, val))
+
+    if clamped != val:
+        reason = f"{comp_name}: score={val:.4g} приведён к {clamped:.4g}"
+    else:
+        reason = f"{comp_name}: score={clamped:.4g}, доступен"
+
+    return clamped, True, reason
 
 
 # ─── основная функция ────────────────────────────────────────────────────────
 
 def calculate_confidence(
-    trend_quality:    dict,
-    volume_quality:   dict,
+    trend_quality:    dict | None = None,
+    volume_quality:   dict | None = None,
     breakout_quality: dict | None = None,
 ) -> dict:
     """
@@ -110,15 +165,16 @@ def calculate_confidence(
 
     Возвращает:
         {
-            "confidence":          float — итоговая оценка 0–100,
-            "label":               str   — "LOW" / "MEDIUM" / "HIGH" / "VERY HIGH",
+            "confidence":          float  — итоговая оценка 0–100,
+            "label":               str    — "LOW" / "MEDIUM" / "HIGH" / "VERY HIGH",
             "components": {
                 "trend_quality": {
-                    "score":            float,
-                    "base_weight":      float,  — базовый вес из WEIGHTS
-                    "effective_weight": float,  — перенормированный вес
-                    "contribution":     float,  — score * effective_weight
-                    "available":        bool    — компонент присутствует
+                    "score":            float | None,
+                    "base_weight":      float,
+                    "effective_weight": float,
+                    "contribution":     float,
+                    "available":        bool,
+                    "reason":           str,
                 },
                 "volume_quality":   { ... },
                 "breakout_quality": { ... }
@@ -135,51 +191,51 @@ def calculate_confidence(
     """
 
     # ── входные данные компонентов ────────────────────────────────────────────
-    _inputs: dict[str, dict | None] = {
+    _inputs: dict[str, object] = {
         "trend_quality":    trend_quality,
         "volume_quality":   volume_quality,
         "breakout_quality": breakout_quality,
     }
 
-    # ── определяем доступность каждого компонента ─────────────────────────────
-    # Компонент «доступен» если его dict непустой (не None и не {})
-    # и его базовый вес > 0.
+    # ── парсинг каждого компонента ────────────────────────────────────────────
+    parsed: dict[str, tuple] = {}
+    for name in _inputs:
+        score_key = _SCORE_KEYS[name]
+        parsed[name] = _parse_component(_inputs[name], score_key, name)
+
+    # ── доступные компоненты и перенормировка весов ───────────────────────────
     available_names = [
-        name
-        for name in _inputs
-        if _inputs[name] and WEIGHTS.get(name, 0.0) > 0.0
+        name for name, (_, is_avail, _) in parsed.items()
+        if is_avail and WEIGHTS.get(name, 0.0) > 0.0
     ]
     n_available = len(available_names)
-
-    # ── перенормировка весов ──────────────────────────────────────────────────
     total_base_w = sum(WEIGHTS.get(name, 0.0) for name in available_names)
 
-    # ── строим components для всех трёх полей ─────────────────────────────────
+    # ── сборка components и расчёт confidence ─────────────────────────────────
     raw_sum = 0.0
     components: dict[str, dict] = {}
 
     for name in _inputs:
-        base_w     = WEIGHTS.get(name, 0.0)
-        is_avail   = name in available_names
-        score_key  = _SCORE_KEYS.get(name, "")
-        d          = _inputs[name] or {}
+        base_w               = WEIGHTS.get(name, 0.0)
+        score, is_avail, reason = parsed[name]
 
         if is_avail and total_base_w > 0.0:
-            score   = _extract_score(d, score_key)
             eff_w   = base_w / total_base_w
             contrib = score * eff_w
             raw_sum += contrib
+            score_out = round(score, 1)
         else:
-            score   = 0.0
-            eff_w   = 0.0
-            contrib = 0.0
+            eff_w     = 0.0
+            contrib   = 0.0
+            score_out = None          # недоступный компонент — score не определён
 
         components[name] = {
-            "score":            round(score, 1),
+            "score":            score_out,
             "base_weight":      round(base_w, 4),
             "effective_weight": round(eff_w, 4),
             "contribution":     round(contrib, 1),
             "available":        is_avail,
+            "reason":           reason,
         }
 
     # ── итоговый confidence ───────────────────────────────────────────────────
@@ -188,27 +244,29 @@ def calculate_confidence(
 
     confidence_val = float(max(0.0, min(100.0, raw_sum)))
 
-    # ── reason ────────────────────────────────────────────────────────────────
+    # ── reason (итоговый) ─────────────────────────────────────────────────────
     total_components = len([k for k, v in WEIGHTS.items() if v > 0.0])
     if n_available == 0:
-        reason = "Нет доступных компонентов — confidence не рассчитан"
+        summary = "Нет доступных компонентов — confidence не рассчитан"
     elif n_available == total_components:
-        joined = ", ".join(available_names)
-        reason = f"Все {total_components} компонента доступны ({joined})"
+        joined  = ", ".join(available_names)
+        summary = f"Все {total_components} компонента доступны ({joined})"
     else:
-        joined    = ", ".join(available_names)
-        missing   = [n for n in _inputs if n not in available_names
-                     and WEIGHTS.get(n, 0.0) > 0.0]
-        m_joined  = ", ".join(missing)
-        reason = (
+        joined   = ", ".join(available_names)
+        missing  = [
+            n for n in _inputs
+            if n not in available_names and WEIGHTS.get(n, 0.0) > 0.0
+        ]
+        m_joined = ", ".join(missing)
+        summary  = (
             f"{n_available}/{total_components} компонентов доступны: {joined}; "
             f"отсутствуют: {m_joined}; перенормировка весов применена"
         )
 
     return {
-        "confidence":          round(confidence_val, 2),
-        "label":               confidence_label(confidence_val),
-        "components":          components,
+        "confidence":           round(confidence_val, 2),
+        "label":                confidence_label(confidence_val),
+        "components":           components,
         "available_components": n_available,
-        "reason":              reason,
+        "reason":               summary,
     }
