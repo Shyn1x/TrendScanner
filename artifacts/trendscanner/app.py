@@ -29,6 +29,8 @@ from ui_helpers import (
     summarize_decision_factors,
     paginate_items,
 )
+from explain_engine import build_timeframe_explanation
+from breakout_diagnostic_report import build_breakout_diagnostic_report
 from product_helpers import (
     get_local_datetime,
     format_scan_timestamp,
@@ -45,6 +47,18 @@ st.set_page_config(
     page_icon="🚀",
     layout="wide",
 )
+
+
+def _format_diag_value(value):
+    if value is None:
+        return "N/A"
+    if isinstance(value, bool):
+        return str(value)
+    if isinstance(value, list):
+        formatted = ", ".join(str(x) for x in value if x is not None)
+        return formatted if formatted else "N/A"
+    return str(value)
+
 
 # ── Styling ────────────────────────────────────────────────────────────────────
 st.markdown("""
@@ -167,6 +181,7 @@ with st.sidebar:
     show_all   = st.toggle("Show all symbols",     value=SHOW_ALL_SYMBOLS_BY_DEFAULT)
     top_n      = st.slider("Number of Top Setups", min_value=3, max_value=20,
                            value=TOP_SETUPS_LIMIT, step=1)
+    dev_diagnostics = st.toggle("Developer diagnostics", value=False)
 
     st.markdown("---")
     auto_refresh = st.checkbox("Auto-refresh (60s)", value=False)
@@ -714,6 +729,168 @@ else:
                         )
                     if qs["reason"]:
                         st.caption(f"_{qs['reason'][:120]}_")
+
+    if dev_diagnostics:
+        explain_tfs = [tf for tf in _ALL_TFS if isinstance(detail_result.get(tf), dict)]
+        with st.expander("🧭 Explain Decision", expanded=False):
+            if explain_tfs:
+                explain_tf = st.selectbox(
+                    "Timeframe",
+                    explain_tfs,
+                    index=0,
+                    key=f"diag_tf_{sym_key}",
+                    label_visibility="visible",
+                )
+                tf_result = detail_result.get(explain_tf, {})
+
+                for direction in ("LONG", "SHORT"):
+                    with st.expander(f"{direction}", expanded=(direction == "LONG")):
+                        try:
+                            explanation = build_timeframe_explanation(tf_result, direction)
+                        except Exception as exc:
+                            st.warning(
+                                f"Unable to build explanation for {direction}: {exc}"
+                            )
+                            continue
+
+                        c1, c2 = st.columns(2)
+                        with c1:
+                            st.markdown(f"**Decision**: {_format_diag_value(explanation.get('decision'))}")
+                            st.markdown(f"**Decision score**: {_format_diag_value(explanation.get('decision_score'))}")
+                            st.markdown(f"**Confidence**: {_format_diag_value(explanation.get('confidence'))}")
+                            st.markdown(f"**Breakout confirmed**: {_format_diag_value(explanation.get('breakout_confirmed'))}")
+                            st.markdown(f"**Trend quality**: {_format_diag_value(explanation['scores'].get('trend_quality'))}")
+                            st.markdown(f"**Volume score**: {_format_diag_value(explanation['scores'].get('volume'))}")
+                        with c2:
+                            st.markdown(f"**Breakout score**: {_format_diag_value(explanation['scores'].get('breakout'))}")
+                            st.markdown(f"**Structure score**: {_format_diag_value(explanation['scores'].get('structure'))}")
+                            stage = explanation.get('pipeline_stage')
+                            if stage == 'breakout_confirmation':
+                                stage = 'Blocked at: Breakout confirmation'
+                            else:
+                                stage = stage.replace('_', ' ').capitalize()
+                            st.markdown(f"**Pipeline stage**: {_format_diag_value(stage)}")
+                            st.markdown(f"**Breakout line price**: {_format_diag_value(explanation.get('breakout_line_price'))}")
+                            st.markdown(f"**Breakout close**: {_format_diag_value(explanation.get('breakout_close'))}")
+                            st.markdown(f"**Directional breakout distance** ({_format_diag_value(explanation.get('breakout_distance_direction'))}): {_format_diag_value(explanation.get('breakout_distance'))}")
+                            st.markdown(f"**Breakout ATR**: {_format_diag_value(explanation.get('breakout_atr'))}")
+                            st.markdown(f"**Distance ATR ratio**: {_format_diag_value(explanation.get('distance_atr_ratio'))}")
+                            st.markdown(f"**Candle body ratio**: {_format_diag_value(explanation.get('candle_body_ratio'))}")
+                            st.markdown(f"**Rejection wick ratio**: {_format_diag_value(explanation.get('rejection_wick_ratio'))}")
+                            st.markdown(f"**Breakout cross score**: {_format_diag_value(explanation.get('breakout_cross_score'))}")
+                            st.markdown(f"**Breakout distance score**: {_format_diag_value(explanation.get('breakout_distance_score'))}")
+                            st.markdown(f"**Breakout body score**: {_format_diag_value(explanation.get('breakout_body_score'))}")
+                            st.markdown(f"**Breakout wick score**: {_format_diag_value(explanation.get('breakout_wick_score'))}")
+                            st.markdown(f"**Confirmation check**: {_format_diag_value(explanation.get('breakout_confirmation_comparison'))}")
+                            st.markdown(f"**Confirmation expression**: {_format_diag_value(explanation.get('breakout_confirmation_expression'))}")
+                            st.markdown(f"**Primary blocker**: {_format_diag_value(explanation.get('primary_blocker'))}")
+                            st.markdown(f"**Secondary blocker**: {_format_diag_value(explanation.get('secondary_blocker'))}")
+                            st.markdown(f"**Distance to watch**: {_format_diag_value(explanation.get('distance_to_watch'))}")
+                            st.markdown(f"**Distance to take**: {_format_diag_value(explanation.get('distance_to_take'))}")
+
+                        st.markdown("**Blockers**: " + _format_diag_value(explanation.get('blockers')))
+                        st.markdown("**Warnings**: " + _format_diag_value(explanation.get('warnings')))
+                        st.markdown("**Positive factors**: " + _format_diag_value(explanation.get('positive_factors')))
+                        st.markdown("**Raw blocker codes**: " + _format_diag_value(explanation.get('raw_blocker_codes')))
+
+                with st.expander("Copy-friendly JSON", expanded=False):
+                    try:
+                        output_json = {
+                            "timeframe": explain_tf,
+                            "LONG": build_timeframe_explanation(tf_result, "LONG"),
+                            "SHORT": build_timeframe_explanation(tf_result, "SHORT"),
+                        }
+                        st.json(output_json)
+                    except Exception as exc:
+                        st.warning(f"Unable to render JSON diagnostics: {exc}")
+            else:
+                st.caption("No timeframe results available for diagnostics.")
+
+        # ── Breakout Bottleneck Report (Developer diagnostics only) ─────
+        with st.expander("🔬 Breakout Bottleneck Report", expanded=False):
+            try:
+                report = build_breakout_diagnostic_report(all_results)
+
+                totals = report.get("totals", {})
+                bcols = st.columns(4)
+                bcols[0].metric("Total analyses", totals.get("total_direction_analyses", 0))
+                bcols[1].metric("Data unavailable", totals.get("data_unavailable", 0))
+                bcols[2].metric("Trendline missing", totals.get("trendline_unavailable", 0))
+                bcols[3].metric("Crossed", totals.get("breakout_crossed", 0))
+
+                st.markdown("**Bottleneck frequency**")
+                bott = report.get("bottleneck_counts", {})
+                # convert to dataframe-friendly list
+                bott_table = [{"bottleneck": k, "count": v} for k, v in sorted(bott.items(), key=lambda x: -x[1])]
+                st.table(bott_table)
+
+                st.markdown("**Breakout score distribution**")
+                buckets = report.get("buckets", {})
+                bucket_table = [{"range": k, "count": v} for k, v in buckets.items()]
+                st.table(bucket_table)
+
+                st.markdown("**Top 10 closest rejected candidates**")
+                top10 = report.get("top10_closest_rejected", [])
+                if top10:
+                    # Display selected fields in a table
+                    rows = []
+                    for c in top10:
+                        rows.append({
+                            "symbol": c.get("symbol"),
+                            "tf": c.get("timeframe"),
+                            "dir": c.get("direction"),
+                            "decision": c.get("decision"),
+                            "breakout_score": c.get("breakout_score"),
+                            "gap_to_50": c.get("breakout_score_gap"),
+                            "primary_blocker": c.get("primary_blocker"),
+                        })
+                    st.table(rows)
+                else:
+                    st.caption("No rejected candidates to show.")
+
+                # --- Cross-state classification summary
+                st.markdown("**Cross-state classification**")
+                cross_counts = report.get("cross_state_counts", {})
+                total_cs = sum(cross_counts.values()) or 1
+                cs_rows = []
+                for k, v in cross_counts.items():
+                    pct = (v / total_cs) * 100.0
+                    cs_rows.append({"state": k, "count": v, "pct": f"{pct:.1f}%"})
+                st.table(cs_rows)
+
+                st.markdown("**By timeframe**")
+                cs_tf = report.get("cross_state_by_timeframe", {})
+                if cs_tf:
+                    for tf_key, tf_counts in cs_tf.items():
+                        st.markdown(f"**{tf_key}**")
+                        st.table([{"state": k, "count": v} for k, v in sorted(tf_counts.items(), key=lambda x: -x[1])])
+
+                st.markdown("**By direction**")
+                cs_dir = report.get("cross_state_by_direction", {})
+                for d in ("LONG", "SHORT"):
+                    st.markdown(f"**{d}**")
+                    dcounts = cs_dir.get(d, {})
+                    st.table([{"state": k, "count": v} for k, v in sorted(dcounts.items(), key=lambda x: -x[1])])
+
+                st.markdown("**Examples — Already beyond line (up to 10)**")
+                ex_al = report.get("examples_already_beyond", [])
+                if ex_al:
+                    st.table(ex_al)
+                else:
+                    st.caption("No examples")
+
+                st.markdown("**Examples — Crossed on latest candle (up to 10)**")
+                ex_cl = report.get("examples_crossed_on_latest", [])
+                if ex_cl:
+                    st.table(ex_cl)
+                else:
+                    st.caption("No examples")
+
+                with st.expander("Copy-friendly JSON", expanded=False):
+                    st.json(report)
+
+            except Exception as exc:
+                st.warning(f"Unable to build Breakout Bottleneck Report: {exc}")
 
     # ── Debug data ─────────────────────────────────────────────────────────────
     with st.expander("🔧 Debug data", expanded=False):

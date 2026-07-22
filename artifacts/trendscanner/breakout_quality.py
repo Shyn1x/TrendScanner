@@ -415,6 +415,8 @@ def calculate_breakout_quality(
         "signal_index":         signal_idx,
         "line_price":           round(signal_line, 6),
         "signal_close":         round(sig_close, 6),
+        "prev_close":           round(prev_close, 6),
+        "latest_close":         (round(float(df["close"].iloc[-1]), 6) if len(df) >= 1 else None),
         "atr":                  round(atr, 6) if atr is not None else None,
         "distance_atr":         round(distance_atr, 4),
         "body_ratio":           round(body_ratio, 4),
