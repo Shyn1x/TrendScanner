@@ -31,6 +31,12 @@ from ui_helpers import (
 )
 from explain_engine import build_timeframe_explanation
 from breakout_diagnostic_report import build_breakout_diagnostic_report
+from analytics_scan_lifecycle import (
+    PERSISTED_SCAN_ID_KEY,
+    ensure_active_scan_id,
+    request_new_scan,
+)
+from scan_analytics_service import persist_completed_scan_analytics
 from product_helpers import (
     get_local_datetime,
     format_scan_timestamp,
@@ -145,6 +151,12 @@ if "market_results_page" not in st.session_state:
     st.session_state["market_results_page"] = 1
 if "last_scan_completed" not in st.session_state:
     st.session_state["last_scan_completed"] = None  # stored as "HH:MM:SS TZ" string
+if "analytics_last_scan_id" not in st.session_state:
+    st.session_state["analytics_last_scan_id"] = None
+if "analytics_last_inserted" not in st.session_state:
+    st.session_state["analytics_last_inserted"] = 0
+if "analytics_last_error" not in st.session_state:
+    st.session_state["analytics_last_error"] = None
 
 # ── Sidebar ────────────────────────────────────────────────────────────────────
 with st.sidebar:
@@ -186,6 +198,7 @@ with st.sidebar:
     st.markdown("---")
     auto_refresh = st.checkbox("Auto-refresh (60s)", value=False)
     if st.button("🔄 Refresh", use_container_width=True):
+        request_new_scan(st.session_state)
         st.cache_data.clear()
         st.rerun()
 
@@ -214,6 +227,11 @@ if not selected_symbols:
 if not selected_tfs:
     st.info("Select at least one timeframe in the sidebar.")
     st.stop()
+
+_active_scan_id = ensure_active_scan_id(
+    st.session_state,
+    selected_symbols,
+)
 
 # ── Compact info panel — 3 columns, all using empty() to prevent duplication ──
 _hdr_c1, _hdr_c2, _hdr_c3 = st.columns(3)
@@ -276,6 +294,21 @@ _progress_ph.empty()
 for _sym, _res in all_results.items():
     if isinstance(_res, dict) and "FINAL" not in _res:
         _res["FINAL"] = {}
+
+# ── Persist Strategy Analytics once per completed scan cycle ──────────────────
+if st.session_state.get(PERSISTED_SCAN_ID_KEY) != _active_scan_id:
+    _analytics_result = persist_completed_scan_analytics(
+        all_results,
+        pipeline_version=PIPELINE_VERSION,
+        scan_id=_active_scan_id,
+    )
+    st.session_state["analytics_last_scan_id"] = _analytics_result.get("scan_id")
+    st.session_state["analytics_last_inserted"] = int(
+        _analytics_result.get("inserted", 0)
+    )
+    st.session_state["analytics_last_error"] = _analytics_result.get("error")
+    if not _analytics_result.get("error"):
+        st.session_state[PERSISTED_SCAN_ID_KEY] = _active_scan_id
 
 # ── Summary metrics — always from FINAL ────────────────────────────────────────
 _ALL_TFS = ["1M", "1w", "1d", "4h", "1h"]
@@ -1066,5 +1099,6 @@ except Exception as e:
 # ── Auto-refresh ───────────────────────────────────────────────────────────────
 if auto_refresh:
     time.sleep(60)
+    request_new_scan(st.session_state)
     st.cache_data.clear()
     st.rerun()
