@@ -34,10 +34,23 @@ ANALYSIS_COLUMNS = (
     "primary_blocker",
     "pipeline_stage",
     "entry_price",
+    "trigger_candle_ts",
+    "cross_score",
+    "distance_score",
+    "body_score",
+    "wick_score",
     "scanner_version",
     "pipeline_version",
     "decision_version",
 )
+
+_SCHEMA_EXTENSIONS: dict[str, str] = {
+    "trigger_candle_ts": "TEXT",
+    "cross_score": "REAL",
+    "distance_score": "REAL",
+    "body_score": "REAL",
+    "wick_score": "REAL",
+}
 
 
 def _utc_timestamp() -> str:
@@ -75,6 +88,23 @@ def _safe_bool_for_sqlite(value: Any) -> int | None:
 def create_scan_id() -> str:
     """Create one ID to be shared by every row from one full scan."""
     return str(uuid.uuid4())
+
+
+def _existing_columns(connection: sqlite3.Connection, table_name: str) -> set[str]:
+    rows = connection.execute(
+        f"PRAGMA table_info({table_name})"
+    ).fetchall()
+    return {str(row[1]) for row in rows}
+
+
+def _migrate_analysis_records_schema(connection: sqlite3.Connection) -> None:
+    existing = _existing_columns(connection, "analysis_records")
+    for column_name, column_type in _SCHEMA_EXTENSIONS.items():
+        if column_name in existing:
+            continue
+        connection.execute(
+            f"ALTER TABLE analysis_records ADD COLUMN {column_name} {column_type}"
+        )
 
 
 def initialize_database(
@@ -116,6 +146,12 @@ def initialize_database(
                 pipeline_stage TEXT,
                 entry_price REAL,
 
+                trigger_candle_ts TEXT,
+                cross_score REAL,
+                distance_score REAL,
+                body_score REAL,
+                wick_score REAL,
+
                 scanner_version TEXT,
                 pipeline_version TEXT,
                 decision_version TEXT,
@@ -124,6 +160,8 @@ def initialize_database(
             )
             """
         )
+
+        _migrate_analysis_records_schema(connection)
 
         connection.execute(
             """
@@ -169,6 +207,11 @@ def build_analysis_record(
     primary_blocker: str | None = None,
     pipeline_stage: str | None = None,
     entry_price: Any = None,
+    trigger_candle_ts: str | None = None,
+    cross_score: Any = None,
+    distance_score: Any = None,
+    body_score: Any = None,
+    wick_score: Any = None,
     scanner_version: str | None = None,
     pipeline_version: str | None = None,
     decision_version: str | None = None,
@@ -223,6 +266,15 @@ def build_analysis_record(
             else None
         ),
         "entry_price": _safe_number(entry_price),
+        "trigger_candle_ts": (
+            str(trigger_candle_ts)
+            if trigger_candle_ts is not None
+            else None
+        ),
+        "cross_score": _safe_number(cross_score),
+        "distance_score": _safe_number(distance_score),
+        "body_score": _safe_number(body_score),
+        "wick_score": _safe_number(wick_score),
         "scanner_version": (
             str(scanner_version)
             if scanner_version is not None

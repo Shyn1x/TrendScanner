@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from datetime import datetime
 from typing import Any, Mapping
 
 from explain_engine import build_timeframe_explanation
@@ -70,6 +71,77 @@ def _entry_price_from_quality(
         return None
 
     return breakout_quality.get("signal_close")
+
+
+def _breakout_components_from_quality(
+    direction_quality: Mapping[str, Any],
+) -> dict[str, Any]:
+    breakout_quality = direction_quality.get("breakout_quality")
+    if not isinstance(breakout_quality, dict):
+        return {
+            "cross_score": None,
+            "distance_score": None,
+            "body_score": None,
+            "wick_score": None,
+        }
+
+    components = breakout_quality.get("components")
+    if not isinstance(components, dict):
+        return {
+            "cross_score": None,
+            "distance_score": None,
+            "body_score": None,
+            "wick_score": None,
+        }
+
+    return {
+        "cross_score": components.get("cross"),
+        "distance_score": components.get("close_distance"),
+        "body_score": components.get("candle_body"),
+        "wick_score": components.get("rejection_wick"),
+    }
+
+
+def _normalize_timestamp_value(value: Any) -> str | None:
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        return value.isoformat()
+    if isinstance(value, str):
+        cleaned = value.strip()
+        return cleaned or None
+    return None
+
+
+def _trigger_candle_ts_from_result(
+    timeframe_result: Mapping[str, Any],
+    direction_quality: Mapping[str, Any],
+    direction_decision: Mapping[str, Any],
+) -> str | None:
+    breakout_quality = direction_quality.get("breakout_quality")
+    if not isinstance(breakout_quality, dict):
+        breakout_quality = {}
+
+    candidates = (
+        direction_decision.get("trigger_candle_ts"),
+        direction_decision.get("signal_timestamp"),
+        direction_quality.get("trigger_candle_ts"),
+        direction_quality.get("signal_timestamp"),
+        breakout_quality.get("trigger_candle_ts"),
+        breakout_quality.get("signal_timestamp"),
+        breakout_quality.get("signal_time"),
+        breakout_quality.get("candle_timestamp"),
+        breakout_quality.get("timestamp"),
+        timeframe_result.get("trigger_candle_ts"),
+        timeframe_result.get("signal_timestamp"),
+    )
+
+    for candidate in candidates:
+        normalized = _normalize_timestamp_value(candidate)
+        if normalized is not None:
+            return normalized
+
+    return None
 
 
 def build_strategy_rows(
@@ -210,6 +282,16 @@ def build_strategy_rows(
                     direction_quality
                 )
 
+                breakout_components = _breakout_components_from_quality(
+                    direction_quality
+                )
+
+                trigger_candle_ts = _trigger_candle_ts_from_result(
+                    timeframe_result,
+                    direction_quality,
+                    direction_decision,
+                )
+
                 row = build_analysis_record(
                     scan_id=scan_id,
                     timestamp_utc=timestamp_utc,
@@ -228,6 +310,11 @@ def build_strategy_rows(
                     primary_blocker=primary_blocker,
                     pipeline_stage=pipeline_stage,
                     entry_price=entry_price,
+                    trigger_candle_ts=trigger_candle_ts,
+                    cross_score=breakout_components["cross_score"],
+                    distance_score=breakout_components["distance_score"],
+                    body_score=breakout_components["body_score"],
+                    wick_score=breakout_components["wick_score"],
                     scanner_version=scanner_version,
                     pipeline_version=pipeline_version,
                     decision_version=decision_version,

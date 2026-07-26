@@ -22,6 +22,13 @@ def _sample_timeframe_result() -> dict:
                     "score": 83.3,
                     "confirmed": True,
                     "signal_close": 123.45,
+                    "trigger_candle_ts": "2026-07-22T11:00:00+00:00",
+                    "components": {
+                        "cross": 30.0,
+                        "close_distance": 18.0,
+                        "candle_body": 14.0,
+                        "rejection_wick": 6.0,
+                    },
                 },
                 "structure_quality": {
                     "score": 30.0,
@@ -42,6 +49,12 @@ def _sample_timeframe_result() -> dict:
                     "score": 20.0,
                     "confirmed": False,
                     "signal_close": 123.45,
+                    "components": {
+                        "cross": 0.0,
+                        "close_distance": 0.0,
+                        "candle_body": 2.0,
+                        "rejection_wick": 1.0,
+                    },
                 },
                 "structure_quality": {
                     "score": 15.0,
@@ -126,6 +139,11 @@ def test_one_symbol_one_timeframe_exports_long_and_short() -> None:
     assert long_row["structure_alignment"] == "OPPOSED"
     assert long_row["primary_blocker"] is None
     assert long_row["entry_price"] == 123.45
+    assert long_row["trigger_candle_ts"] == "2026-07-22T11:00:00+00:00"
+    assert long_row["cross_score"] == 30.0
+    assert long_row["distance_score"] == 18.0
+    assert long_row["body_score"] == 14.0
+    assert long_row["wick_score"] == 6.0
     assert long_row["pipeline_version"] == "0.5"
     assert long_row["scanner_version"] == "0.6"
     assert long_row["decision_version"] == "1.0"
@@ -133,10 +151,60 @@ def test_one_symbol_one_timeframe_exports_long_and_short() -> None:
     assert short_row["decision"] == "SKIP"
     assert short_row["confidence"] == 35.0
     assert short_row["breakout_confirmed"] == 0
+    assert short_row["cross_score"] == 0.0
+    assert short_row["distance_score"] == 0.0
+    assert short_row["body_score"] == 2.0
+    assert short_row["wick_score"] == 1.0
     assert (
         short_row["primary_blocker"]
         == "BREAKOUT_NOT_CONFIRMED"
     )
+
+
+def test_missing_breakout_metadata_exports_nulls() -> None:
+    all_results = {
+        "ADA/USDT": {
+            "1h": {
+                "quality": {
+                    "LONG": {
+                        "confidence": {"confidence": 55.0},
+                        "breakout_quality": {
+                            "score": 70.0,
+                            "confirmed": True,
+                            "signal_close": 1.23,
+                        },
+                    },
+                    "SHORT": {},
+                    "FINAL": {},
+                },
+                "decision_details": {
+                    "LONG": {
+                        "decision": "WATCH",
+                        "decision_score": 60.0,
+                        "confidence": 55.0,
+                        "breakout_confirmed": True,
+                        "blockers": [],
+                    },
+                    "SHORT": {},
+                    "FINAL": {},
+                },
+            },
+            "FINAL": {},
+        }
+    }
+
+    rows = build_strategy_rows(
+        all_results,
+        scan_id="scan-null-md",
+    )
+
+    assert len(rows) == 1
+    row = rows[0]
+    assert row["trigger_candle_ts"] is None
+    assert row["cross_score"] is None
+    assert row["distance_score"] is None
+    assert row["body_score"] is None
+    assert row["wick_score"] is None
 
 
 def test_missing_quality_still_uses_decision_details() -> None:
@@ -280,6 +348,7 @@ def run_tests() -> None:
         test_one_symbol_one_timeframe_exports_long_and_short,
         test_missing_quality_still_uses_decision_details,
         test_missing_decision_details_still_uses_quality,
+        test_missing_breakout_metadata_exports_nulls,
         test_error_symbol_is_skipped,
         test_source_input_is_not_mutated,
         test_output_is_deterministic_except_generated_ids,
