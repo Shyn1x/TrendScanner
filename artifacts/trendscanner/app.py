@@ -48,6 +48,7 @@ from product_helpers import (
     count_final_decisions,
 )
 
+from ready_ui import render_ready_section
 st.set_page_config(
     page_title="Trend Scanner",
     page_icon="🚀",
@@ -410,7 +411,9 @@ else:
                     st.rerun()
 
 st.markdown("---")
+# ── READY candidates — read-only layer ─────────────────────────────
 
+render_ready_section(all_results)
 # ── Legacy Signal Grid — collapsed by default ──────────────────────────────────
 with st.expander("📊 Legacy Signal Grid", expanded=False):
     grid_rows = []
