@@ -133,8 +133,12 @@ def _build_monthly_from_daily(futures_symbol: str) -> pd.DataFrame:
         monthly = monthly.iloc[:-1]
 
     monthly = monthly.reset_index()
-    # ms-timestamp обратно
-    monthly["time"] = (monthly["dt"].astype("int64") // 10 ** 6)
+    # Convert explicitly to Unix milliseconds.
+    # Pandas datetime internal resolution can differ between versions,
+    # so raw integer division is not portable.
+    monthly["time"] = monthly["dt"].map(
+        lambda value: int(pd.Timestamp(value).timestamp() * 1000)
+    )
     monthly = monthly.drop(columns=["dt"])
 
     return monthly[["time", "open", "high", "low", "close", "volume"]]

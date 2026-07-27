@@ -1020,7 +1020,11 @@ try:
 
     fig = go.Figure()
     has_time = "time" in df.columns
-    x_vals   = pd.to_datetime(df["time"], unit="ms") if has_time else df.index
+    x_vals = (
+    pd.to_datetime(df["time"], unit="ms", utc=True)
+    if has_time
+    else df.index
+)
 
     fig.add_trace(go.Candlestick(
         x=x_vals,
@@ -1031,24 +1035,99 @@ try:
         name="Price",
     ))
 
+    last_idx = len(df) - 1
+    current_close = float(df["close"].iloc[last_idx])
+
     if down_line and has_time:
+        resistance_current = float(line_value(down_line, last_idx))
+        resistance_distance_pct = (
+            ((resistance_current - current_close) / current_close) * 100.0
+            if current_close
+            else 0.0
+        )
+
+        resistance_customdata = [
+            ["Pivot 1", ""],
+            ["Pivot 2", ""],
+            [
+                "Current projection",
+                (
+                    f"Current price: {current_close:,.4f}<br>"
+                    f"Distance to resistance: {resistance_distance_pct:+.2f}%"
+                ),
+            ],
+        ]
+
         fig.add_trace(go.Scatter(
-            x=[pd.to_datetime(df["time"].iloc[down_line["x1"]], unit="ms"),
-               pd.to_datetime(df["time"].iloc[down_line["x2"]], unit="ms")],
-            y=[down_line["y1"], down_line["y2"]],
-            mode="lines",
-            line=dict(color="#ef9a9a", width=1.5, dash="dot"),
+            x=[
+                x_vals.iloc[down_line["x1"]],
+                x_vals.iloc[down_line["x2"]],
+                x_vals.iloc[last_idx],
+            ],
+            y=[
+                down_line["y1"],
+                down_line["y2"],
+                resistance_current,
+            ],
+            mode="lines+markers",
+            line=dict(color="#ef5350", width=1.5, dash="dot"),
+            marker=dict(size=5),
             name="Resistance",
+            customdata=resistance_customdata,
+            hovertemplate=(
+                "<b>Resistance</b><br>"
+                "%{customdata[0]}<br>"
+                "Date: %{x|%Y-%m-%d %H:%M}<br>"
+                "Level: %{y:,.4f}<br>"
+                "%{customdata[1]}"
+                "<extra></extra>"
+            ),
         ))
 
     if up_line and has_time:
+        support_current = float(line_value(up_line, last_idx))
+        support_distance_pct = (
+            ((current_close - support_current) / current_close) * 100.0
+            if current_close
+            else 0.0
+        )
+
+        support_customdata = [
+            ["Pivot 1", ""],
+            ["Pivot 2", ""],
+            [
+                "Current projection",
+                (
+                    f"Current price: {current_close:,.4f}<br>"
+                    f"Distance to support: {support_distance_pct:+.2f}%"
+                ),
+            ],
+        ]
+
         fig.add_trace(go.Scatter(
-            x=[pd.to_datetime(df["time"].iloc[up_line["x1"]], unit="ms"),
-               pd.to_datetime(df["time"].iloc[up_line["x2"]], unit="ms")],
-            y=[up_line["y1"], up_line["y2"]],
-            mode="lines",
-            line=dict(color="#80cbc4", width=1.5, dash="dot"),
+            x=[
+                x_vals.iloc[up_line["x1"]],
+                x_vals.iloc[up_line["x2"]],
+                x_vals.iloc[last_idx],
+            ],
+            y=[
+                up_line["y1"],
+                up_line["y2"],
+                support_current,
+            ],
+            mode="lines+markers",
+            line=dict(color="#4caf50", width=1.5, dash="dot"),
+            marker=dict(size=5),
             name="Support",
+            customdata=support_customdata,
+            hovertemplate=(
+                "<b>Support</b><br>"
+                "%{customdata[0]}<br>"
+                "Date: %{x|%Y-%m-%d %H:%M}<br>"
+                "Level: %{y:,.4f}<br>"
+                "%{customdata[1]}"
+                "<extra></extra>"
+            ),
         ))
 
     quality = tf_analysis.get("quality", {})
@@ -1057,7 +1136,11 @@ try:
         confirmed = isinstance(dir_data, dict) and bool(dir_data.get("confirmed", False))
         if confirmed and len(df) >= 2 and has_time:
             signal_candle = df.iloc[-2]
-            x_marker = pd.to_datetime(signal_candle["time"], unit="ms")
+            x_marker = pd.to_datetime(
+    signal_candle["time"],
+    unit="ms",
+    utc=True,
+)
             if chart_sig == "LONG":
                 y_marker    = signal_candle["low"] * 0.999
                 marker_sym  = "triangle-up"
