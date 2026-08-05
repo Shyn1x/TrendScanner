@@ -98,3 +98,12 @@ env/
 *.db-shm
 *.db-wal
 .vscode/
+artifacts/trendscanner/ready_take_results.csv
+artifacts/trendscanner/ready_take_results.json
+artifacts/trendscanner/ready_take_results.csv
+artifacts/trendscanner/ready_take_results.json
+artifacts/trendscanner/ready_take_results.csv
+
+# TrendScanner research outputs
+artifacts/trendscanner/ready_take_results.csv
+artifacts/trendscanner/ready_take_results.json

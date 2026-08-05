@@ -115,8 +115,37 @@ def test_result_keys():
     for r in data["replay_results"]:
         for k in ("symbol", "timeframe", "replay_index", "signal_timestamp",
                   "signal", "confidence", "decision", "decision_direction",
-                  "decision_score", "decision_reason", "long", "short"):
+                  "decision_score", "decision_reason", "long", "short", "timeframe_result"):
             check(f"KEYS_{k}", k in r, f"missing key: {k}")
+
+
+def test_timeframe_result_min_structure():
+    df   = _make_df(DF_SIZE)
+    data = replay_timeframe(df, "BTC/USDT", "1h", warmup_bars=WARMUP, max_replay_bars=3)
+    for r in data["replay_results"]:
+        tf = r.get("timeframe_result", {})
+        check("TFR1_dict", isinstance(tf, dict), "timeframe_result must be dict")
+
+        quality = tf.get("quality", {}) if isinstance(tf, dict) else {}
+        decision_details = tf.get("decision_details", {}) if isinstance(tf, dict) else {}
+        check("TFR1_quality", isinstance(quality, dict), "quality must be dict")
+        check("TFR1_decision_details", isinstance(decision_details, dict), "decision_details must be dict")
+
+        for direction in ("LONG", "SHORT"):
+            qd = quality.get(direction, {}) if isinstance(quality, dict) else {}
+            dd = decision_details.get(direction, {}) if isinstance(decision_details, dict) else {}
+            check(f"TFR1_quality_{direction}", isinstance(qd, dict), f"quality.{direction} missing")
+            check(f"TFR1_decision_{direction}", isinstance(dd, dict), f"decision_details.{direction} missing")
+
+            for key in ("confirmed", "signal", "confidence", "trend_quality", "volume_quality", "breakout_quality"):
+                check(f"TFR1_q_{direction}_{key}", key in qd, f"missing quality.{direction}.{key}")
+
+            for key in ("decision", "decision_score", "breakout_confirmed", "blockers", "component_scores", "market_context"):
+                check(f"TFR1_d_{direction}_{key}", key in dd, f"missing decision_details.{direction}.{key}")
+
+            mc = dd.get("market_context", {}) if isinstance(dd, dict) else {}
+            check(f"TFR1_alignment_{direction}", "alignment" in mc if isinstance(mc, dict) else False,
+                  f"missing decision_details.{direction}.market_context.alignment")
 
 
 def test_dir_data_keys():
@@ -629,7 +658,7 @@ def test_error_result_skipped():
 
 _TESTS = [
     # API contract
-    test_returns_dict, test_meta_keys, test_result_keys, test_dir_data_keys,
+    test_returns_dict, test_meta_keys, test_result_keys, test_timeframe_result_min_structure, test_dir_data_keys,
     # Look-ahead bias
     test_no_look_ahead_bias, test_future_candle_change_no_effect,
     # Signal candle at -2

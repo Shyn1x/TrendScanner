@@ -44,6 +44,99 @@ def _s(v, default="") -> str:
     return str(v).strip() if v is not None else default
 
 
+def _ready_quality_direction(result: dict, direction: str) -> dict:
+    quality_root = result.get("quality", {})
+    quality_root = quality_root if isinstance(quality_root, dict) else {}
+    direction_quality = quality_root.get(direction, {})
+    direction_quality = direction_quality if isinstance(direction_quality, dict) else {}
+
+    breakout_quality = direction_quality.get("breakout_quality", {})
+    breakout_quality = breakout_quality if isinstance(breakout_quality, dict) else {}
+
+    trend_quality = direction_quality.get("trend_quality", {})
+    trend_quality = trend_quality if isinstance(trend_quality, dict) else {}
+
+    volume_quality = direction_quality.get("volume_quality", {})
+    volume_quality = volume_quality if isinstance(volume_quality, dict) else {}
+
+    confidence = direction_quality.get("confidence", {})
+    confidence = confidence if isinstance(confidence, dict) else {}
+
+    return {
+        "confirmed": _b(direction_quality.get("confirmed", False)),
+        "signal": _s(direction_quality.get("signal", "")) or _s(result.get("signal", "WAIT")),
+        "confidence": {
+            "confidence": _f(confidence.get("confidence"), None),
+        },
+        "trend_quality": {
+            "trend_quality_score": _f(trend_quality.get("trend_quality_score"), None),
+        },
+        "volume_quality": {
+            "volume_score": _f(volume_quality.get("volume_score"), None),
+        },
+        "breakout_quality": {
+            "confirmed": _b(breakout_quality.get("confirmed", False)),
+            "breakout_score": _f(breakout_quality.get("breakout_score"), None),
+        },
+    }
+
+
+def _ready_decision_direction(result: dict, direction: str) -> dict:
+    decision_root = result.get("decision_details", {})
+    decision_root = decision_root if isinstance(decision_root, dict) else {}
+    direction_decision = decision_root.get(direction, {})
+    direction_decision = direction_decision if isinstance(direction_decision, dict) else {}
+
+    component_scores = direction_decision.get("component_scores", {})
+    component_scores = component_scores if isinstance(component_scores, dict) else {}
+
+    market_context = direction_decision.get("market_context", {})
+    market_context = market_context if isinstance(market_context, dict) else {}
+
+    blockers_raw = direction_decision.get("blockers", [])
+    blockers: list = []
+    if isinstance(blockers_raw, list):
+        for blocker in blockers_raw:
+            if isinstance(blocker, dict):
+                blockers.append({
+                    "code": _s(blocker.get("code", "")),
+                    "message": _s(blocker.get("message", "")),
+                })
+            elif blocker is not None:
+                blockers.append(_s(blocker, ""))
+
+    return {
+        "decision": _s(direction_decision.get("decision", "SKIP")).upper(),
+        "decision_score": _f(direction_decision.get("decision_score"), None),
+        "breakout_confirmed": _b(direction_decision.get("breakout_confirmed", False)),
+        "blockers": blockers,
+        "component_scores": {
+            "trend_quality": _f(component_scores.get("trend_quality"), None),
+            "volume_quality": _f(component_scores.get("volume_quality"), None),
+            "breakout_quality": _f(component_scores.get("breakout_quality"), None),
+            "structure_quality": _f(component_scores.get("structure_quality"), None),
+        },
+        "market_context": {
+            "alignment": _s(market_context.get("alignment", "UNKNOWN")).upper() or "UNKNOWN",
+        },
+        "signal": _s(direction_decision.get("signal", "")) or _s(result.get("signal", "WAIT")),
+        "confidence": _f(direction_decision.get("confidence"), None),
+    }
+
+
+def _extract_timeframe_result_for_ready(result: dict) -> dict:
+    return {
+        "quality": {
+            "LONG": _ready_quality_direction(result, "LONG"),
+            "SHORT": _ready_quality_direction(result, "SHORT"),
+        },
+        "decision_details": {
+            "LONG": _ready_decision_direction(result, "LONG"),
+            "SHORT": _ready_decision_direction(result, "SHORT"),
+        },
+    }
+
+
 def _extract_dir_data(result: dict, direction: str) -> dict:
     """
     Извлекает компактные данные для одного направления из результата
@@ -246,6 +339,7 @@ def replay_timeframe(
 
         long_data  = _extract_dir_data(result, "LONG")
         short_data = _extract_dir_data(result, "SHORT")
+        timeframe_result = _extract_timeframe_result_for_ready(result)
 
         replay_results.append({
             "symbol":             symbol,
@@ -260,6 +354,7 @@ def replay_timeframe(
             "decision_reason":    dec_reason,
             "long":               long_data,
             "short":              short_data,
+            "timeframe_result":   timeframe_result,
         })
 
     meta_base["replay_count"] = len(replay_results)
