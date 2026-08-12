@@ -107,3 +107,9 @@ artifacts/trendscanner/ready_take_results.csv
 # TrendScanner research outputs
 artifacts/trendscanner/ready_take_results.csv
 artifacts/trendscanner/ready_take_results.json
+
+# TrendScanner outcome research outputs
+artifacts/trendscanner/ready_outcome_results.json
+artifacts/trendscanner/ready_outcome_events.csv
+artifacts/trendscanner/ready_factor_report.json
+artifacts/trendscanner/ready_factor_report.csv

@@ -24,10 +24,9 @@ def _safe_int(value: Any) -> int | None:
     if isinstance(value, bool):
         return None
     try:
-        number = int(value)
+        return int(value)
     except (TypeError, ValueError):
         return None
-    return number
 
 
 def _normalize_horizons(horizons: tuple[int, ...]) -> list[int]:
@@ -36,11 +35,8 @@ def _normalize_horizons(horizons: tuple[int, ...]) -> list[int]:
     for item in horizons:
         if isinstance(item, bool):
             continue
-        try:
-            value = int(item)
-        except (TypeError, ValueError):
-            continue
-        if value <= 0 or value in seen:
+        value = _safe_int(item)
+        if value is None or value <= 0 or value in seen:
             continue
         seen.add(value)
         normalized.append(value)
@@ -52,8 +48,7 @@ def _build_time_index_map(df: Any) -> dict[int, list[int]]:
     if df is None or "time" not in getattr(df, "columns", []):
         return mapping
 
-    time_values = df["time"]
-    for pos, raw_ts in enumerate(time_values):
+    for pos, raw_ts in enumerate(df["time"]):
         ts = _safe_int(raw_ts)
         if ts is None:
             continue
@@ -95,17 +90,23 @@ def _compute_horizon_metrics(
     last_close = future_closes[-1]
 
     if direction == "LONG":
-        mfe_pct = (max_high - entry_price) / entry_price * 100.0
-        mae_pct = (entry_price - min_low) / entry_price * 100.0
+        raw_mfe = (max_high - entry_price) / entry_price * 100.0
+        raw_mae = (entry_price - min_low) / entry_price * 100.0
+        mfe_pct = max(0.0, raw_mfe)
+        mae_pct = max(0.0, raw_mae)
         close_return_pct = (last_close - entry_price) / entry_price * 100.0
-        bars_to_mfe = _first_index_of_target(future_highs, max_high)
-        bars_to_mae = _first_index_of_target(future_lows, min_low)
+
+        bars_to_mfe = _first_index_of_target(future_highs, max_high) if mfe_pct > 0.0 else None
+        bars_to_mae = _first_index_of_target(future_lows, min_low) if mae_pct > 0.0 else None
     else:
-        mfe_pct = (entry_price - min_low) / entry_price * 100.0
-        mae_pct = (max_high - entry_price) / entry_price * 100.0
+        raw_mfe = (entry_price - min_low) / entry_price * 100.0
+        raw_mae = (max_high - entry_price) / entry_price * 100.0
+        mfe_pct = max(0.0, raw_mfe)
+        mae_pct = max(0.0, raw_mae)
         close_return_pct = (entry_price - last_close) / entry_price * 100.0
-        bars_to_mfe = _first_index_of_target(future_lows, min_low)
-        bars_to_mae = _first_index_of_target(future_highs, max_high)
+
+        bars_to_mfe = _first_index_of_target(future_lows, min_low) if mfe_pct > 0.0 else None
+        bars_to_mae = _first_index_of_target(future_highs, max_high) if mae_pct > 0.0 else None
 
     return {
         "available": True,
@@ -160,17 +161,144 @@ def _event_sort_key(event: dict[str, Any]) -> tuple[int, int, str, str, str]:
     )
 
 
+def _extract_direction_pipeline_fields(
+    timeframe_result: dict[str, Any],
+    direction: str,
+) -> tuple[dict[str, Any], dict[str, bool]]:
+    quality_root = timeframe_result.get("quality", {})
+    decision_root = timeframe_result.get("decision_details", {})
+
+    quality_root = quality_root if isinstance(quality_root, dict) else {}
+    decision_root = decision_root if isinstance(decision_root, dict) else {}
+
+    quality = quality_root.get(direction, {})
+    decision = decision_root.get(direction, {})
+    quality = quality if isinstance(quality, dict) else {}
+    decision = decision if isinstance(decision, dict) else {}
+
+    breakout_quality = quality.get("breakout_quality", {})
+    breakout_quality = breakout_quality if isinstance(breakout_quality, dict) else {}
+
+    trend_quality_root = quality.get("trend_quality", {})
+    trend_quality_root = trend_quality_root if isinstance(trend_quality_root, dict) else {}
+
+    volume_quality_root = quality.get("volume_quality", {})
+    volume_quality_root = volume_quality_root if isinstance(volume_quality_root, dict) else {}
+
+    structure_quality_root = quality.get("structure_quality")
+    market_structure_root = quality.get("market_structure", {})
+    market_structure_root = market_structure_root if isinstance(market_structure_root, dict) else {}
+
+    component_scores = decision.get("component_scores", {})
+    component_scores = component_scores if isinstance(component_scores, dict) else {}
+
+    breakout_score = None
+    breakout_present = False
+    if "breakout_score" in breakout_quality:
+        breakout_score = _safe_float(breakout_quality.get("breakout_score"))
+        breakout_present = True
+    elif "breakout_quality" in component_scores:
+        breakout_score = _safe_float(component_scores.get("breakout_quality"))
+        breakout_present = True
+
+    breakout_confirmed = None
+    if "breakout_confirmed" in decision:
+        raw = decision.get("breakout_confirmed")
+        breakout_confirmed = bool(raw) if raw is not None else None
+        breakout_confirmed_present = True
+    elif "confirmed" in quality or "confirmed" in breakout_quality:
+        raw = quality.get("confirmed") if "confirmed" in quality else breakout_quality.get("confirmed")
+        breakout_confirmed = bool(raw) if raw is not None else None
+        breakout_confirmed_present = True
+    else:
+        breakout_confirmed_present = False
+
+    trend_quality = None
+    trend_quality_present = False
+    if "trend_quality_score" in trend_quality_root:
+        trend_quality = _safe_float(trend_quality_root.get("trend_quality_score"))
+        trend_quality_present = True
+    elif "trend_quality" in component_scores:
+        trend_quality = _safe_float(component_scores.get("trend_quality"))
+        trend_quality_present = True
+
+    volume_quality = None
+    volume_quality_present = False
+    if "volume_score" in volume_quality_root:
+        volume_quality = _safe_float(volume_quality_root.get("volume_score"))
+        volume_quality_present = True
+    elif "volume_quality" in component_scores:
+        volume_quality = _safe_float(component_scores.get("volume_quality"))
+        volume_quality_present = True
+
+    structure_quality = None
+    structure_quality_present = False
+    if isinstance(structure_quality_root, dict):
+        if "structure_score" in structure_quality_root or "score" in structure_quality_root:
+            structure_quality = _safe_float(
+                structure_quality_root.get("structure_score", structure_quality_root.get("score"))
+            )
+            structure_quality_present = True
+    elif structure_quality_root is not None:
+        structure_quality = _safe_float(structure_quality_root)
+        structure_quality_present = True
+    elif "structure_quality" in component_scores:
+        structure_quality = _safe_float(component_scores.get("structure_quality"))
+        structure_quality_present = True
+
+    structure_state = None
+    structure_state_present = False
+    if "structure" in market_structure_root:
+        raw_state = market_structure_root.get("structure")
+        if raw_state is None:
+            structure_state = None
+        else:
+            normalized = str(raw_state).strip()
+            structure_state = normalized if normalized else "UNKNOWN"
+        structure_state_present = True
+
+    blockers_present = "blockers" in decision
+    blocker_codes: list[str] | None = None
+    if blockers_present:
+        blocker_codes = []
+        blockers_raw = decision.get("blockers")
+        if isinstance(blockers_raw, list):
+            for blocker in blockers_raw:
+                if isinstance(blocker, dict):
+                    code = str(blocker.get("code") or blocker.get("message") or "").strip()
+                elif blocker is not None:
+                    code = str(blocker).strip()
+                else:
+                    code = ""
+                if code:
+                    blocker_codes.append(code)
+
+    return (
+        {
+            "breakout_score": breakout_score,
+            "breakout_confirmed": breakout_confirmed if breakout_confirmed_present else None,
+            "trend_quality": trend_quality,
+            "volume_quality": volume_quality,
+            "structure_quality": structure_quality,
+            "structure_state": structure_state,
+            "blocker_codes": blocker_codes,
+        },
+        {
+            "breakout_score": breakout_present,
+            "trend_quality": trend_quality_present,
+            "volume_quality": volume_quality_present,
+            "structure_quality": structure_quality_present,
+            "structure_state": structure_state_present,
+            "blocker_codes": blockers_present,
+        },
+    )
+
+
 def analyze_ready_outcomes(
     df,
     replay_results: list,
     horizons: tuple[int, ...] = (3, 5, 10),
 ) -> dict:
-    """
-    Analyze historical price outcomes after unique READY transitions.
-
-    Unique event for each symbol+timeframe+direction:
-    transition ready False -> True based on evaluate_ready_candidate().
-    """
     horizon_values = _normalize_horizons(horizons)
     horizon_keys = [str(item) for item in horizon_values]
 
@@ -180,11 +308,19 @@ def analyze_ready_outcomes(
         "malformed_replay_entry": 0,
     }
 
+    pipeline_field_presence = {
+        "breakout_score": {"present": 0, "missing": 0},
+        "trend_quality": {"present": 0, "missing": 0},
+        "volume_quality": {"present": 0, "missing": 0},
+        "structure_quality": {"present": 0, "missing": 0},
+        "structure_state": {"present": 0, "missing": 0},
+        "blocker_codes": {"present": 0, "missing": 0},
+    }
+
     events: list[dict[str, Any]] = []
     skipped_events = 0
 
     time_index_map = _build_time_index_map(df)
-
     ready_state: dict[tuple[str, str, str], bool] = {}
 
     replay_sequence = replay_results if isinstance(replay_results, list) else []
@@ -207,12 +343,7 @@ def analyze_ready_outcomes(
             continue
 
         for direction in VALID_DIRECTIONS:
-            ready_eval = evaluate_ready_candidate(
-                symbol,
-                timeframe,
-                direction,
-                timeframe_result,
-            )
+            ready_eval = evaluate_ready_candidate(symbol, timeframe, direction, timeframe_result)
             is_ready = bool(ready_eval.get("ready"))
             state_key = (symbol, timeframe, direction)
             was_ready = ready_state.get(state_key, False)
@@ -221,13 +352,13 @@ def analyze_ready_outcomes(
             if not is_ready or was_ready:
                 continue
 
-            mapped_indices = time_index_map.get(signal_timestamp) if signal_timestamp is not None else None
-            if not mapped_indices or len(mapped_indices) != 1:
+            mapped = time_index_map.get(signal_timestamp) if signal_timestamp is not None else None
+            if not mapped or len(mapped) != 1:
                 diagnostics["timestamp_not_found"] += 1
                 skipped_events += 1
                 continue
 
-            candle_index = mapped_indices[0]
+            candle_index = mapped[0]
             entry_reference_price = _safe_float(df.iloc[candle_index].get("close"))
             if entry_reference_price is None or entry_reference_price <= 0.0:
                 diagnostics["invalid_price"] += 1
@@ -259,20 +390,36 @@ def analyze_ready_outcomes(
                 )
 
             warnings = ready_eval.get("warnings")
-            event = {
-                "symbol": symbol,
-                "timeframe": timeframe,
-                "direction": direction,
-                "ready_replay_index": replay_index,
-                "ready_timestamp": signal_timestamp,
-                "ready_candle_index": candle_index,
-                "entry_reference_price": entry_reference_price,
-                "ready_confidence": _safe_float(ready_eval.get("confidence")),
-                "ready_decision_score": _safe_float(ready_eval.get("decision_score")),
-                "ready_warnings": list(warnings) if isinstance(warnings, list) else [],
-                "horizons": event_horizons,
-            }
-            events.append(event)
+            pipeline_fields, presence = _extract_direction_pipeline_fields(timeframe_result, direction)
+
+            for field_name, is_present in presence.items():
+                if is_present:
+                    pipeline_field_presence[field_name]["present"] += 1
+                else:
+                    pipeline_field_presence[field_name]["missing"] += 1
+
+            events.append(
+                {
+                    "symbol": symbol,
+                    "timeframe": timeframe,
+                    "direction": direction,
+                    "ready_replay_index": replay_index,
+                    "ready_timestamp": signal_timestamp,
+                    "ready_candle_index": candle_index,
+                    "entry_reference_price": entry_reference_price,
+                    "ready_confidence": _safe_float(ready_eval.get("confidence")),
+                    "ready_decision_score": _safe_float(ready_eval.get("decision_score")),
+                    "ready_warnings": list(warnings) if isinstance(warnings, list) else [],
+                    "breakout_score": pipeline_fields.get("breakout_score"),
+                    "breakout_confirmed": pipeline_fields.get("breakout_confirmed"),
+                    "trend_quality": pipeline_fields.get("trend_quality"),
+                    "volume_quality": pipeline_fields.get("volume_quality"),
+                    "structure_quality": pipeline_fields.get("structure_quality"),
+                    "structure_state": pipeline_fields.get("structure_state"),
+                    "blocker_codes": pipeline_fields.get("blocker_codes"),
+                    "horizons": event_horizons,
+                }
+            )
 
     events.sort(key=_event_sort_key)
 
@@ -291,9 +438,7 @@ def analyze_ready_outcomes(
 
         for event in events:
             horizon_data = event.get("horizons", {}).get(horizon_key, {})
-            if not isinstance(horizon_data, dict):
-                continue
-            if not bool(horizon_data.get("available")):
+            if not isinstance(horizon_data, dict) or not bool(horizon_data.get("available")):
                 continue
 
             available_events += 1
@@ -325,15 +470,14 @@ def analyze_ready_outcomes(
             "mfe_ge_3_pct_rate": _rate(mfe_values, lambda value: value >= 3.0),
         }
 
-    summary = {
-        "ready_events": len(events),
-        "skipped_events": skipped_events,
-        "by_direction": by_direction,
-        "by_horizon": by_horizon,
-        "diagnostics": diagnostics,
-    }
-
     return {
         "events": events,
-        "summary": summary,
+        "summary": {
+            "ready_events": len(events),
+            "skipped_events": skipped_events,
+            "by_direction": by_direction,
+            "by_horizon": by_horizon,
+            "diagnostics": diagnostics,
+            "pipeline_field_presence": pipeline_field_presence,
+        },
     }

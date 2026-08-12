@@ -59,6 +59,20 @@ def _ready_quality_direction(result: dict, direction: str) -> dict:
     volume_quality = direction_quality.get("volume_quality", {})
     volume_quality = volume_quality if isinstance(volume_quality, dict) else {}
 
+    structure_quality_raw = direction_quality.get("structure_quality")
+    if isinstance(structure_quality_raw, dict):
+        structure_quality_score = _f(
+            structure_quality_raw.get("structure_score", structure_quality_raw.get("score")),
+            None,
+        )
+    elif structure_quality_raw is not None:
+        structure_quality_score = _f(structure_quality_raw, None)
+    else:
+        structure_quality_score = None
+
+    market_structure = direction_quality.get("market_structure", {})
+    market_structure = market_structure if isinstance(market_structure, dict) else {}
+
     confidence = direction_quality.get("confidence", {})
     confidence = confidence if isinstance(confidence, dict) else {}
 
@@ -77,6 +91,12 @@ def _ready_quality_direction(result: dict, direction: str) -> dict:
         "breakout_quality": {
             "confirmed": _b(breakout_quality.get("confirmed", False)),
             "breakout_score": _f(breakout_quality.get("breakout_score"), None),
+        },
+        "structure_quality": {
+            "structure_score": structure_quality_score,
+        },
+        "market_structure": {
+            "structure": _s(market_structure.get("structure", "")),
         },
     }
 
