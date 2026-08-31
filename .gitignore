@@ -113,3 +113,5 @@ artifacts/trendscanner/ready_outcome_results.json
 artifacts/trendscanner/ready_outcome_events.csv
 artifacts/trendscanner/ready_factor_report.json
 artifacts/trendscanner/ready_factor_report.csv
+artifacts/trendscanner/ready_factor_interactions.json
+artifacts/trendscanner/ready_factor_interactions.csv

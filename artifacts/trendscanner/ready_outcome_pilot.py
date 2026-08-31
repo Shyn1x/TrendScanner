@@ -5,40 +5,22 @@ import csv
 import json
 import math
 import statistics
+import time
 from pathlib import Path
 from typing import Any, Callable
 
 from historical_replay import replay_timeframe
 from ready_outcome_analyzer import analyze_ready_outcomes
-from scanner import get_data
+from research_data import get_research_data
 
 
+# Benchmark subset: 5 coins on the full available 1000-candle research history.
 SYMBOLS = [
     "BTC/USDT",
     "ETH/USDT",
-    "BNB/USDT",
     "SOL/USDT",
-    "XRP/USDT",
-    "DOGE/USDT",
-    "ADA/USDT",
-    "LINK/USDT",
-    "LTC/USDT",
-    "BCH/USDT",
     "AVAX/USDT",
-    "DOT/USDT",
-    "ATOM/USDT",
-    "NEAR/USDT",
-    "FIL/USDT",
-    "ARB/USDT",
-    "OP/USDT",
-    "INJ/USDT",
-    "SUI/USDT",
-    "TIA/USDT",
-    "APT/USDT",
     "PENDLE/USDT",
-    "ETC/USDT",
-    "AAVE/USDT",
-    "UNI/USDT",
 ]
 
 TIMEFRAMES = ["4h"]
@@ -46,10 +28,17 @@ TIMEFRAMES = ["4h"]
 HORIZONS = (3, 5, 10)
 
 WARMUP_BARS = 120
-MAX_REPLAY_BARS = 300
+MAX_REPLAY_BARS = 880
+
+# Deep history is used only by this research pilot, not by the live scanner.
+RESEARCH_DATA_LIMIT = 1000
 
 OUTPUT_JSON = "artifacts/trendscanner/ready_outcome_results.json"
 OUTPUT_CSV = "artifacts/trendscanner/ready_outcome_events.csv"
+
+
+def _get_data_fn_default(symbol: str, timeframe: str) -> Any:
+    return get_research_data(symbol, timeframe, RESEARCH_DATA_LIMIT)
 
 
 def _safe_float(value: Any) -> float | None:
@@ -556,16 +545,25 @@ def run_ready_outcome_pilot(
     max_replay_bars: int = MAX_REPLAY_BARS,
     output_json: str = OUTPUT_JSON,
     output_csv: str = OUTPUT_CSV,
-    get_data_fn: Callable[[str, str], Any] = get_data,
+    get_data_fn: Callable[[str, str], Any] = _get_data_fn_default,
     replay_timeframe_fn: Callable[..., dict[str, Any]] = replay_timeframe,
     analyze_ready_outcomes_fn: Callable[..., dict[str, Any]] = analyze_ready_outcomes,
+    progress: bool = True,
 ) -> dict[str, Any]:
     runs: list[dict[str, Any]] = []
+    run_started = time.perf_counter()
 
     for symbol in symbols:
         for timeframe in timeframes:
             try:
                 df = get_data_fn(symbol, timeframe)
+                rows_loaded = len(df) if hasattr(df, "__len__") else None
+                if progress:
+                    print(f"[{symbol} {timeframe}] rows loaded: {rows_loaded}", flush=True)
+
+                if progress:
+                    print(f"[{symbol} {timeframe}] replay started", flush=True)
+                replay_started = time.perf_counter()
                 replay = replay_timeframe_fn(
                     df,
                     symbol=symbol,
@@ -573,18 +571,31 @@ def run_ready_outcome_pilot(
                     warmup_bars=warmup_bars,
                     max_replay_bars=max_replay_bars,
                 )
+                replay_elapsed = time.perf_counter() - replay_started
+                if progress:
+                    print(f"[{symbol} {timeframe}] replay finished in {replay_elapsed:.2f}s", flush=True)
 
                 replay_meta = replay.get("meta", {}) if isinstance(replay, dict) else {}
                 replay_results = replay.get("replay_results", []) if isinstance(replay, dict) else []
 
+                outcome_started = time.perf_counter()
                 analyzed = analyze_ready_outcomes_fn(
                     df,
                     replay_results,
                     horizons=horizons,
                 )
+                outcome_elapsed = time.perf_counter() - outcome_started
 
                 summary = analyzed.get("summary", {}) if isinstance(analyzed, dict) else {}
                 events = analyzed.get("events", []) if isinstance(analyzed, dict) else []
+
+                if progress:
+                    ready_events = _safe_int(summary.get("ready_events")) or 0
+                    print(
+                        f"[{symbol} {timeframe}] outcome finished in {outcome_elapsed:.2f}s "
+                        f"| ready events: {ready_events}",
+                        flush=True,
+                    )
 
                 runs.append(
                     _prepare_run_result(
@@ -598,6 +609,8 @@ def run_ready_outcome_pilot(
                     )
                 )
             except Exception as exc:
+                if progress:
+                    print(f"[{symbol} {timeframe}] FAILED: {type(exc).__name__}: {exc}", flush=True)
                 runs.append(
                     _prepare_run_result(
                         symbol=symbol,
@@ -609,6 +622,16 @@ def run_ready_outcome_pilot(
                         events=[],
                     )
                 )
+
+    total_runtime = time.perf_counter() - run_started
+    total_ready_events = sum(
+        _safe_int((run.get("summary") or {}).get("ready_events")) or 0
+        for run in runs
+        if run.get("status") == "OK"
+    )
+    if progress:
+        print("-" * 72, flush=True)
+        print(f"total runtime: {total_runtime:.2f}s | total READY events: {total_ready_events}", flush=True)
 
     aggregate = build_aggregate(runs, horizons)
     examples = collect_examples(runs, horizon=5, limit=5)
