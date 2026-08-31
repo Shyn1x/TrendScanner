@@ -6,20 +6,26 @@ def find_pivots(df, window=5):
     highs = []
     lows = []
 
+    if len(df) <= 2 * window:
+        return highs, lows
+
+    high_values = df.high.to_numpy()
+    low_values = df.low.to_numpy()
+
     for i in range(window, len(df)-window):
 
-        high = df.high.iloc[i]
-        low = df.low.iloc[i]
+        high = high_values[i]
+        low = low_values[i]
 
         if high == max(
-            df.high.iloc[i-window:i+window]
+            high_values[i-window:i+window]
         ):
             highs.append(
                 (i, high)
             )
 
         if low == min(
-            df.low.iloc[i-window:i+window]
+            low_values[i-window:i+window]
         ):
             lows.append(
                 (i, low)
