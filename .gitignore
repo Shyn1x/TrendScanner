@@ -115,3 +115,12 @@ artifacts/trendscanner/ready_factor_report.json
 artifacts/trendscanner/ready_factor_report.csv
 artifacts/trendscanner/ready_factor_interactions.json
 artifacts/trendscanner/ready_factor_interactions.csv
+
+# READY research generated outputs
+artifacts/trendscanner/ready_stability_report.json
+artifacts/trendscanner/ready_stability_report.csv
+artifacts/trendscanner/ready_outcome_holdout_results.json
+artifacts/trendscanner/ready_outcome_holdout_events.csv
+artifacts/trendscanner/ready_regime_comparison.json
+artifacts/trendscanner/ready_regime_comparison.csv
+artifacts/trendscanner/holdout_run_report.txt

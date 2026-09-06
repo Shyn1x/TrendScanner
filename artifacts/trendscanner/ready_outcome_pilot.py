@@ -14,13 +14,32 @@ from ready_outcome_analyzer import analyze_ready_outcomes
 from research_data import get_research_data
 
 
-# Benchmark subset: 5 coins on the full available 1000-candle research history.
 SYMBOLS = [
     "BTC/USDT",
     "ETH/USDT",
+    "BNB/USDT",
     "SOL/USDT",
+    "XRP/USDT",
+    "DOGE/USDT",
+    "ADA/USDT",
+    "LINK/USDT",
+    "LTC/USDT",
+    "BCH/USDT",
     "AVAX/USDT",
+    "DOT/USDT",
+    "ATOM/USDT",
+    "NEAR/USDT",
+    "FIL/USDT",
+    "ARB/USDT",
+    "OP/USDT",
+    "INJ/USDT",
+    "SUI/USDT",
+    "TIA/USDT",
+    "APT/USDT",
     "PENDLE/USDT",
+    "ETC/USDT",
+    "AAVE/USDT",
+    "UNI/USDT",
 ]
 
 TIMEFRAMES = ["4h"]
