@@ -124,3 +124,5 @@ artifacts/trendscanner/ready_outcome_holdout_events.csv
 artifacts/trendscanner/ready_regime_comparison.json
 artifacts/trendscanner/ready_regime_comparison.csv
 artifacts/trendscanner/holdout_run_report.txt
+artifacts/trendscanner/ready_market_regime_report.json
+artifacts/trendscanner/ready_market_regime_report.csv
