@@ -20,14 +20,17 @@ from trendlines import line_value
 
 # ─── отдельные критерии ──────────────────────────────────────────────────────
 
-def score_touches(df, line, tolerance: float = 0.003) -> int:
+def score_touches(df, line, tolerance: float = 0.003, end_index=None) -> int:
     """
     Считает, сколько свечей «коснулись» линии (high или low в пределах
     tolerance от значения линии в этой точке).
     2 касания = базовый уровень, 6+ = максимум.
     """
     touches = 0
-    for i in range(line["x1"], len(df)):
+    effective_end = len(df) - 1 if end_index is None else max(
+        0, min(int(end_index), len(df) - 1)
+    )
+    for i in range(line["x1"], effective_end + 1):
         val = line_value(line, i)
         if val <= 0:
             continue
@@ -89,7 +92,7 @@ def score_freshness(line, df_len: int) -> int:
 
 # ─── главная функция ──────────────────────────────────────────────────────────
 
-def calc_trend_quality(df, line) -> dict:
+def calc_trend_quality(df, line, end_index=None) -> dict:
     """
     Принимает DataFrame и трендовую линию (dict из create_trendline).
     Возвращает словарь с оценкой каждого критерия и итоговым
@@ -117,10 +120,13 @@ def calc_trend_quality(df, line) -> dict:
             "trend_quality_score":   0,
         }
 
-    touches   = score_touches(df, line)
+    effective_end = len(df) - 1 if end_index is None else max(
+        0, min(int(end_index), len(df) - 1)
+    )
+    touches   = score_touches(df, line, end_index=effective_end)
     length    = score_length(line)
     angle     = score_angle(line)
-    freshness = score_freshness(line, len(df))
+    freshness = score_freshness(line, effective_end + 1)
 
     # Веса критериев (в сумме 100)
     WEIGHTS = {

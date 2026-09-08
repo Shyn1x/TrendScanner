@@ -349,7 +349,9 @@ def calculate_breakout_quality(
     prev_line   = line_value(line, prev_idx)
 
     # ── ATR ───────────────────────────────────────────────────────────────────
-    atr = calculate_atr(df, atr_period)
+    # ATR must be computed as-of the signal candle T, never using T+1.
+    atr_df = df.iloc[:signal_idx + 1]
+    atr = calculate_atr(atr_df, atr_period)
 
     # ── компонент A: пересечение ──────────────────────────────────────────────
     c_cross = score_cross(

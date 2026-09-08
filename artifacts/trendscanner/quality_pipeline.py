@@ -162,7 +162,7 @@ def _analyze_direction(
 
         # ── качество трендовой линии ──────────────────────────────────────────
         try:
-            tq = calc_trend_quality(df, line)
+            tq = calc_trend_quality(df, line, end_index=len(df) - 2)
         except Exception as exc:
             tq = {"trend_quality_score": 0, "reason": str(exc)}
 
