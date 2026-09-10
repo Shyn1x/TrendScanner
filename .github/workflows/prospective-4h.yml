@@ -15,7 +15,7 @@ jobs:
       - name: Checkout frozen research code
         uses: actions/checkout@v4
         with:
-          ref: 9d5c84fd7329b325c0c3d0bd14bb70f2773e9c29
+          ref: 69cb70107baecf0e9b8dc3a0731fa885a338d2ef
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -29,6 +29,16 @@ jobs:
 
       - name: Install dependencies
         run: uv sync --frozen
+
+      - name: Run prospective integrity tests
+        env:
+          PYTHONPATH: artifacts/trendscanner
+        run: uv run python -m unittest artifacts/trendscanner/test_prospective_integrity.py
+
+      - name: Dry-run prospective collector
+        env:
+          PYTHONPATH: artifacts/trendscanner
+        run: uv run python artifacts/trendscanner/prospective_collector.py
 
       - name: Run prospective collector
         env:
