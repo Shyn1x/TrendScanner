@@ -218,6 +218,7 @@ def evaluate_ready_candidate(
 
     return {
         "ready": ready,
+        "ready_timestamp": timeframe_result.get("ready_timestamp"),
         "symbol": symbol,
         "timeframe": timeframe,
         "direction": direction,

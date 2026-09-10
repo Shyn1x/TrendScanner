@@ -1,7 +1,7 @@
 # Market-regime prospective shadow
 
 Status: standalone module, **not connected to the live app**. No historical
-replay, HOLDOUT rerun, threshold adjustment, or production change is included.
+replay, HOLDOUT rerun, threshold adjustment, or production shadow collection is included.
 The HOLDOUT2 results in the handoff are user-supplied research context; this
 implementation does not independently reproduce them or infer profitability.
 
@@ -14,19 +14,12 @@ implementation does not independently reproduce them or infer profitability.
 - Later, `ready_ui.render_ready_section` calls
   `ready_engine.build_ready_report(all_results)`. Its candidates carry `ready`,
   symbol, timeframe, direction, production_decision, confidence and decision_score.
-- **READY candidates have no source candle timestamp.** `multi_tf` does not retain
-  the dataframe timestamp in the timeframe result; `analysis` does not export it.
-  The analytics trigger timestamp reader only checks optional fields and cannot
-  establish the READY observation candle. A breakout's timestamp is not necessarily
-  the READY candle. Streamlit refresh time and the shadow context candle are not
-  valid substitutes either.
-- Therefore the module neither calls a READY selector nor adds a live hook/UI.
-  `observe_ready` accepts an existing READY candidate only when its trustworthy
-  original `ready_timestamp` is supplied; absence fails open without logging.
-- Future integration requires carrying the original analysis candle timestamp
-  alongside its cached result and exposing the already-created READY report to a
-  post-decision observer. Preserve original decision fields and candidate ordering.
-  No such architecture change is made in this patch.
+- Signal candle metadata now follows `df["time"].iloc[-2]` →
+  `analysis.ready_timestamp` → unchanged `multi_tf` timeframe result →
+  `evaluate_ready_candidate.ready_timestamp` → READY report. Invalid/missing
+  timestamps remain unavailable; no clock or latest-candle fallback is used.
+- No live observer hook is installed. Future integration must submit both True
+  and False directional evaluations, not just the filtered READY report.
 
 The existing `context_trigger_shadow.py` experiment is untouched and not reused.
 
@@ -72,8 +65,22 @@ short codes/types, not arbitrary exception text containing URLs or secrets.
 ## Observation and persistence contract
 
 `observe_ready` returns a separate result and never mutates the candidate. It
-requires `ready is True`, identity, original `ready_timestamp` (Unix ms), and the
-existing production_decision, decision_score and confidence. Tests inject the
+accepts explicit boolean READY evaluations with identity and original
+`ready_timestamp` (Unix ms). Only closed, aligned **4h** candles are accepted;
+1h cannot create either P2 or P3 events. True evaluations also supply existing
+production_decision, decision_score and confidence.
+
+Per `(shadow_version, symbol, timeframe, direction)`, initial state is False.
+Only False → True inserts an event, as in the historical outcome analyzer.
+True → True on subsequent candles inserts nothing; a later explicit False resets
+state. Missing evaluations are not interpreted as False. Submit complete ordered
+observations for historical-equivalent transitions; skipped scans cannot reveal
+unobserved transitions. The first observation of each candle wins; repeated or
+older timestamps never roll state backward.
+
+`market.target_4h_timestamp` must equal `ready_timestamp` exactly. Either an older
+or newer context produces UNAVAILABLE/NONE, never P3_MATCH. The unavailable first
+observation is immutable, so retrying cannot retrospectively upgrade its tag. Tests inject the
 context clock, loader, observation time and temporary database; no network needed.
 
 Each event contains:
@@ -93,6 +100,11 @@ not READY candle, and has a fixed schema. Reuse its `DEFAULT_DB_PATH` and SQLite
 storage with a separate `market_regime_shadow_events` table. No changes to the
 existing analytics table/service are needed. Unique key:
 `(shadow_version, symbol, timeframe, direction, ready_timestamp)`.
+
+A separate local `market_regime_shadow_state` table stores the last observed
+candle and boolean state. State advancement and event insertion share one
+`BEGIN IMMEDIATE` transaction, including concurrency and process restarts.
+This state table is mutable; event rows remain immutable.
 
 Transactions handle concurrent writes; INSERT OR IGNORE retains the first
 observation, including UNAVAILABLE, across refreshes/process restarts. Duplicate
@@ -123,5 +135,4 @@ PYTHONPATH=artifacts/trendscanner python3 -m pytest -q \
 Tests cover mapping, exact closed windows, shared function calls, 200 prior ATR,
 concurrent caching/rollover, missing/malformed data, fail-open errors, input
 immutability, immutable event schema, concurrent deduplication and restart reuse.
-UI and actual live collection remain intentionally unimplemented due to the
-missing trustworthy READY timestamp hook described above.
+UI and actual live collection remain intentionally unimplemented.

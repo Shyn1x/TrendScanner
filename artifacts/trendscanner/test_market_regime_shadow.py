@@ -164,7 +164,11 @@ def test_only_existing_ready_with_timestamp(tmp_path):
         assert not result['inserted']
     row=candidate(); del row['ready_timestamp']
     assert not shadow.observe_ready(row,context=context,db_path=tmp_path/'events.db',observed_at_ms=NOW)['inserted']
-    assert not loader.calls and not (tmp_path/'events.db').exists()
+    assert not loader.calls
+    # Explicit False records transition state, never a shadow event.
+    with sqlite3.connect(tmp_path/'events.db') as con:
+        assert con.execute('SELECT COUNT(*) FROM market_regime_shadow_events').fetchone()[0] == 0
+        assert con.execute('SELECT ready FROM market_regime_shadow_state').fetchall() == [(0,)]
 
 
 def test_internal_shadow_and_storage_failure_fail_open(tmp_path):

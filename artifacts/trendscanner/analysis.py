@@ -125,6 +125,20 @@ def _safe_float(val, default: float = 0.0) -> float:
 #  Публичный интерфейс
 # ─────────────────────────────────────────────────────────────────────────────
 
+def _ready_timestamp(df):
+    """Signal candle open time in milliseconds; metadata only, no fallback clock."""
+    from numbers import Real
+    import math
+    try:
+        value = df["time"].iloc[-2]
+        if isinstance(value, Real) and not isinstance(value, bool) and math.isfinite(value):
+            if value >= 0 and int(value) == value:
+                return int(value)
+    except (KeyError, IndexError, TypeError):
+        pass
+    return None
+
+
 def analyze_timeframe(df) -> dict:
     """
     Анализирует DataFrame одного таймфрейма.
@@ -306,6 +320,7 @@ def analyze_timeframe(df) -> dict:
         "confidence":       confidence,
         "confidence_label": label,
         "reason":           reason,
+        "ready_timestamp":  _ready_timestamp(df),
         "quality":          quality_result,
         **dec_fields,
     }

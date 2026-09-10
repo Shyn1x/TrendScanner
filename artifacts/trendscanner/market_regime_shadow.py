@@ -131,12 +131,17 @@ class MarketContextCache:
 _PROCESS_CONTEXT = MarketContextCache()
 
 
-def _persist(event, db_path):
+def _persist(event, db_path, *, identity=None):
     """Use the analytics SQLite file, with a separate immutable event table.
 
     Transactions + UNIQUE serialize concurrent processes as well as threads.
     First observation wins, including UNAVAILABLE; later refreshes never revise it.
     """
+    # False observations reset state only; they are never event rows.
+    is_ready = event is not None
+    key = identity if identity is not None else (
+        event["shadow_version"], event["symbol"], event["timeframe"],
+        event["direction"], event["ready_timestamp"])
     payload = json.dumps(event, sort_keys=True, allow_nan=False, separators=(",", ":"))
     path = Path(db_path)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -151,6 +156,29 @@ def _persist(event, db_path):
             connection.execute(f"""CREATE TRIGGER IF NOT EXISTS market_shadow_no_{operation.lower()}
                 BEFORE {operation} ON market_regime_shadow_events
                 BEGIN SELECT RAISE(ABORT, 'immutable prospective observation'); END""")
+        connection.execute("""CREATE TABLE IF NOT EXISTS market_regime_shadow_state (
+            shadow_version TEXT, symbol TEXT, timeframe TEXT, direction TEXT,
+            last_timestamp INTEGER NOT NULL, ready INTEGER NOT NULL,
+            PRIMARY KEY (shadow_version, symbol, timeframe, direction))""")
+        connection.execute("BEGIN IMMEDIATE")
+        previous = connection.execute(
+            "SELECT last_timestamp, ready FROM market_regime_shadow_state "
+            "WHERE shadow_version=? AND symbol=? AND timeframe=? AND direction=?", key[:4]).fetchone()
+        if previous is None:
+            # Existing immutable events also seed state across checkpoint upgrades.
+            previous = connection.execute(
+                "SELECT ready_timestamp, 1 FROM market_regime_shadow_events "
+                "WHERE shadow_version=? AND symbol=? AND timeframe=? AND direction=? "
+                "ORDER BY ready_timestamp DESC LIMIT 1", key[:4]).fetchone()
+        if previous is not None and key[4] <= previous[0]:
+            stored = connection.execute(
+                "SELECT payload FROM market_regime_shadow_events WHERE shadow_version=? "
+                "AND symbol=? AND timeframe=? AND direction=? AND ready_timestamp=?", key).fetchone()
+            return False, json.loads(stored[0]) if stored and is_ready else None
+        connection.execute("INSERT OR REPLACE INTO market_regime_shadow_state VALUES (?, ?, ?, ?, ?, ?)",
+                           (*key, int(is_ready)))
+        if not is_ready or (previous is not None and previous[1]):
+            return False, None
         cursor = connection.execute("""INSERT OR IGNORE INTO market_regime_shadow_events
             VALUES (?, ?, ?, ?, ?, ?)""", (
             event["shadow_version"], event["symbol"], event["timeframe"],
@@ -166,21 +194,31 @@ def _persist(event, db_path):
 def observe_ready(candidate, *, context=None, db_path=DEFAULT_DB_PATH, observed_at_ms=None):
     """Return a separate shadow result, never mutate/recompute production READY.
 
-    No caller is installed in production until a trustworthy source candle
-    timestamp is available. Do not fill ready_timestamp with a refresh time,
-    breakout timestamp or market-context timestamp.
+    Not wired into production. Call with BOTH True and False evaluations for
+    each symbol/4h/direction, in candle order. Missing candidates are not False.
+    Only the first observation of a closed candle advances persisted state.
+    No refresh/current/context timestamp may replace ready_timestamp.
     """
     try:
-        if candidate.get("ready") is not True:
-            return {"shadow_status": "NOT_READY", "shadow_tag": "NONE", "candidate_tier": "NONE", "inserted": False}
         timestamp = _milliseconds(candidate["ready_timestamp"])
         symbol, timeframe, direction = candidate["symbol"], candidate["timeframe"], candidate["direction"]
         if not isinstance(symbol, str) or not symbol or timeframe not in ("1h", "4h") or direction not in ("LONG", "SHORT"):
             raise ValueError("INVALID_READY_IDENTITY")
+        if timeframe != "4h":
+            return {**_unavailable("UNSUPPORTED_SHADOW_TIMEFRAME"), "inserted": False}
+        if timestamp % TIMEFRAME_MS:
+            raise ValueError("UNALIGNED_READY_TIMESTAMP")
+        if candidate.get("ready") is not True and candidate.get("ready") is not False:
+            raise ValueError("INVALID_READY_STATE")
         now = _milliseconds(exchange.milliseconds() if observed_at_ms is None else observed_at_ms)
-        if timestamp > now:
+        if timestamp + TIMEFRAME_MS > now:
             raise ValueError("FUTURE_READY_TIMESTAMP")
+        if candidate["ready"] is False:
+            _persist(None, db_path, identity=(SHADOW_VERSION, symbol, timeframe, direction, timestamp))
+            return {"shadow_status": "NOT_READY", "shadow_tag": "NONE", "candidate_tier": "NONE", "inserted": False}
         snapshot = (context if context is not None else _PROCESS_CONTEXT).snapshot()
+        if snapshot["market"].get("target_4h_timestamp") != timestamp:
+            snapshot = _unavailable("CONTEXT_TIMESTAMP_MISMATCH", timestamp)
         tag, tier = shadow_tag(direction, snapshot["market"]["market_regime"], snapshot["market"]["volatility"]) if snapshot["shadow_status"] == "OK" else ("NONE", "NONE")
         event = {
             "schema_version": 1, "shadow_version": SHADOW_VERSION,
@@ -194,6 +232,8 @@ def observe_ready(candidate, *, context=None, db_path=DEFAULT_DB_PATH, observed_
                        "shadow_tag": tag, "candidate_tier": tier},
         }
         inserted, event = _persist(event, db_path)
+        if event is None:
+            return {"shadow_status": "NO_TRANSITION", "shadow_tag": "NONE", "candidate_tier": "NONE", "inserted": False}
         return {**event["shadow"], "inserted": inserted, "event": event}
     except Exception as exc:
         return {**_unavailable(type(exc).__name__), "inserted": False}
