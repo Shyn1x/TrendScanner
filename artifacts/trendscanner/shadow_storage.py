@@ -113,13 +113,82 @@ def _connect_postgres(database_url):
     return psycopg.connect(database_url, connect_timeout=5)
 
 
+# Fixed key for a database-wide bootstrap lock, distinct from the per-identity
+# lock below (identity keys are hashed, so a fixed literal never collides).
+_BOOTSTRAP_LOCK_KEY = "market_regime_shadow::schema_bootstrap"
+
+_SCHEMA_READY_SQL = (
+    f"SELECT to_regclass('{EVENTS_TABLE}') IS NOT NULL "
+    f"AND to_regclass('{STATE_TABLE}') IS NOT NULL "
+    "AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'market_shadow_immutable' "
+    f"AND tgrelid = '{EVENTS_TABLE}'::regclass)"
+)
+
+
+def _bootstrap_schema(cur):
+    """Create tables/function/trigger, serialized under a dedicated advisory lock.
+
+    A lock-free existence check lets the steady state (schema already
+    bootstrapped) skip the lock and DDL entirely, so per-identity writes stay
+    independent once bootstrap has happened once. Only when the schema looks
+    incomplete do we take the bootstrap lock and re-check (another
+    transaction may have finished bootstrapping, and committed, while we were
+    waiting) before running CREATE TABLE/FUNCTION/TRIGGER. This means two
+    concurrent first callers - for the same or different identities - never
+    race on DDL: the second one simply waits, then sees everything already
+    created and does nothing.
+    """
+    cur.execute(_SCHEMA_READY_SQL)
+    if cur.fetchone()[0]:
+        return
+    cur.execute("SELECT pg_advisory_xact_lock(hashtext(%s))", (_BOOTSTRAP_LOCK_KEY,))
+    cur.execute(_SCHEMA_READY_SQL)
+    if cur.fetchone()[0]:
+        return
+    cur.execute(f"""CREATE TABLE IF NOT EXISTS {EVENTS_TABLE} (
+        shadow_version TEXT NOT NULL, symbol TEXT NOT NULL,
+        timeframe TEXT NOT NULL, direction TEXT NOT NULL,
+        ready_timestamp BIGINT NOT NULL, payload TEXT NOT NULL,
+        PRIMARY KEY (shadow_version, symbol, timeframe, direction, ready_timestamp)
+    )""")
+    cur.execute(f"""CREATE TABLE IF NOT EXISTS {STATE_TABLE} (
+        shadow_version TEXT NOT NULL, symbol TEXT NOT NULL,
+        timeframe TEXT NOT NULL, direction TEXT NOT NULL,
+        last_timestamp BIGINT NOT NULL, ready INTEGER NOT NULL,
+        PRIMARY KEY (shadow_version, symbol, timeframe, direction)
+    )""")
+    # tgrelid pins the check to this exact table (any schema on search_path),
+    # so a same-named trigger on an unrelated table can never be mistaken for
+    # ours and skip creating the real guard.
+    cur.execute(f"""DO $$
+    BEGIN
+        IF NOT EXISTS (
+            SELECT 1 FROM pg_trigger
+            WHERE tgname = 'market_shadow_immutable'
+              AND tgrelid = '{EVENTS_TABLE}'::regclass
+        ) THEN
+            CREATE OR REPLACE FUNCTION market_shadow_block_mutation() RETURNS trigger AS $f$
+            BEGIN
+                RAISE EXCEPTION 'immutable prospective observation';
+            END;
+            $f$ LANGUAGE plpgsql;
+            CREATE TRIGGER market_shadow_immutable
+                BEFORE UPDATE OR DELETE ON {EVENTS_TABLE}
+                FOR EACH ROW EXECUTE FUNCTION market_shadow_block_mutation();
+        END IF;
+    END;
+    $$;""")
+
+
 def _persist_postgres(event, database_url, *, identity=None):
     """Mirrors `_persist_sqlite` exactly; only the SQL dialect differs.
 
-    A transaction-scoped advisory lock keyed by the identity serializes
-    concurrent writers the same way SQLite's BEGIN IMMEDIATE does. The
-    connection context manager commits on success and rolls back on any
-    exception, so a mid-transaction failure never leaves partial state.
+    Schema bootstrap is serialized under its own advisory lock (see
+    `_bootstrap_schema`); a second, per-identity advisory lock then
+    serializes concurrent writers for the same event/state row the same way
+    SQLite's BEGIN IMMEDIATE does. The connection context manager commits on
+    success and rolls back on any exception, so a mid-transaction failure
+    never leaves partial state.
     """
     is_ready = event is not None
     key = _key_for(event, identity)
@@ -127,32 +196,7 @@ def _persist_postgres(event, database_url, *, identity=None):
 
     with _connect_postgres(database_url) as connection:
         with connection.cursor() as cur:
-            cur.execute(f"""CREATE TABLE IF NOT EXISTS {EVENTS_TABLE} (
-                shadow_version TEXT NOT NULL, symbol TEXT NOT NULL,
-                timeframe TEXT NOT NULL, direction TEXT NOT NULL,
-                ready_timestamp BIGINT NOT NULL, payload TEXT NOT NULL,
-                PRIMARY KEY (shadow_version, symbol, timeframe, direction, ready_timestamp)
-            )""")
-            cur.execute(f"""CREATE TABLE IF NOT EXISTS {STATE_TABLE} (
-                shadow_version TEXT NOT NULL, symbol TEXT NOT NULL,
-                timeframe TEXT NOT NULL, direction TEXT NOT NULL,
-                last_timestamp BIGINT NOT NULL, ready INTEGER NOT NULL,
-                PRIMARY KEY (shadow_version, symbol, timeframe, direction)
-            )""")
-            cur.execute(f"""DO $$
-            BEGIN
-                IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'market_shadow_immutable') THEN
-                    CREATE FUNCTION market_shadow_block_mutation() RETURNS trigger AS $f$
-                    BEGIN
-                        RAISE EXCEPTION 'immutable prospective observation';
-                    END;
-                    $f$ LANGUAGE plpgsql;
-                    CREATE TRIGGER market_shadow_immutable
-                        BEFORE UPDATE OR DELETE ON {EVENTS_TABLE}
-                        FOR EACH ROW EXECUTE FUNCTION market_shadow_block_mutation();
-                END IF;
-            END;
-            $$;""")
+            _bootstrap_schema(cur)
             cur.execute("SELECT pg_advisory_xact_lock(hashtext(%s))",
                         (":".join(str(part) for part in key[:4]),))
             cur.execute(f"""SELECT last_timestamp, ready FROM {STATE_TABLE}
