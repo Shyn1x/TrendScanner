@@ -121,7 +121,7 @@ _SCHEMA_READY_SQL = (
     f"SELECT to_regclass('{EVENTS_TABLE}') IS NOT NULL "
     f"AND to_regclass('{STATE_TABLE}') IS NOT NULL "
     "AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'market_shadow_immutable' "
-    f"AND tgrelid = '{EVENTS_TABLE}'::regclass)"
+    f"AND tgrelid = to_regclass('{EVENTS_TABLE}'))"
 )
 
 

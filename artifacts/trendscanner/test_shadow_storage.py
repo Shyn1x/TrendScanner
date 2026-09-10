@@ -336,7 +336,8 @@ def test_trigger_check_scoped_to_events_table_by_relid():
     a same-named trigger on an unrelated table can never be mistaken for
     ours (real PostgreSQL is required to prove pg_trigger behavior at
     runtime; this pins the SQL text that would be sent)."""
-    assert "tgrelid = 'market_regime_shadow_events'::regclass" in shadow_storage._SCHEMA_READY_SQL
+    assert "tgrelid = to_regclass('market_regime_shadow_events')" in shadow_storage._SCHEMA_READY_SQL
+    assert "::regclass" not in shadow_storage._SCHEMA_READY_SQL
     source = inspect.getsource(shadow_storage._bootstrap_schema)
     assert source.count("tgrelid = '{EVENTS_TABLE}'::regclass") == 1
     assert "tgname = 'market_shadow_immutable'" in source
