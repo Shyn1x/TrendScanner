@@ -3,13 +3,13 @@ import streamlit as st
 from ready_engine import build_ready_report
 
 
-def render_ready_section(all_results: dict) -> None:
+def render_ready_section(all_results: dict, *, evaluations=None) -> None:
     """
     Draw READY candidates.
     Read-only layer above Legacy Signal Grid.
     """
 
-    ready_report = build_ready_report(all_results)
+    ready_report = build_ready_report(all_results, evaluations=evaluations)
     candidates = ready_report.get("candidates", [])
 
     st.markdown("---")

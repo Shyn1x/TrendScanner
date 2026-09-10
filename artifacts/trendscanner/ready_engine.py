@@ -243,6 +243,7 @@ def build_ready_candidates(
     all_results: dict,
     *,
     timeframes: tuple[str, ...] = READY_TIMEFRAMES,
+    evaluations: list | None = None,
 ) -> list[dict]:
     """
     Build a ranked, deterministic READY list from all_results.
@@ -274,6 +275,8 @@ def build_ready_candidates(
                     direction,
                     timeframe_result,
                 )
+                if evaluations is not None:
+                    evaluations.append((candidate, timeframe_result))
                 if candidate["ready"]:
                     candidates.append(candidate)
 
@@ -292,8 +295,8 @@ def build_ready_candidates(
     return candidates
 
 
-def build_ready_report(all_results: dict) -> dict:
-    candidates = build_ready_candidates(all_results)
+def build_ready_report(all_results: dict, *, evaluations=None) -> dict:
+    candidates = build_ready_candidates(all_results, evaluations=evaluations)
 
     return {
         "ready_count": len(candidates),

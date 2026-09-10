@@ -64,12 +64,13 @@ STRONG_OPPOSITION_THRESHOLD = 25.0
 
 # ─── вспомогательные ─────────────────────────────────────────────────────────
 
-def _wait_result(direction: str, reason: str) -> dict:
+def _wait_result(direction: str, reason: str, *, analysis_available=False) -> dict:
     """
     Возвращает пустой WAIT-результат с объяснением.
     Используется при любой невозможности рассчитать сигнал.
     """
     return {
+        "analysis_available": analysis_available,
         "direction":        direction,
         "signal":           "WAIT",
         "confirmed":        False,
@@ -136,6 +137,7 @@ def _analyze_direction(
     Публичный контракт: analyze_quality(df, direction).
     """
     direction = direction.upper()
+    analysis_available = market_structure_result is not None
 
     try:
         # ── построение линии ──────────────────────────────────────────────────
@@ -158,18 +160,20 @@ def _analyze_direction(
                 f"Недостаточно пивотов для {line_label} "
                 f"(найдено: {n_pivots}, нужно минимум 2)"
             )
-            return _wait_result(direction, reason)
+            return _wait_result(direction, reason, analysis_available=True)
 
         # ── качество трендовой линии ──────────────────────────────────────────
         try:
             tq = calc_trend_quality(df, line, end_index=len(df) - 2)
         except Exception as exc:
+            analysis_available = False
             tq = {"trend_quality_score": 0, "reason": str(exc)}
 
         # ── качество объёма ───────────────────────────────────────────────────
         try:
             vq = score_volume(df)
         except Exception as exc:
+            analysis_available = False
             vq = {"volume_score": 0, "reason": str(exc)}
 
         # ── качество пробоя ───────────────────────────────────────────────────
@@ -178,6 +182,7 @@ def _analyze_direction(
         except ValueError:
             raise                                  # пробрасываем direction error
         except Exception as exc:
+            analysis_available = False
             bq = {
                 "breakout_score": 0.0,
                 "confirmed":      False,
@@ -194,6 +199,7 @@ def _analyze_direction(
         try:
             sq = score_structure_for_direction(market_structure_result, direction)
         except Exception as exc:
+            analysis_available = False
             sq = {
                 "structure_score":     0.0,
                 "raw_structure_score": 0.0,
@@ -215,6 +221,7 @@ def _analyze_direction(
                 structure_quality=sq,
             )
         except Exception as exc:
+            analysis_available = False
             conf = {
                 "confidence":           0.0,
                 "label":                "LOW",
@@ -272,6 +279,7 @@ def _analyze_direction(
                 )
 
         return {
+            "analysis_available": analysis_available,
             "direction":         direction,
             "signal":            signal,
             "confirmed":         confirmed,

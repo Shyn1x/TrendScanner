@@ -413,7 +413,15 @@ else:
 st.markdown("---")
 # ── READY candidates — read-only layer ─────────────────────────────
 
-render_ready_section(all_results)
+_shadow_evaluations = []
+render_ready_section(all_results, evaluations=_shadow_evaluations)
+# READY has already been evaluated above. Shadow has no production feedback.
+try:
+    from live_shadow import observe_streamlit_results
+    st.session_state["shadow_collection"] = observe_streamlit_results(
+        _shadow_evaluations, secrets_getter=lambda: st.secrets["DATABASE_URL"])
+except Exception:
+    st.session_state["shadow_collection"] = {"status": "ERROR"}
 # ── Legacy Signal Grid — collapsed by default ──────────────────────────────────
 with st.expander("📊 Legacy Signal Grid", expanded=False):
     grid_rows = []
