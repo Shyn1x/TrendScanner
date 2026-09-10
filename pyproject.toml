@@ -10,3 +10,8 @@ dependencies = [
     "plotly>=6.9.0",
     "streamlit>=1.59.2",
 ]
+
+[project.optional-dependencies]
+# Only needed when DATABASE_URL is set; shadow_storage imports psycopg lazily
+# and fails safe (UNAVAILABLE) if it's missing.
+postgres = ["psycopg[binary]>=3.2"]

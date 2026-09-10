@@ -7,13 +7,11 @@ from __future__ import annotations
 
 from copy import deepcopy
 from datetime import datetime, timezone
-import json
 import math
-from pathlib import Path
-import sqlite3
 from threading import Lock
 
 import ready_market_regime_analysis as validated
+import shadow_storage
 from ready_outcome_pilot import SYMBOLS
 from research_data import get_research_data_before
 from scanner import exchange
@@ -131,73 +129,26 @@ class MarketContextCache:
 _PROCESS_CONTEXT = MarketContextCache()
 
 
-def _persist(event, db_path, *, identity=None):
-    """Use the analytics SQLite file, with a separate immutable event table.
-
-    Transactions + UNIQUE serialize concurrent processes as well as threads.
-    First observation wins, including UNAVAILABLE; later refreshes never revise it.
+def _persist(event, db_path, *, identity=None, database_url=None):
+    """Delegates to shadow_storage: SQLite by default (tests, local dev), or
+    PostgreSQL when a DATABASE_URL is configured (env var or explicit
+    override). Same first-observation-wins/immutable-event contract either
+    way; no silent fallback if PostgreSQL is configured but unreachable.
     """
-    # False observations reset state only; they are never event rows.
-    is_ready = event is not None
-    key = identity if identity is not None else (
-        event["shadow_version"], event["symbol"], event["timeframe"],
-        event["direction"], event["ready_timestamp"])
-    payload = json.dumps(event, sort_keys=True, allow_nan=False, separators=(",", ":"))
-    path = Path(db_path)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with sqlite3.connect(path, timeout=1) as connection:
-        connection.execute("""CREATE TABLE IF NOT EXISTS market_regime_shadow_events (
-            shadow_version TEXT NOT NULL, symbol TEXT NOT NULL,
-            timeframe TEXT NOT NULL, direction TEXT NOT NULL,
-            ready_timestamp INTEGER NOT NULL, payload TEXT NOT NULL,
-            PRIMARY KEY (shadow_version, symbol, timeframe, direction, ready_timestamp)
-        )""")
-        for operation in ("UPDATE", "DELETE"):
-            connection.execute(f"""CREATE TRIGGER IF NOT EXISTS market_shadow_no_{operation.lower()}
-                BEFORE {operation} ON market_regime_shadow_events
-                BEGIN SELECT RAISE(ABORT, 'immutable prospective observation'); END""")
-        connection.execute("""CREATE TABLE IF NOT EXISTS market_regime_shadow_state (
-            shadow_version TEXT, symbol TEXT, timeframe TEXT, direction TEXT,
-            last_timestamp INTEGER NOT NULL, ready INTEGER NOT NULL,
-            PRIMARY KEY (shadow_version, symbol, timeframe, direction))""")
-        connection.execute("BEGIN IMMEDIATE")
-        previous = connection.execute(
-            "SELECT last_timestamp, ready FROM market_regime_shadow_state "
-            "WHERE shadow_version=? AND symbol=? AND timeframe=? AND direction=?", key[:4]).fetchone()
-        if previous is None:
-            # Existing immutable events also seed state across checkpoint upgrades.
-            previous = connection.execute(
-                "SELECT ready_timestamp, 1 FROM market_regime_shadow_events "
-                "WHERE shadow_version=? AND symbol=? AND timeframe=? AND direction=? "
-                "ORDER BY ready_timestamp DESC LIMIT 1", key[:4]).fetchone()
-        if previous is not None and key[4] <= previous[0]:
-            stored = connection.execute(
-                "SELECT payload FROM market_regime_shadow_events WHERE shadow_version=? "
-                "AND symbol=? AND timeframe=? AND direction=? AND ready_timestamp=?", key).fetchone()
-            return False, json.loads(stored[0]) if stored and is_ready else None
-        connection.execute("INSERT OR REPLACE INTO market_regime_shadow_state VALUES (?, ?, ?, ?, ?, ?)",
-                           (*key, int(is_ready)))
-        if not is_ready or (previous is not None and previous[1]):
-            return False, None
-        cursor = connection.execute("""INSERT OR IGNORE INTO market_regime_shadow_events
-            VALUES (?, ?, ?, ?, ?, ?)""", (
-            event["shadow_version"], event["symbol"], event["timeframe"],
-            event["direction"], event["ready_timestamp"], payload))
-        inserted = cursor.rowcount == 1
-        stored = connection.execute("""SELECT payload FROM market_regime_shadow_events
-            WHERE shadow_version=? AND symbol=? AND timeframe=? AND direction=? AND ready_timestamp=?""",
-            (event["shadow_version"], event["symbol"], event["timeframe"],
-             event["direction"], event["ready_timestamp"])).fetchone()
-        return inserted, json.loads(stored[0])
+    return shadow_storage.persist(event, db_path, identity=identity, database_url=database_url)
 
 
-def observe_ready(candidate, *, context=None, db_path=DEFAULT_DB_PATH, observed_at_ms=None):
+def observe_ready(candidate, *, context=None, db_path=DEFAULT_DB_PATH, observed_at_ms=None, database_url=None):
     """Return a separate shadow result, never mutate/recompute production READY.
 
     Not wired into production. Call with BOTH True and False evaluations for
     each symbol/4h/direction, in candle order. Missing candidates are not False.
     Only the first observation of a closed candle advances persisted state.
     No refresh/current/context timestamp may replace ready_timestamp.
+
+    `database_url` overrides the DATABASE_URL environment variable (used by
+    tests); when set, PostgreSQL is used and an unreachable database fails
+    safe (UNAVAILABLE) instead of silently falling back to SQLite.
     """
     try:
         timestamp = _milliseconds(candidate["ready_timestamp"])
@@ -214,7 +165,7 @@ def observe_ready(candidate, *, context=None, db_path=DEFAULT_DB_PATH, observed_
         if timestamp + TIMEFRAME_MS > now:
             raise ValueError("FUTURE_READY_TIMESTAMP")
         if candidate["ready"] is False:
-            _persist(None, db_path, identity=(SHADOW_VERSION, symbol, timeframe, direction, timestamp))
+            _persist(None, db_path, identity=(SHADOW_VERSION, symbol, timeframe, direction, timestamp), database_url=database_url)
             return {"shadow_status": "NOT_READY", "shadow_tag": "NONE", "candidate_tier": "NONE", "inserted": False}
         snapshot = (context if context is not None else _PROCESS_CONTEXT).snapshot()
         if snapshot["market"].get("target_4h_timestamp") != timestamp:
@@ -231,7 +182,7 @@ def observe_ready(candidate, *, context=None, db_path=DEFAULT_DB_PATH, observed_
             "shadow": {"shadow_status": snapshot["shadow_status"], "shadow_error": snapshot["shadow_error"],
                        "shadow_tag": tag, "candidate_tier": tier},
         }
-        inserted, event = _persist(event, db_path)
+        inserted, event = _persist(event, db_path, database_url=database_url)
         if event is None:
             return {"shadow_status": "NO_TRANSITION", "shadow_tag": "NONE", "candidate_tier": "NONE", "inserted": False}
         return {**event["shadow"], "inserted": inserted, "event": event}

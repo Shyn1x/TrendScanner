@@ -113,6 +113,23 @@ normal SQL. Storage errors return UNAVAILABLE/NONE and do not propagate. The
 one-second SQLite busy timeout bounds lock waiting. No database is created just
 by importing the module, and no real observations are collected in this patch.
 
+### Durable storage backend (`shadow_storage.py`)
+
+`market_regime_shadow._persist` delegates to `shadow_storage.persist`, which
+picks the backend per call: SQLite (as above) by default, or PostgreSQL when
+`DATABASE_URL` is set (env var, or an explicit `database_url=` override used
+by tests). The event/state contract is identical either way — same table
+names and columns, same first-observation-wins/immutable-event semantics, same
+False→True/True→True/reset rules. PostgreSQL uses a transaction-scoped
+advisory lock keyed by `(shadow_version, symbol, timeframe, direction)` in
+place of SQLite's `BEGIN IMMEDIATE`, and `ON CONFLICT` upserts/inserts in
+place of `INSERT OR REPLACE`/`INSERT OR IGNORE`. If `DATABASE_URL` is set but
+PostgreSQL is unreachable (or the `psycopg` driver isn't installed), the
+connection attempt raises and `observe_ready` returns UNAVAILABLE — there is
+no silent fallback to SQLite. Credentials only ever come from `DATABASE_URL`
+(environment or Streamlit Secrets bridged into the environment); none are
+read from or written to the repository. Still not wired into `app.py`.
+
 SQLite files are already ignored by the repository's `*.db`, `*.db-wal` and
 `*.db-shm` patterns. No JSONL fallback or external database is introduced.
 **Local Streamlit Cloud disk is not treated as durable storage**: restart or
