@@ -161,9 +161,10 @@ def main():
     )
     print("Coverage:", coverage)
 
-    if coverage.get("status") == "GAP":
+    total_gaps = int(coverage.get("total_gap_candles", 0) or 0)
+    if total_gaps:
         raise SystemExit(
-            f"FAIL: prospective coverage gap: {coverage.get('gap_candles')} missing 4h candle(s)"
+            f"FAIL: prospective coverage contains {total_gaps} missing 4h candle(s)"
         )
 
     print("NEON WRITE + COVERAGE: PASS")
