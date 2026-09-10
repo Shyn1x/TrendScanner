@@ -24,12 +24,31 @@ def main():
             result = analyze_timeframe(df)
 
             for direction in ("LONG", "SHORT"):
+                available = (
+                    result.get("quality", {})
+                    .get(direction, {})
+                    .get("analysis_available")
+                )
+
+                if available is not True:
+                    errors.append((symbol, direction, "ANALYSIS_UNAVAILABLE"))
+                    continue
+
                 candidate = evaluate_ready_candidate(
                     symbol,
                     "4h",
                     direction,
                     result,
                 )
+
+                if type(candidate.get("ready")) is not bool:
+                    errors.append((symbol, direction, "INVALID_READY"))
+                    continue
+
+                if type(candidate.get("ready_timestamp")) is not int:
+                    errors.append((symbol, direction, "INVALID_TIMESTAMP"))
+                    continue
+
                 evaluations.append(candidate)
 
         except Exception as exc:
