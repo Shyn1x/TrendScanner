@@ -1,0 +1,58 @@
+name: Prospective Lower TF Collector
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-and-collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout frozen lower-TF research code
+        uses: actions/checkout@v4
+        with:
+          ref: 39acf3dce34549795b63b77697f1cbe476f770df
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Run lower-TF unit tests
+        env:
+          PYTHONPATH: artifacts/trendscanner
+        run: uv run pytest -q artifacts/trendscanner/test_lower_tf_storage.py artifacts/trendscanner/test_lower_tf_shadow.py
+
+      - name: Dry-run 1h
+        env:
+          PYTHONPATH: artifacts/trendscanner
+        run: uv run python artifacts/trendscanner/prospective_lower_tf_collector.py --timeframe 1h
+
+      - name: Dry-run 15m
+        env:
+          PYTHONPATH: artifacts/trendscanner
+        run: uv run python artifacts/trendscanner/prospective_lower_tf_collector.py --timeframe 15m
+
+      - name: Write 1h baseline/state
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          PYTHONPATH: artifacts/trendscanner
+        run: uv run python artifacts/trendscanner/prospective_lower_tf_collector.py --timeframe 1h --write
+
+      - name: Write 15m baseline/state
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          PYTHONPATH: artifacts/trendscanner
+        run: uv run python artifacts/trendscanner/prospective_lower_tf_collector.py --timeframe 15m --write
