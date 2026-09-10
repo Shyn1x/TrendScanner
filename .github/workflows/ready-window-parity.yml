@@ -1,0 +1,44 @@
+name: READY 200-bar Parity Audit
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+
+    steps:
+      - name: Checkout frozen parity audit code
+        uses: actions/checkout@v4
+        with:
+          ref: f621f293776ddeb0ef00ea5c440ad1e840387534
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Run CURRENT READY parity audit
+        env:
+          PYTHONPATH: artifacts/trendscanner
+        run: uv run python artifacts/trendscanner/ready_window_parity.py
+
+      - name: Upload parity report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ready-window-parity-current
+          path: artifacts/trendscanner/ready_window_parity_current.json
+          if-no-files-found: warn
