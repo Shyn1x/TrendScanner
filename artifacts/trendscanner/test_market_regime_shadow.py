@@ -12,15 +12,16 @@ import pytest
 import market_regime_shadow as shadow
 
 TF = shadow.TIMEFRAME_MS
-TARGET = 1000 * TF
+TARGET = 2000 * TF
+ROWS = shadow.SHADOW_CONTEXT_ROWS
 NOW = TARGET + TF + 123
 SYMBOLS = tuple(f"COIN{i}/USDT" for i in range(24)) + ("BTC/USDT",)
 
 
 def frame(target=TARGET):
-    return pd.DataFrame({"time": [target - (213-i)*TF for i in range(214)],
-        "open": [100+i*.1 for i in range(214)], "high": [102+i*.1 for i in range(214)],
-        "low": [98+i*.1 for i in range(214)], "close": [100+i*.1 for i in range(214)]})
+    return pd.DataFrame({"time": [target - (ROWS-1-i)*TF for i in range(ROWS)],
+        "open": [100+i*.1 for i in range(ROWS)], "high": [102+i*.1 for i in range(ROWS)],
+        "low": [98+i*.1 for i in range(ROWS)], "close": [100+i*.1 for i in range(ROWS)]})
 
 
 class Loader:
@@ -52,6 +53,7 @@ def test_preregistered_mapping(direction, regime, volatility, expected):
 
 
 def test_exact_closed_boundary_and_shared_functions():
+    assert ROWS == 1213 and shadow.CONTEXT_BARS == 213
     loader = Loader()
     with patch.object(shadow.validated, '_frame_features', wraps=shadow.validated._frame_features) as features, \
          patch.object(shadow.validated, '_attach_market', wraps=shadow.validated._attach_market) as attach, \
@@ -61,7 +63,7 @@ def test_exact_closed_boundary_and_shared_functions():
     assert snap['market']['target_4h_timestamp'] == TARGET
     assert snap['market']['prior_atr_observations'] == 200
     assert snap['market']['available_symbols'] == 25
-    assert all(call[1:] == ('4h', TARGET+TF, 214) for call in loader.calls)
+    assert all(call[1:] == ('4h', TARGET+TF, 1213) for call in loader.calls)
     assert features.call_count == 25 and attach.call_count == classify.call_count == 1
 
 
@@ -85,8 +87,8 @@ def test_cached_once_concurrently_and_rolls_over():
 def test_bad_ohlcv_unavailable(problem):
     def load(*args, **kwargs):
         df=frame()
-        if problem == 'missing_target': df.loc[213,'time'] -= TF
-        if problem == 'open_candle': df.loc[213,'time'] += TF
+        if problem == 'missing_target': df.loc[ROWS-1,'time'] -= TF
+        if problem == 'open_candle': df.loc[ROWS-1,'time'] += TF
         if problem == 'short_history': df = df.iloc[1:]
         if problem == 'gap': df.loc[3,'time'] -= TF
         if problem == 'duplicate': df.loc[3,'time'] = df.loc[2,'time']
@@ -184,3 +186,9 @@ def test_source_frames_not_mutated():
     df=frame(); before=df.copy(deep=True)
     cache(lambda *a,**k:df,symbols=['BTC/USDT']).snapshot()
     pd.testing.assert_frame_equal(df,before)
+
+
+def test_old_214_row_window_rejected():
+    result = cache(lambda *a, **k: frame().iloc[-214:].copy(), symbols=['BTC/USDT']).snapshot()
+    assert result['shadow_status'] == 'UNAVAILABLE'
+    assert result['shadow_tag'] == 'NONE'

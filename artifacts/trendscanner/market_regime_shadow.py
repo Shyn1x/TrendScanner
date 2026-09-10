@@ -21,6 +21,7 @@ from strategy_analytics import DEFAULT_DB_PATH
 
 TIMEFRAME_MS = validated.TIMEFRAME_MS
 CONTEXT_BARS = validated.CONTEXT_BARS
+SHADOW_CONTEXT_ROWS = validated.WINDOW_BARS + CONTEXT_BARS
 SHADOW_VERSION = "market-regime-v1-preregistered"
 MARKET_FIELDS = (
     "market_regime", "volatility", "btc_return_60", "ema_distance",
@@ -53,9 +54,9 @@ def _milliseconds(value):
 
 def _validated_frame(frame, target):
     data = frame.copy(deep=True).sort_values("time").reset_index(drop=True)
-    expected = [target - i * TIMEFRAME_MS for i in reversed(range(CONTEXT_BARS + 1))]
+    expected = [target - i * TIMEFRAME_MS for i in reversed(range(SHADOW_CONTEXT_ROWS))]
     times = data["time"].tolist()
-    if len(times) != CONTEXT_BARS + 1:
+    if len(times) != SHADOW_CONTEXT_ROWS:
         raise ValueError("INSUFFICIENT_HISTORY")
     if any(isinstance(t, bool) or not isinstance(t, (int, float)) or not math.isfinite(t) or int(t) != t for t in times):
         raise ValueError("INVALID_TIMESTAMP")
@@ -87,7 +88,7 @@ class MarketContextCache:
         for symbol in self._symbols:
             try:
                 frame = self._loader(symbol, "4h", before_timestamp=target + TIMEFRAME_MS,
-                                     total_limit=CONTEXT_BARS + 1)
+                                     total_limit=SHADOW_CONTEXT_ROWS)
                 frame = _validated_frame(frame, target)
                 feature = validated._frame_features(frame).get(target)
                 if not feature or feature["prior_atr_observations"] != 200:

@@ -34,8 +34,8 @@ The existing `context_trigger_shadow.py` experiment is untouched and not reused.
 
 `exchange.milliseconds()` determines `boundary = floor(now / TIMEFRAME_MS) *
 TIMEFRAME_MS`, and `target = boundary - TIMEFRAME_MS`. The research loader requests
-214 candles with `get_research_data_before(symbol, "4h",
-before_timestamp=boundary, total_limit=CONTEXT_BARS + 1)` for the same 25-symbol
+1213 candles with `get_research_data_before(symbol, "4h",
+before_timestamp=boundary, total_limit=SHADOW_CONTEXT_ROWS)` for the same 25-symbol
 universe as the READY research pilot. Every accepted window must be contiguous,
 unique, exactly aligned to the target and contain finite, coherent positive OHLC.
 No open or missing candle is substituted.
@@ -44,7 +44,10 @@ Reuse is direct: `ready_market_regime_analysis._frame_features` computes each
 symbol's features; `_attach_market` computes BTC context/breadth and invokes the
 existing `classify_regime`. The returned market volatility and ATR fields refer
 to BTC, as in validated research, not the candidate asset. The target feature
-must have exactly 200 previous ATR observations. No formulas are copied.
+must have exactly 200 previous ATR observations. No formulas are copied. `SHADOW_CONTEXT_ROWS = WINDOW_BARS + CONTEXT_BARS`;
+shared `CONTEXT_BARS` remains 213. A rolling 1213-row window is not necessarily
+the same EMA initialization window as a historical period prefix; parity must
+be measured, not assumed.
 
 | Direction | Market | Volatility | Tag | Tier |
 |---|---|---|---|---|
