@@ -3,8 +3,8 @@ name: Prospective Lower TF Collector
 on:
   workflow_dispatch:
   schedule:
-    - cron: "7 * * * *"
-    - cron: "22,37,52 * * * *"
+    - cron: "7,12 * * * *"
+    - cron: "22,27,37,42,52,57 * * * *"
 
 permissions:
   contents: read
@@ -18,7 +18,7 @@ jobs:
       - name: Checkout frozen lower-TF research code
         uses: actions/checkout@v4
         with:
-          ref: 5cd7bb81ed7d63703f5efe4b206f1febe7845262
+          ref: f2bb37f217d408708ed16ee17c1c154f9223c916
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -48,7 +48,7 @@ jobs:
         run: uv run --with pytest pytest -q artifacts/trendscanner/test_lower_tf_storage.py artifacts/trendscanner/test_lower_tf_shadow.py artifacts/trendscanner/test_prospective_lower_tf_collector.py
 
       - name: Dry-run 1h
-        if: github.event_name == 'workflow_dispatch' || github.event.schedule == '7 * * * *'
+        if: github.event_name == 'workflow_dispatch' || github.event.schedule == '7,12 * * * *'
         env:
           PYTHONPATH: artifacts/trendscanner
         run: uv run python artifacts/trendscanner/prospective_lower_tf_collector.py --timeframe 1h
@@ -59,7 +59,7 @@ jobs:
         run: uv run python artifacts/trendscanner/prospective_lower_tf_collector.py --timeframe 15m
 
       - name: Write 1h baseline/state
-        if: github.event_name == 'workflow_dispatch' || github.event.schedule == '7 * * * *'
+        if: github.event_name == 'workflow_dispatch' || github.event.schedule == '7,12 * * * *'
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           PYTHONPATH: artifacts/trendscanner
