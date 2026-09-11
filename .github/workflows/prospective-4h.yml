@@ -2,6 +2,8 @@ name: Prospective 4h Collector
 
 on:
   workflow_dispatch:
+  schedule:
+    - cron: "15 */4 * * *"
 
 permissions:
   contents: read
