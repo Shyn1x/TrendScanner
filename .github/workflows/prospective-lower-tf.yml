@@ -9,13 +9,13 @@ permissions:
 jobs:
   validate-and-collect:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
 
     steps:
       - name: Checkout frozen lower-TF research code
         uses: actions/checkout@v4
         with:
-          ref: 39acf3dce34549795b63b77697f1cbe476f770df
+          ref: cc5697f89908f8da8097424ab1f5f1cab2491fa8
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -30,10 +30,19 @@ jobs:
       - name: Install dependencies
         run: uv sync --frozen
 
+      - name: Compile lower-TF collector
+        env:
+          PYTHONPATH: artifacts/trendscanner
+        run: |
+          uv run python -m py_compile artifacts/trendscanner/lower_tf_storage.py
+          uv run python -m py_compile artifacts/trendscanner/lower_tf_shadow.py
+          uv run python -m py_compile artifacts/trendscanner/lower_tf_coverage.py
+          uv run python -m py_compile artifacts/trendscanner/prospective_lower_tf_collector.py
+
       - name: Run lower-TF unit tests
         env:
           PYTHONPATH: artifacts/trendscanner
-        run: uv run pytest -q artifacts/trendscanner/test_lower_tf_storage.py artifacts/trendscanner/test_lower_tf_shadow.py
+        run: uv run --with pytest pytest -q artifacts/trendscanner/test_lower_tf_storage.py artifacts/trendscanner/test_lower_tf_shadow.py
 
       - name: Dry-run 1h
         env:
