@@ -13,8 +13,10 @@ from scanner import _fetch_recent_ohlcv, _to_futures_symbol, exchange, get_data
 TIMEFRAMES = ("1h", "15m")
 EXPECTED_BARS = 200
 FALLBACK_FETCH_BARS = 205
+MAX_NO_TICK_FILLS = FALLBACK_FETCH_BARS - EXPECTED_BARS
 EXPECTED_EVALUATIONS = 50
 OHLCV_COLUMNS = ["time", "open", "high", "low", "close", "volume"]
+NO_TICK_FILL_POLICY = "previous_close_ohlc_zero_volume"
 SAFE_STATUSES = {
     "BASELINE_READY",
     "BASELINE_NOT_READY",
@@ -40,10 +42,72 @@ def evaluate_lower_tf_candidate(symbol, timeframe, direction, result):
     return candidate
 
 
+def _is_fixed_grid(df, timeframe):
+    if df is None or len(df) != EXPECTED_BARS or "time" not in df.columns:
+        return False
+    times = [int(value) for value in df["time"]]
+    tf_ms = TIMEFRAME_MS[timeframe]
+    return (
+        len(set(times)) == EXPECTED_BARS
+        and times == sorted(times)
+        and all(right - left == tf_ms for left, right in zip(times, times[1:]))
+    )
+
+
+def _build_fixed_grid(df, timeframe):
+    """Build 200 time slots, filling only KuCoin's documented no-tick gaps."""
+    if df is None or df.empty or "time" not in df.columns:
+        return pd.DataFrame(columns=OHLCV_COLUMNS)
+
+    clean = df[OHLCV_COLUMNS].copy()
+    clean["time"] = clean["time"].map(int)
+    clean = clean.drop_duplicates(subset="time", keep="last").sort_values("time")
+    if len(clean) < EXPECTED_BARS:
+        return clean.tail(EXPECTED_BARS).reset_index(drop=True)
+
+    tf_ms = TIMEFRAME_MS[timeframe]
+    latest = int(clean.iloc[-1]["time"])
+    first = latest - (EXPECTED_BARS - 1) * tf_ms
+    expected_times = list(range(first, latest + tf_ms, tf_ms))
+    rows_by_time = {
+        int(row["time"]): [int(row["time"]), *[row[column] for column in OHLCV_COLUMNS[1:]]]
+        for _, row in clean.iterrows()
+    }
+    missing = [timestamp for timestamp in expected_times if timestamp not in rows_by_time]
+
+    if len(missing) > MAX_NO_TICK_FILLS:
+        return clean.tail(EXPECTED_BARS).reset_index(drop=True)
+
+    prior = clean[clean["time"] < first]
+    previous_close = None if prior.empty else prior.iloc[-1]["close"]
+    repaired_rows = []
+    filled = []
+    for timestamp in expected_times:
+        row = rows_by_time.get(timestamp)
+        if row is None:
+            if previous_close is None:
+                return clean.tail(EXPECTED_BARS).reset_index(drop=True)
+            row = [
+                timestamp,
+                previous_close,
+                previous_close,
+                previous_close,
+                previous_close,
+                0.0,
+            ]
+            filled.append(timestamp)
+        repaired_rows.append(row)
+        previous_close = row[4]
+
+    repaired = pd.DataFrame(repaired_rows, columns=OHLCV_COLUMNS)
+    repaired.attrs["filled_no_tick_timestamps"] = filled
+    return repaired
+
+
 def _get_fixed200_data(symbol, timeframe):
-    """Get exactly the latest 200 bars, retrying with paginated fetch if needed."""
+    """Get the latest 200-slot grid, retrying and repairing bounded no-tick gaps."""
     df = get_data(symbol, timeframe)
-    if df is not None and len(df) == EXPECTED_BARS:
+    if _is_fixed_grid(df, timeframe):
         return df
 
     candles = _fetch_recent_ohlcv(
@@ -51,9 +115,14 @@ def _get_fixed200_data(symbol, timeframe):
         timeframe,
         total_limit=FALLBACK_FETCH_BARS,
     )
-    if len(candles) >= EXPECTED_BARS:
-        candles = candles[-EXPECTED_BARS:]
-    return pd.DataFrame(candles, columns=OHLCV_COLUMNS)
+    fallback = pd.DataFrame(candles, columns=OHLCV_COLUMNS)
+    frames = [frame for frame in (df, fallback) if frame is not None and not frame.empty]
+    combined = (
+        pd.concat(frames, ignore_index=True)
+        if frames
+        else pd.DataFrame(columns=OHLCV_COLUMNS)
+    )
+    return _build_fixed_grid(combined, timeframe)
 
 
 def _validate_frame(df, timeframe, symbol):
@@ -81,11 +150,15 @@ def collect(timeframe):
     started_ms = int(exchange.milliseconds())
     evaluations = []
     errors = []
+    no_tick_fills = []
 
     for symbol in SYMBOLS:
         try:
             df = _get_fixed200_data(symbol, timeframe)
             _validate_frame(df, timeframe, symbol)
+            filled = [int(value) for value in df.attrs.get("filled_no_tick_timestamps", [])]
+            if filled:
+                no_tick_fills.append((symbol, filled))
             result = analyze_timeframe(df)
             if not isinstance(result, dict) or result.get("trend") == "ERROR":
                 raise ValueError("PIPELINE_ERROR")
@@ -106,6 +179,11 @@ def collect(timeframe):
                     direction,
                     result,
                 )
+                candidate["data_quality"] = {
+                    "source": "kucoin_futures",
+                    "no_tick_fill_policy": NO_TICK_FILL_POLICY,
+                    "filled_no_tick_timestamps": filled,
+                }
                 if type(candidate.get("ready")) is not bool:
                     errors.append((symbol, direction, "INVALID_READY"))
                     continue
@@ -125,6 +203,7 @@ def collect(timeframe):
         "errors": errors,
         "timestamps": timestamps,
         "expected_timestamp": expected_timestamp,
+        "no_tick_fills": no_tick_fills,
     }
 
 
@@ -152,6 +231,7 @@ def main():
     print("READY False:", ready_false)
     print("Unique timestamps:", timestamps)
     print("Expected timestamp:", expected_timestamp)
+    print("No-tick fills:", batch["no_tick_fills"])
     print("Errors:", errors)
 
     if len(evaluations) != EXPECTED_EVALUATIONS:

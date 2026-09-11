@@ -2,8 +2,10 @@
 
 This experiment does not touch the validated 4h shadow tables. It records only
 post-baseline False->True READY transitions. Lower-timeframe READY is evaluated
-from a fixed 200-bar window. The latest fully closed 4h candle available when
-the lower-timeframe signal closes is stored as a later market-context anchor.
+from a fixed 200-slot time grid. KuCoin no-tick slots are represented by a flat
+previous-close candle with zero volume under a bounded, recorded fill policy.
+The latest fully closed 4h candle available when the lower-timeframe signal
+closes is stored as a later market-context anchor.
 """
 from __future__ import annotations
 
@@ -13,7 +15,7 @@ from datetime import datetime, timezone
 import lower_tf_storage
 from scanner import exchange
 
-EXPERIMENT_VERSION = "lower-tf-ready-v2-fixed200"
+EXPERIMENT_VERSION = "lower-tf-ready-v3-fixed200-gridfill"
 TIMEFRAME_MS = {"1h": 3_600_000, "15m": 900_000}
 FOUR_H_MS = 14_400_000
 VALID_DIRECTIONS = ("LONG", "SHORT")

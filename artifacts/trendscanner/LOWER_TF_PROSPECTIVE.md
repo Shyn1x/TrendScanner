@@ -10,6 +10,12 @@ This is a separate research experiment for 1h and 15m. It must not alter the val
 - READY logic: the existing READY thresholds and decision inputs are reused unchanged. The 15m research adapter uses the same rules as 1h; only the timeframe whitelist is bypassed inside the research collector.
 - A missing/invalid analysis is never converted to READY=False.
 
+## Fixed time grid
+
+Each evaluation uses exactly 200 consecutive timeframe slots ending at the latest fully closed candle. KuCoin documents that futures kline data may omit intervals with no ticks. A bounded missing slot is represented by the previous close for OHLC and zero volume; the filled timestamp is recorded in the candidate's `data_quality` metadata and printed by the collector.
+
+At most five no-tick slots may be filled in a window. Larger gaps, missing history, duplicate timestamps, stale endpoints, and unaligned endpoints remain hard failures. This policy applies only to the lower-timeframe experiment and does not change production or the validated 4h population.
+
 ## Event contract
 
 The experiment stores durable state for every symbol/timeframe/direction and immutable event rows only for post-baseline False->True READY transitions.
