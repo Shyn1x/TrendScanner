@@ -15,7 +15,7 @@ from datetime import datetime, timezone
 import lower_tf_storage
 from scanner import exchange
 
-EXPERIMENT_VERSION = "lower-tf-ready-v3-fixed200-gridfill"
+EXPERIMENT_VERSION = "lower-tf-ready-v4-fixed200-gridfill-restart"
 TIMEFRAME_MS = {"1h": 3_600_000, "15m": 900_000}
 FOUR_H_MS = 14_400_000
 VALID_DIRECTIONS = ("LONG", "SHORT")
