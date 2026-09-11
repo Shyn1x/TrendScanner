@@ -50,6 +50,24 @@ def _total_gaps(cur, experiment_version: str, timeframe: str) -> int:
     return int(cur.fetchone()[0])
 
 
+def latest_coverage_timestamp(database_url: str, *, timeframe: str,
+                              experiment_version: str = EXPERIMENT_VERSION):
+    """Return the latest completed timestamp for this experiment/timeframe."""
+    if timeframe not in TIMEFRAME_MS:
+        raise CoverageError("INVALID_TIMEFRAME")
+    with _connect_postgres(database_url) as connection:
+        with connection.cursor() as cur:
+            _ensure_table(cur)
+            cur.execute(
+                f"SELECT ready_timestamp FROM {COVERAGE_TABLE} "
+                "WHERE experiment_version=%s AND timeframe=%s "
+                "ORDER BY ready_timestamp DESC LIMIT 1",
+                (experiment_version, timeframe),
+            )
+            row = cur.fetchone()
+            return None if row is None else int(row[0])
+
+
 def _bootstrap_from_state(cur, *, experiment_version: str, timeframe: str,
                           ready_timestamp: int) -> dict:
     expected_ids = {
