@@ -1,9 +1,9 @@
 """Separate 1h/15m prospective READY observer.
 
 This experiment does not touch the validated 4h shadow tables. It records only
-post-baseline False->True READY transitions. P3 market context is preregistered
-as the latest fully closed 4h candle available when the lower-timeframe signal
-candle closes; the 4h anchor timestamp is stored with every transition.
+post-baseline False->True READY transitions. Lower-timeframe READY is evaluated
+from a fixed 200-bar window. The latest fully closed 4h candle available when
+the lower-timeframe signal closes is stored as a later market-context anchor.
 """
 from __future__ import annotations
 
@@ -13,12 +13,15 @@ from datetime import datetime, timezone
 import lower_tf_storage
 from scanner import exchange
 
-EXPERIMENT_VERSION = "lower-tf-p3-v1-preregistered"
+EXPERIMENT_VERSION = "lower-tf-ready-v2-fixed200"
 TIMEFRAME_MS = {"1h": 3_600_000, "15m": 900_000}
 FOUR_H_MS = 14_400_000
 VALID_DIRECTIONS = ("LONG", "SHORT")
 CONTEXT_POLICY = "latest_fully_closed_4h_at_signal_close"
-P3_RULE = "READY False->True AND direction=LONG AND 4h market_regime=MIXED AND 4h volatility=NORMAL"
+RESEARCH_RULE = (
+    "Collect lower-TF READY False->True transitions first; later test whether "
+    "LONG + 4h market_regime=MIXED + 4h volatility=NORMAL remains useful."
+)
 
 
 def _milliseconds(value):
@@ -65,13 +68,14 @@ def observe_lower_tf(candidate, *, database_url=None, db_path=None, observed_at_
         event = None
         if ready:
             event = {
-                "schema_version": 1,
+                "schema_version": 2,
                 "experiment_version": EXPERIMENT_VERSION,
                 "observed_at": datetime.fromtimestamp(now / 1000, timezone.utc).isoformat(),
                 "symbol": symbol,
                 "timeframe": timeframe,
                 "direction": direction,
                 "ready_timestamp": timestamp,
+                "candidate_window_bars": 200,
                 "candidate": deepcopy(candidate),
                 "market_context": {
                     "timeframe": "4h",
@@ -79,9 +83,9 @@ def observe_lower_tf(candidate, *, database_url=None, db_path=None, observed_at_
                     "target_4h_timestamp": anchor,
                     "classification_at_collection": False,
                 },
-                "hypothesis": {
-                    "name": "P3 lower-timeframe extension",
-                    "rule": P3_RULE,
+                "research": {
+                    "name": "Lower-timeframe READY prospective collection",
+                    "rule": RESEARCH_RULE,
                     "market_regime_version": "market-regime-v1-preregistered",
                     "context_rows": 1213,
                 },
