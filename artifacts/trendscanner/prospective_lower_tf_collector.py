@@ -2,12 +2,15 @@ import argparse
 import os
 
 from analysis import analyze_timeframe
-from lower_tf_shadow import TIMEFRAME_MS, observe_lower_tf
+from lower_tf_coverage import record_complete_candle
+from lower_tf_shadow import EXPERIMENT_VERSION, TIMEFRAME_MS, observe_lower_tf
 from ready_engine import evaluate_ready_candidate
 from ready_outcome_pilot import SYMBOLS
 from scanner import exchange, get_data
 
 TIMEFRAMES = ("1h", "15m")
+EXPECTED_BARS = 200
+EXPECTED_EVALUATIONS = 50
 SAFE_STATUSES = {
     "BASELINE_READY",
     "BASELINE_NOT_READY",
@@ -19,12 +22,7 @@ SAFE_STATUSES = {
 
 
 def evaluate_lower_tf_candidate(symbol, timeframe, direction, result):
-    """Use the exact existing READY rules for 15m without changing production.
-
-    ready_engine's criteria are timeframe-independent after its whitelist check.
-    1h is already supported, so 15m goes through that same validated rule set
-    and the real timeframe is restored immediately in the returned candidate.
-    """
+    """Apply the existing READY rules without changing production files."""
     if timeframe not in TIMEFRAMES:
         raise ValueError("UNSUPPORTED_LOWER_TIMEFRAME")
     compatibility_timeframe = "1h" if timeframe == "15m" else timeframe
@@ -36,6 +34,23 @@ def evaluate_lower_tf_candidate(symbol, timeframe, direction, result):
     )
     candidate["timeframe"] = timeframe
     return candidate
+
+
+def _validate_frame(df, timeframe, symbol):
+    if df is None or len(df) != EXPECTED_BARS:
+        raise ValueError(f"{symbol}:EXPECTED_200_BARS")
+    if "time" not in df.columns:
+        raise ValueError(f"{symbol}:MISSING_TIME_COLUMN")
+
+    times = [int(value) for value in df["time"]]
+    if len(set(times)) != EXPECTED_BARS:
+        raise ValueError(f"{symbol}:DUPLICATE_TIMESTAMPS")
+    if times != sorted(times):
+        raise ValueError(f"{symbol}:UNSORTED_TIMESTAMPS")
+
+    tf_ms = TIMEFRAME_MS[timeframe]
+    if any(right - left != tf_ms for left, right in zip(times, times[1:])):
+        raise ValueError(f"{symbol}:NONCONTIGUOUS_TIME_GRID")
 
 
 def collect(timeframe):
@@ -50,7 +65,10 @@ def collect(timeframe):
     for symbol in SYMBOLS:
         try:
             df = get_data(symbol, timeframe)
+            _validate_frame(df, timeframe, symbol)
             result = analyze_timeframe(df)
+            if not isinstance(result, dict) or result.get("trend") == "ERROR":
+                raise ValueError("PIPELINE_ERROR")
 
             for direction in ("LONG", "SHORT"):
                 available = (
@@ -76,7 +94,7 @@ def collect(timeframe):
                     continue
                 evaluations.append(candidate)
         except Exception as exc:
-            errors.append((symbol, type(exc).__name__))
+            errors.append((symbol, type(exc).__name__, str(exc)[:100]))
 
     timestamps = sorted({c["ready_timestamp"] for c in evaluations})
     tf_ms = TIMEFRAME_MS[timeframe]
@@ -105,8 +123,10 @@ def main():
     ready_true = sum(c["ready"] is True for c in evaluations)
     ready_false = sum(c["ready"] is False for c in evaluations)
 
+    print("Experiment:", EXPERIMENT_VERSION)
     print("Timeframe:", args.timeframe)
     print("Symbols expected:", len(SYMBOLS))
+    print("Bars per symbol:", EXPECTED_BARS)
     print("Evaluations:", len(evaluations))
     print("READY True:", ready_true)
     print("READY False:", ready_false)
@@ -114,7 +134,7 @@ def main():
     print("Expected timestamp:", expected_timestamp)
     print("Errors:", errors)
 
-    if len(evaluations) != 50:
+    if len(evaluations) != EXPECTED_EVALUATIONS:
         raise SystemExit("FAIL: expected exactly 50 evaluations")
     if errors:
         raise SystemExit("FAIL: some symbols failed")
@@ -146,7 +166,25 @@ def main():
     if failures:
         print("Write failures:", failures)
         raise SystemExit("FAIL: lower-timeframe storage reported unavailable/unknown results")
-    print("NEON WRITE: PASS")
+    if sum(status_counts.values()) != EXPECTED_EVALUATIONS:
+        raise SystemExit("FAIL: not all observations returned a status")
+
+    coverage = record_complete_candle(
+        database_url,
+        timeframe=args.timeframe,
+        ready_timestamp=timestamps[0],
+        observed_evaluations=EXPECTED_EVALUATIONS,
+        experiment_version=EXPERIMENT_VERSION,
+    )
+    print("Coverage:", coverage)
+
+    total_gaps = int(coverage.get("total_gap_candles", 0) or 0)
+    if total_gaps:
+        raise SystemExit(
+            f"FAIL: lower-timeframe coverage contains {total_gaps} missing candle(s)"
+        )
+
+    print("NEON WRITE + COVERAGE: PASS")
 
 
 if __name__ == "__main__":
