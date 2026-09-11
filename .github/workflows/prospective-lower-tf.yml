@@ -15,7 +15,7 @@ jobs:
       - name: Checkout frozen lower-TF research code
         uses: actions/checkout@v4
         with:
-          ref: cc5697f89908f8da8097424ab1f5f1cab2491fa8
+          ref: f9582edfe6a027902ab4c5c752d8f979ae65d437
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -42,7 +42,7 @@ jobs:
       - name: Run lower-TF unit tests
         env:
           PYTHONPATH: artifacts/trendscanner
-        run: uv run --with pytest pytest -q artifacts/trendscanner/test_lower_tf_storage.py artifacts/trendscanner/test_lower_tf_shadow.py
+        run: uv run --with pytest pytest -q artifacts/trendscanner/test_lower_tf_storage.py artifacts/trendscanner/test_lower_tf_shadow.py artifacts/trendscanner/test_prospective_lower_tf_collector.py
 
       - name: Dry-run 1h
         env:
