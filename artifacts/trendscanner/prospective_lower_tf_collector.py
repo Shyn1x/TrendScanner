@@ -1,16 +1,20 @@
 import argparse
 import os
 
+import pandas as pd
+
 from analysis import analyze_timeframe
 from lower_tf_coverage import record_complete_candle
 from lower_tf_shadow import EXPERIMENT_VERSION, TIMEFRAME_MS, observe_lower_tf
 from ready_engine import evaluate_ready_candidate
 from ready_outcome_pilot import SYMBOLS
-from scanner import exchange, get_data
+from scanner import _fetch_recent_ohlcv, _to_futures_symbol, exchange, get_data
 
 TIMEFRAMES = ("1h", "15m")
 EXPECTED_BARS = 200
+FALLBACK_FETCH_BARS = 205
 EXPECTED_EVALUATIONS = 50
+OHLCV_COLUMNS = ["time", "open", "high", "low", "close", "volume"]
 SAFE_STATUSES = {
     "BASELINE_READY",
     "BASELINE_NOT_READY",
@@ -34,6 +38,22 @@ def evaluate_lower_tf_candidate(symbol, timeframe, direction, result):
     )
     candidate["timeframe"] = timeframe
     return candidate
+
+
+def _get_fixed200_data(symbol, timeframe):
+    """Get exactly the latest 200 bars, retrying with paginated fetch if needed."""
+    df = get_data(symbol, timeframe)
+    if df is not None and len(df) == EXPECTED_BARS:
+        return df
+
+    candles = _fetch_recent_ohlcv(
+        _to_futures_symbol(symbol),
+        timeframe,
+        total_limit=FALLBACK_FETCH_BARS,
+    )
+    if len(candles) >= EXPECTED_BARS:
+        candles = candles[-EXPECTED_BARS:]
+    return pd.DataFrame(candles, columns=OHLCV_COLUMNS)
 
 
 def _validate_frame(df, timeframe, symbol):
@@ -64,7 +84,7 @@ def collect(timeframe):
 
     for symbol in SYMBOLS:
         try:
-            df = get_data(symbol, timeframe)
+            df = _get_fixed200_data(symbol, timeframe)
             _validate_frame(df, timeframe, symbol)
             result = analyze_timeframe(df)
             if not isinstance(result, dict) or result.get("trend") == "ERROR":
