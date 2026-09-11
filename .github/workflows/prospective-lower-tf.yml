@@ -1,0 +1,55 @@
+name: Prospective Lower TF Collector
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-v5-catchup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+
+    steps:
+      - name: Checkout v5 catch-up research branch
+        uses: actions/checkout@v4
+        with:
+          ref: lower-tf-catchup-v5-wip
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Compile lower-TF collector
+        env:
+          PYTHONPATH: artifacts/trendscanner
+        run: |
+          uv run python -m py_compile artifacts/trendscanner/lower_tf_storage.py
+          uv run python -m py_compile artifacts/trendscanner/lower_tf_shadow.py
+          uv run python -m py_compile artifacts/trendscanner/lower_tf_coverage.py
+          uv run python -m py_compile artifacts/trendscanner/prospective_lower_tf_collector.py
+
+      - name: Run lower-TF unit tests
+        env:
+          PYTHONPATH: artifacts/trendscanner
+        run: uv run --with pytest pytest -q artifacts/trendscanner/test_lower_tf_storage.py artifacts/trendscanner/test_lower_tf_shadow.py artifacts/trendscanner/test_prospective_lower_tf_collector.py
+
+      - name: Dry-run 1h
+        env:
+          PYTHONPATH: artifacts/trendscanner
+        run: uv run python artifacts/trendscanner/prospective_lower_tf_collector.py --timeframe 1h
+
+      - name: Dry-run 15m
+        env:
+          PYTHONPATH: artifacts/trendscanner
+        run: uv run python artifacts/trendscanner/prospective_lower_tf_collector.py --timeframe 15m
