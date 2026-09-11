@@ -2,6 +2,9 @@ name: Prospective Lower TF Collector
 
 on:
   workflow_dispatch:
+  schedule:
+    - cron: "7 * * * *"
+    - cron: "22,37,52 * * * *"
 
 permissions:
   contents: read
@@ -45,6 +48,7 @@ jobs:
         run: uv run --with pytest pytest -q artifacts/trendscanner/test_lower_tf_storage.py artifacts/trendscanner/test_lower_tf_shadow.py artifacts/trendscanner/test_prospective_lower_tf_collector.py
 
       - name: Dry-run 1h
+        if: github.event_name == 'workflow_dispatch' || github.event.schedule == '7 * * * *'
         env:
           PYTHONPATH: artifacts/trendscanner
         run: uv run python artifacts/trendscanner/prospective_lower_tf_collector.py --timeframe 1h
@@ -55,6 +59,7 @@ jobs:
         run: uv run python artifacts/trendscanner/prospective_lower_tf_collector.py --timeframe 15m
 
       - name: Write 1h baseline/state
+        if: github.event_name == 'workflow_dispatch' || github.event.schedule == '7 * * * *'
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           PYTHONPATH: artifacts/trendscanner
