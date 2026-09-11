@@ -1,0 +1,48 @@
+name: Fixed-200 Temporal P3 Validation
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout frozen validation code
+        uses: actions/checkout@v4
+        with:
+          ref: 1a550e83c9daa0fbce880b2520a087ca2001f623
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Compile validation script
+        env:
+          PYTHONPATH: artifacts/trendscanner
+        run: uv run python -m py_compile artifacts/trendscanner/fixed200_temporal_validation.py
+
+      - name: Run fixed-200 CURRENT/HOLDOUT1/HOLDOUT2 validation
+        env:
+          PYTHONPATH: artifacts/trendscanner
+        run: uv run python artifacts/trendscanner/fixed200_temporal_validation.py
+
+      - name: Upload validation report
+        uses: actions/upload-artifact@v4
+        with:
+          name: fixed200-temporal-p3-validation
+          path: artifacts/trendscanner/fixed200_temporal_validation.json
+          if-no-files-found: error
