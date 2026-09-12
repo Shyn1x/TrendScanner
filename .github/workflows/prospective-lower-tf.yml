@@ -18,7 +18,7 @@ jobs:
       - name: Checkout frozen lower-TF research code
         uses: actions/checkout@v4
         with:
-          ref: 7562846d0e1e72b620ac170acf400ff9e66631c1
+          ref: 5547e881078dc97ccb317b5e4f8252eab3fb9a21
 
       - name: Set up Python
         uses: actions/setup-python@v5
