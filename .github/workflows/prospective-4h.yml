@@ -8,16 +8,20 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: prospective-4h-collector
+  cancel-in-progress: false
+
 jobs:
   collect:
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
     steps:
-      - name: Checkout frozen research code
+      - name: Checkout frozen sequential 4h code
         uses: actions/checkout@v4
         with:
-          ref: 69cb70107baecf0e9b8dc3a0731fa885a338d2ef
+          ref: d742f6a622bc8faee171784a6b05b4518f947155
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -32,18 +36,23 @@ jobs:
       - name: Install dependencies
         run: uv sync --frozen
 
-      - name: Run prospective integrity tests
+      - name: Run legacy prospective integrity tests
         env:
           PYTHONPATH: artifacts/trendscanner
         run: uv run python -m unittest artifacts/trendscanner/test_prospective_integrity.py
 
-      - name: Dry-run prospective collector
+      - name: Run sequential 4h tests
         env:
           PYTHONPATH: artifacts/trendscanner
-        run: uv run python artifacts/trendscanner/prospective_collector.py
+        run: uv run python -m unittest artifacts/trendscanner/test_prospective_4h_v2.py
 
-      - name: Run prospective collector
+      - name: Dry-run sequential 4h collector
+        env:
+          PYTHONPATH: artifacts/trendscanner
+        run: uv run python artifacts/trendscanner/prospective_4h_v2_collector.py
+
+      - name: Run sequential 4h collector
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           PYTHONPATH: artifacts/trendscanner
-        run: uv run python artifacts/trendscanner/prospective_collector.py --write
+        run: uv run python artifacts/trendscanner/prospective_4h_v2_collector.py --write
