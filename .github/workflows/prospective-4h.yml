@@ -18,10 +18,24 @@ jobs:
     timeout-minutes: 30
 
     steps:
-      - name: Checkout workflow commit
+      - name: Checkout frozen 4h research base
+        uses: actions/checkout@v4
+        with:
+          ref: 69cb70107baecf0e9b8dc3a0731fa885a338d2ef
+          path: frozen
+
+      - name: Checkout sequential v2 patch
         uses: actions/checkout@v4
         with:
           ref: ${{ github.sha }}
+          path: patch
+
+      - name: Assemble frozen 4h v2 workspace
+        run: |
+          cp patch/artifacts/trendscanner/market_regime_shadow_v2.py frozen/artifacts/trendscanner/
+          cp patch/artifacts/trendscanner/prospective_4h_v2_coverage.py frozen/artifacts/trendscanner/
+          cp patch/artifacts/trendscanner/prospective_4h_v2_collector.py frozen/artifacts/trendscanner/
+          cp patch/artifacts/trendscanner/test_prospective_4h_v2.py frozen/artifacts/trendscanner/
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -32,27 +46,33 @@ jobs:
         uses: astral-sh/setup-uv@v6
         with:
           enable-cache: true
+          working-directory: frozen
 
       - name: Install dependencies
+        working-directory: frozen
         run: uv sync --frozen
 
       - name: Verify sequential 4h imports
+        working-directory: frozen
         env:
           PYTHONPATH: artifacts/trendscanner
         run: >-
           uv run python -c "import market_regime_shadow, market_regime_shadow_v2, prospective_coverage, prospective_4h_v2_coverage, prospective_4h_v2_collector, shadow_storage; print('4h imports: PASS')"
 
       - name: Run sequential 4h tests
+        working-directory: frozen
         env:
           PYTHONPATH: artifacts/trendscanner
         run: uv run python artifacts/trendscanner/test_prospective_4h_v2.py
 
       - name: Dry-run sequential 4h collector
+        working-directory: frozen
         env:
           PYTHONPATH: artifacts/trendscanner
         run: uv run python artifacts/trendscanner/prospective_4h_v2_collector.py
 
       - name: Run sequential 4h collector
+        working-directory: frozen
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           PYTHONPATH: artifacts/trendscanner
