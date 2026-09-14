@@ -1,0 +1,190 @@
+"""Prospective P2/P3 observation only. Deliberately not wired into live READY UI.
+
+The caller must supply an existing READY candidate AND its original candle
+open timestamp. Neither READY nor that timestamp is inferred here.
+"""
+from __future__ import annotations
+
+from copy import deepcopy
+from datetime import datetime, timezone
+import math
+from threading import Lock
+
+import ready_market_regime_analysis as validated
+import shadow_storage
+from ready_outcome_pilot import SYMBOLS
+from research_data import get_research_data_before
+from scanner import exchange
+from strategy_analytics import DEFAULT_DB_PATH
+
+TIMEFRAME_MS = validated.TIMEFRAME_MS
+CONTEXT_BARS = validated.CONTEXT_BARS
+SHADOW_CONTEXT_ROWS = validated.WINDOW_BARS + CONTEXT_BARS
+SHADOW_VERSION = "market-regime-v1-preregistered"
+MARKET_FIELDS = (
+    "market_regime", "volatility", "btc_return_60", "ema_distance",
+    "breadth_above_ema50", "median_return_20", "atr_pct",
+    "atr_percentile_past_200", "available_symbols", "prior_atr_observations",
+)
+
+
+def shadow_tag(direction, market_regime, volatility):
+    if direction == "LONG" and volatility == "NORMAL":
+        if market_regime == "MIXED":
+            return "P3_MATCH", "PRIMARY"
+        if market_regime == "BULL":
+            return "P2_MATCH", "EXPERIMENTAL"
+    return "NONE", "NONE"
+
+
+def _unavailable(reason, target=None):
+    return {"shadow_status": "UNAVAILABLE", "shadow_tag": "NONE",
+            "candidate_tier": "NONE", "shadow_error": reason,
+            "market": {**dict.fromkeys(MARKET_FIELDS),
+                       "target_4h_timestamp": target, "available_symbols": 0}}
+
+
+def _milliseconds(value):
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        raise ValueError("INVALID_TIMESTAMP")
+    return value
+
+
+def _validated_frame(frame, target):
+    data = frame.copy(deep=True).sort_values("time").reset_index(drop=True)
+    expected = [target - i * TIMEFRAME_MS for i in reversed(range(SHADOW_CONTEXT_ROWS))]
+    times = data["time"].tolist()
+    if len(times) != SHADOW_CONTEXT_ROWS:
+        raise ValueError("INSUFFICIENT_HISTORY")
+    if any(isinstance(t, bool) or not isinstance(t, (int, float)) or not math.isfinite(t) or int(t) != t for t in times):
+        raise ValueError("INVALID_TIMESTAMP")
+    if times != expected:
+        raise ValueError("NONEXACT_CANDLE_WINDOW")
+    for row in data[["open", "high", "low", "close"]].itertuples(index=False, name=None):
+        if any(isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v) or v <= 0 for v in row):
+            raise ValueError("INVALID_OHLC")
+        op, hi, lo, close = row
+        if lo > min(op, close) or hi < max(op, close) or lo > hi:
+            raise ValueError("INVALID_OHLC")
+    return data
+
+
+class MarketContextCache:
+    """One immutable snapshot per target, including failures, under a lock.
+
+    The module singleton is the process-wide live entry point. Dependency-
+    injected instances exist for offline tests. Old targets remain cached so
+    concurrent/stale refreshes cannot re-fetch a previously observed candle.
+    """
+    def __init__(self, loader=get_research_data_before, clock=exchange.milliseconds, symbols=SYMBOLS):
+        self._loader, self._clock = loader, clock
+        self._symbols = tuple(dict.fromkeys(symbols))
+        self._snapshots, self._lock = {}, Lock()
+
+    def _build(self, target):
+        contexts, errors = {}, {}
+        for symbol in self._symbols:
+            try:
+                frame = self._loader(symbol, "4h", before_timestamp=target + TIMEFRAME_MS,
+                                     total_limit=SHADOW_CONTEXT_ROWS)
+                frame = _validated_frame(frame, target)
+                feature = validated._frame_features(frame).get(target)
+                if not feature or feature["prior_atr_observations"] != 200:
+                    raise ValueError("INSUFFICIENT_ATR_HISTORY")
+                contexts[("PROSPECTIVE", symbol)] = {target: feature}
+            except Exception as exc:
+                # Never serialize arbitrary exception text (URLs/credentials).
+                errors[symbol] = type(exc).__name__
+        if errors or ("PROSPECTIVE", "BTC/USDT") not in contexts:
+            result = _unavailable("INCOMPLETE_CONTEXT" if errors else "MISSING_BTC", target)
+            result["market"]["available_symbols"] = len(contexts)
+            result["context_errors"] = errors
+            return result
+        # Context anchor only, not a synthetic READY observation; never logged.
+        anchors, _ = validated._attach_market(
+            [{"period": "PROSPECTIVE", "ready_timestamp": target}], contexts)
+        if len(anchors) != 1:
+            return _unavailable("MISSING_EXACT_CONTEXT", target)
+        anchor = anchors[0]
+        market = {key: anchor.get(key) for key in MARKET_FIELDS}
+        market.update(target_4h_timestamp=target, btc_return_60=anchor["return_60"])
+        return {"shadow_status": "OK", "shadow_error": None, "market": market}
+
+    def snapshot(self):
+        target = None
+        try:
+            now = _milliseconds(self._clock())
+            target = (now // TIMEFRAME_MS) * TIMEFRAME_MS - TIMEFRAME_MS
+            with self._lock:
+                if target not in self._snapshots:
+                    try:
+                        self._snapshots[target] = self._build(target)
+                    except Exception as exc:
+                        self._snapshots[target] = _unavailable(type(exc).__name__, target)
+                return deepcopy(self._snapshots[target])
+        except Exception as exc:
+            return _unavailable(type(exc).__name__, target)
+
+
+_PROCESS_CONTEXT = MarketContextCache()
+
+
+def _persist(event, db_path, *, identity=None, database_url=None):
+    """Delegates to shadow_storage: SQLite by default (tests, local dev), or
+    PostgreSQL when a DATABASE_URL is configured (env var or explicit
+    override). Same first-observation-wins/immutable-event contract either
+    way; no silent fallback if PostgreSQL is configured but unreachable.
+    """
+    return shadow_storage.persist(event, db_path, identity=identity, database_url=database_url)
+
+
+def observe_ready(candidate, *, context=None, db_path=DEFAULT_DB_PATH, observed_at_ms=None, database_url=None):
+    """Return a separate shadow result, never mutate/recompute production READY.
+
+    Not wired into production. Call with BOTH True and False evaluations for
+    each symbol/4h/direction, in candle order. Missing candidates are not False.
+    Only the first observation of a closed candle advances persisted state.
+    No refresh/current/context timestamp may replace ready_timestamp.
+
+    `database_url` overrides the DATABASE_URL environment variable (used by
+    tests); when set, PostgreSQL is used and an unreachable database fails
+    safe (UNAVAILABLE) instead of silently falling back to SQLite.
+    """
+    try:
+        timestamp = _milliseconds(candidate["ready_timestamp"])
+        symbol, timeframe, direction = candidate["symbol"], candidate["timeframe"], candidate["direction"]
+        if not isinstance(symbol, str) or not symbol or timeframe not in ("1h", "4h") or direction not in ("LONG", "SHORT"):
+            raise ValueError("INVALID_READY_IDENTITY")
+        if timeframe != "4h":
+            return {**_unavailable("UNSUPPORTED_SHADOW_TIMEFRAME"), "inserted": False}
+        if timestamp % TIMEFRAME_MS:
+            raise ValueError("UNALIGNED_READY_TIMESTAMP")
+        if candidate.get("ready") is not True and candidate.get("ready") is not False:
+            raise ValueError("INVALID_READY_STATE")
+        now = _milliseconds(exchange.milliseconds() if observed_at_ms is None else observed_at_ms)
+        if timestamp + TIMEFRAME_MS > now:
+            raise ValueError("FUTURE_READY_TIMESTAMP")
+        if candidate["ready"] is False:
+            _persist(None, db_path, identity=(SHADOW_VERSION, symbol, timeframe, direction, timestamp), database_url=database_url)
+            return {"shadow_status": "NOT_READY", "shadow_tag": "NONE", "candidate_tier": "NONE", "inserted": False}
+        snapshot = (context if context is not None else _PROCESS_CONTEXT).snapshot()
+        if snapshot["market"].get("target_4h_timestamp") != timestamp:
+            snapshot = _unavailable("CONTEXT_TIMESTAMP_MISMATCH", timestamp)
+        tag, tier = shadow_tag(direction, snapshot["market"]["market_regime"], snapshot["market"]["volatility"]) if snapshot["shadow_status"] == "OK" else ("NONE", "NONE")
+        event = {
+            "schema_version": 1, "shadow_version": SHADOW_VERSION,
+            "observed_at": datetime.fromtimestamp(now / 1000, timezone.utc).isoformat(),
+            "symbol": symbol, "timeframe": timeframe, "direction": direction,
+            "ready_timestamp": timestamp,
+            "production": {"decision": candidate["production_decision"],
+                           "decision_score": candidate["decision_score"], "confidence": candidate["confidence"]},
+            "market": deepcopy(snapshot["market"]),
+            "shadow": {"shadow_status": snapshot["shadow_status"], "shadow_error": snapshot["shadow_error"],
+                       "shadow_tag": tag, "candidate_tier": tier},
+        }
+        inserted, event = _persist(event, db_path, database_url=database_url)
+        if event is None:
+            return {"shadow_status": "NO_TRANSITION", "shadow_tag": "NONE", "candidate_tier": "NONE", "inserted": False}
+        return {**event["shadow"], "inserted": inserted, "event": event}
+    except Exception as exc:
+        return {**_unavailable(type(exc).__name__), "inserted": False}
