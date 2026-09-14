@@ -8,16 +8,34 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: prospective-4h-collector
+  cancel-in-progress: false
+
 jobs:
   collect:
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
     steps:
-      - name: Checkout frozen research code
+      - name: Checkout frozen 4h research base
         uses: actions/checkout@v4
         with:
           ref: 69cb70107baecf0e9b8dc3a0731fa885a338d2ef
+          path: frozen
+
+      - name: Checkout sequential v2 patch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          path: patch
+
+      - name: Assemble frozen 4h v2 workspace
+        run: |
+          cp patch/artifacts/trendscanner/market_regime_shadow_v2.py frozen/artifacts/trendscanner/
+          cp patch/artifacts/trendscanner/prospective_4h_v2_coverage.py frozen/artifacts/trendscanner/
+          cp patch/artifacts/trendscanner/prospective_4h_v2_collector.py frozen/artifacts/trendscanner/
+          cp patch/artifacts/trendscanner/test_prospective_4h_v2.py frozen/artifacts/trendscanner/
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -28,22 +46,40 @@ jobs:
         uses: astral-sh/setup-uv@v6
         with:
           enable-cache: true
+          working-directory: frozen
 
       - name: Install dependencies
+        working-directory: frozen
         run: uv sync --frozen
 
-      - name: Run prospective integrity tests
+      - name: Verify sequential 4h imports
+        working-directory: frozen
         env:
           PYTHONPATH: artifacts/trendscanner
-        run: uv run python -m unittest artifacts/trendscanner/test_prospective_integrity.py
+        run: >-
+          uv run python -c "import market_regime_shadow, market_regime_shadow_v2, prospective_coverage, prospective_4h_v2_coverage, prospective_4h_v2_collector, shadow_storage; print('4h imports: PASS')"
 
-      - name: Dry-run prospective collector
+      - name: Run frozen 4h integrity tests
+        working-directory: frozen
         env:
           PYTHONPATH: artifacts/trendscanner
-        run: uv run python artifacts/trendscanner/prospective_collector.py
+        run: uv run python artifacts/trendscanner/test_prospective_integrity.py
 
-      - name: Run prospective collector
+      - name: Run sequential 4h tests
+        working-directory: frozen
+        env:
+          PYTHONPATH: artifacts/trendscanner
+        run: uv run python artifacts/trendscanner/test_prospective_4h_v2.py
+
+      - name: Dry-run sequential 4h collector
+        working-directory: frozen
+        env:
+          PYTHONPATH: artifacts/trendscanner
+        run: uv run python artifacts/trendscanner/prospective_4h_v2_collector.py
+
+      - name: Run sequential 4h collector
+        working-directory: frozen
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           PYTHONPATH: artifacts/trendscanner
-        run: uv run python artifacts/trendscanner/prospective_collector.py --write
+        run: uv run python artifacts/trendscanner/prospective_4h_v2_collector.py --write
