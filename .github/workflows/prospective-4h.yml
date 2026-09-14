@@ -39,12 +39,12 @@ jobs:
       - name: Run legacy prospective integrity tests
         env:
           PYTHONPATH: artifacts/trendscanner
-        run: uv run python -m unittest artifacts/trendscanner/test_prospective_integrity.py
+        run: uv run python artifacts/trendscanner/test_prospective_integrity.py
 
       - name: Run sequential 4h tests
         env:
           PYTHONPATH: artifacts/trendscanner
-        run: uv run python -m unittest artifacts/trendscanner/test_prospective_4h_v2.py
+        run: uv run python artifacts/trendscanner/test_prospective_4h_v2.py
 
       - name: Dry-run sequential 4h collector
         env:
