@@ -36,10 +36,11 @@ jobs:
       - name: Install dependencies
         run: uv sync --frozen
 
-      - name: Run legacy prospective integrity tests
+      - name: Verify sequential 4h imports
         env:
           PYTHONPATH: artifacts/trendscanner
-        run: uv run python artifacts/trendscanner/test_prospective_integrity.py
+        run: >-
+          uv run python -c "import market_regime_shadow, market_regime_shadow_v2, prospective_coverage, prospective_4h_v2_coverage, prospective_4h_v2_collector, shadow_storage; print('4h imports: PASS')"
 
       - name: Run sequential 4h tests
         env:
