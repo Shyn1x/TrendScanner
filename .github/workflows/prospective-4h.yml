@@ -59,6 +59,12 @@ jobs:
         run: >-
           uv run python -c "import market_regime_shadow, market_regime_shadow_v2, prospective_coverage, prospective_4h_v2_coverage, prospective_4h_v2_collector, shadow_storage; print('4h imports: PASS')"
 
+      - name: Run frozen 4h integrity tests
+        working-directory: frozen
+        env:
+          PYTHONPATH: artifacts/trendscanner
+        run: uv run python artifacts/trendscanner/test_prospective_integrity.py
+
       - name: Run sequential 4h tests
         working-directory: frozen
         env:
