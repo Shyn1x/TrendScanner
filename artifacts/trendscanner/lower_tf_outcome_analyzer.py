@@ -14,7 +14,7 @@ from collections import Counter
 import pandas as pd
 
 import lower_tf_storage
-from lower_tf_shadow import EXPERIMENT_VERSION, TIMEFRAME_MS
+from lower_tf_shadow import EXPERIMENT_VERSION, TIMEFRAME_MS, context_4h_timestamp
 from research_data import get_research_data_before
 from scanner import exchange
 
@@ -163,6 +163,16 @@ def _parse_event(payload):
     ready_timestamp = int(ready_timestamp)
     if ready_timestamp < 0 or ready_timestamp % TIMEFRAME_MS[timeframe]:
         raise ValueError("INVALID_READY_TIMESTAMP")
+
+    market_context = event.get("market_context")
+    if not isinstance(market_context, dict):
+        raise ValueError("MISSING_MARKET_CONTEXT")
+    target_4h = market_context.get("target_4h_timestamp")
+    if isinstance(target_4h, bool) or target_4h is None:
+        raise ValueError("INVALID_4H_CONTEXT_ANCHOR")
+    target_4h = int(target_4h)
+    if target_4h != context_4h_timestamp(ready_timestamp, timeframe):
+        raise ValueError("WRONG_4H_CONTEXT_ANCHOR")
     return event
 
 
@@ -301,19 +311,14 @@ def analyze(*, write=False, database_url=None, now_ms=None):
                         window = _build_exact_window(source, timeframe, ready, horizon)
                         entry = _safe_float(window.iloc[0]["close"])
                         metrics = _compute_metrics(direction, entry, window.iloc[1:])
-                        market_context = event.get("market_context")
-                        target_4h = (
-                            market_context.get("target_4h_timestamp")
-                            if isinstance(market_context, dict)
-                            else None
-                        )
+                        target_4h = int(event["market_context"]["target_4h_timestamp"])
                         proposed.append({
                             "symbol": symbol,
                             "timeframe": timeframe,
                             "direction": direction,
                             "ready_timestamp": ready,
                             "horizon_bars": horizon,
-                            "target_4h_timestamp": int(target_4h) if target_4h is not None else None,
+                            "target_4h_timestamp": target_4h,
                             "entry_reference_price": entry,
                             **metrics,
                             "no_tick_fills": len(window.attrs.get("filled_no_tick_timestamps", [])),
