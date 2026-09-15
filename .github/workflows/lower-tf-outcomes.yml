@@ -1,0 +1,88 @@
+name: Lower TF Outcome Analyzer
+
+on:
+  workflow_dispatch:
+    inputs:
+      write:
+        description: "Write completed outcome rows to Neon"
+        required: false
+        default: false
+        type: boolean
+  pull_request:
+    branches:
+      - main
+  schedule:
+    - cron: "40 2 * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lower-tf-outcome-analyzer
+  cancel-in-progress: false
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+
+    steps:
+      - name: Checkout frozen lower-TF research base
+        uses: actions/checkout@v4
+        with:
+          ref: 5547e881078dc97ccb317b5e4f8252eab3fb9a21
+          path: frozen
+
+      - name: Checkout outcome analyzer patch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          path: patch
+
+      - name: Assemble outcome workspace
+        run: |
+          cp patch/artifacts/trendscanner/lower_tf_outcome_analyzer.py frozen/artifacts/trendscanner/
+          cp patch/artifacts/trendscanner/test_lower_tf_outcome_analyzer.py frozen/artifacts/trendscanner/
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          working-directory: frozen
+
+      - name: Install dependencies
+        working-directory: frozen
+        run: uv sync --frozen
+
+      - name: Compile outcome analyzer
+        working-directory: frozen
+        env:
+          PYTHONPATH: artifacts/trendscanner
+        run: uv run python -m py_compile artifacts/trendscanner/lower_tf_outcome_analyzer.py
+
+      - name: Run outcome unit tests
+        working-directory: frozen
+        env:
+          PYTHONPATH: artifacts/trendscanner
+        run: uv run --with pytest pytest -q artifacts/trendscanner/test_lower_tf_outcome_analyzer.py
+
+      - name: Dry-run outcome analyzer
+        if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.write != true)
+        working-directory: frozen
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          PYTHONPATH: artifacts/trendscanner
+        run: uv run python artifacts/trendscanner/lower_tf_outcome_analyzer.py
+
+      - name: Write completed outcomes
+        if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.write == true)
+        working-directory: frozen
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          PYTHONPATH: artifacts/trendscanner
+        run: uv run python artifacts/trendscanner/lower_tf_outcome_analyzer.py --write
