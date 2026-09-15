@@ -82,6 +82,35 @@ class LowerTfOutcomeAnalyzerTests(unittest.TestCase):
         self.assertNotIn(3, analyzer._mature_horizons(ready, "1h", ready + 4 * tf - 1))
         self.assertIn(3, analyzer._mature_horizons(ready, "1h", ready + 4 * tf))
 
+    def test_event_accepts_exact_stored_4h_anchor(self):
+        tf = analyzer.TIMEFRAME_MS["15m"]
+        ready = 50 * tf
+        expected_anchor = analyzer.context_4h_timestamp(ready, "15m")
+        event = {
+            "experiment_version": analyzer.EXPERIMENT_VERSION,
+            "symbol": "BTC/USDT",
+            "timeframe": "15m",
+            "direction": "LONG",
+            "ready_timestamp": ready,
+            "market_context": {"target_4h_timestamp": expected_anchor},
+        }
+        parsed = analyzer._parse_event(event)
+        self.assertEqual(parsed["market_context"]["target_4h_timestamp"], expected_anchor)
+
+    def test_event_rejects_wrong_stored_4h_anchor(self):
+        tf = analyzer.TIMEFRAME_MS["1h"]
+        ready = 60 * tf
+        event = {
+            "experiment_version": analyzer.EXPERIMENT_VERSION,
+            "symbol": "BTC/USDT",
+            "timeframe": "1h",
+            "direction": "SHORT",
+            "ready_timestamp": ready,
+            "market_context": {"target_4h_timestamp": 0},
+        }
+        with self.assertRaisesRegex(ValueError, "WRONG_4H_CONTEXT_ANCHOR"):
+            analyzer._parse_event(event)
+
 
 if __name__ == "__main__":
     unittest.main()
