@@ -35,6 +35,71 @@ class LowerTfOutcomeAnalyzerTests(unittest.TestCase):
         self.assertEqual(result["bars_to_mfe"], 2)
         self.assertEqual(result["bars_to_mae"], 1)
 
+    def test_long_stop_hit_uses_first_touch_and_fixed_loss(self):
+        future = pd.DataFrame([
+            [1, 100, 103, 99.6, 102, 1],
+            [2, 102, 104, 98.9, 103, 1],
+            [3, 103, 108, 97, 107, 1],
+        ], columns=COLUMNS)
+        result = analyzer._compute_stop_metrics("LONG", 100.0, future, 100)
+        self.assertAlmostEqual(result["stop_loss_pct"], 1.0)
+        self.assertAlmostEqual(result["stop_price"], 99.0)
+        self.assertTrue(result["stop_hit"])
+        self.assertEqual(result["bars_to_stop"], 2)
+        self.assertAlmostEqual(result["horizon_close_return_pct"], 7.0)
+        self.assertAlmostEqual(result["stop_adjusted_return_pct"], -1.0)
+
+    def test_long_stop_not_hit_keeps_horizon_close_return(self):
+        future = pd.DataFrame([
+            [1, 100, 102, 99.51, 101, 1],
+            [2, 101, 104, 99.50, 103, 1],
+        ], columns=COLUMNS)
+        result = analyzer._compute_stop_metrics("LONG", 100.0, future, 50)
+        self.assertAlmostEqual(result["stop_price"], 99.5)
+        self.assertTrue(result["stop_hit"])
+        self.assertEqual(result["bars_to_stop"], 2)
+
+        future.loc[1, "low"] = 99.51
+        result = analyzer._compute_stop_metrics("LONG", 100.0, future, 50)
+        self.assertFalse(result["stop_hit"])
+        self.assertIsNone(result["bars_to_stop"])
+        self.assertAlmostEqual(result["horizon_close_return_pct"], 3.0)
+        self.assertAlmostEqual(result["stop_adjusted_return_pct"], 3.0)
+
+    def test_short_stop_hit_on_exact_touch(self):
+        future = pd.DataFrame([
+            [1, 100, 100.74, 96, 97, 1],
+            [2, 97, 100.75, 90, 92, 1],
+            [3, 92, 104, 88, 89, 1],
+        ], columns=COLUMNS)
+        result = analyzer._compute_stop_metrics("SHORT", 100.0, future, 75)
+        self.assertAlmostEqual(result["stop_price"], 100.75)
+        self.assertTrue(result["stop_hit"])
+        self.assertEqual(result["bars_to_stop"], 2)
+        self.assertAlmostEqual(result["horizon_close_return_pct"], 11.0)
+        self.assertAlmostEqual(result["stop_adjusted_return_pct"], -0.75)
+
+    def test_stop_result_changes_when_later_horizon_reaches_stop(self):
+        future = pd.DataFrame([
+            [1, 100, 102, 99.1, 101, 1],
+            [2, 101, 104, 98.9, 103, 1],
+            [3, 103, 106, 97, 105, 1],
+        ], columns=COLUMNS)
+        early = analyzer._compute_stop_metrics("LONG", 100.0, future.iloc[:1], 100)
+        later = analyzer._compute_stop_metrics("LONG", 100.0, future, 100)
+        self.assertFalse(early["stop_hit"])
+        self.assertAlmostEqual(early["stop_adjusted_return_pct"], 1.0)
+        self.assertTrue(later["stop_hit"])
+        self.assertEqual(later["bars_to_stop"], 2)
+        self.assertAlmostEqual(later["stop_adjusted_return_pct"], -1.0)
+
+    def test_stop_loss_must_be_from_preregistered_grid(self):
+        future = pd.DataFrame([
+            [1, 100, 101, 99, 100, 1],
+        ], columns=COLUMNS)
+        with self.assertRaisesRegex(ValueError, "INVALID_STOP_LOSS_BPS"):
+            analyzer._compute_stop_metrics("LONG", 100.0, future, 125)
+
     def test_exact_window_has_signal_plus_future_bars(self):
         tf = analyzer.TIMEFRAME_MS["15m"]
         ready = 10 * tf
