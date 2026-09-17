@@ -17,6 +17,24 @@ Each completed horizon stores:
 - count of bounded no-tick slots repaired with the same flat previous-close / zero-volume policy used by the lower-TF collector
 - the original stored `target_4h_timestamp` anchor
 
+The same completed windows are also evaluated against a preregistered fixed
+Stop Loss grid:
+
+- `0.50%`
+- `0.75%`
+- `1.00%`
+- `1.50%`
+
+For every stop and horizon, the analyzer stores the stop price, whether the
+stop was touched, the first bar that touched it, the original horizon close
+return, and the stop-adjusted trade return. A touch counts as a hit. If no stop
+is hit, the stop-adjusted return is the directional close return at the end of
+the horizon; if a stop is hit, it is the negative fixed stop percentage.
+
+This is an OHLC research model. It assumes execution at the stop price and does
+not include fees, funding, or slippage. Because no Take Profit is modeled here,
+there is no ambiguous TP-versus-SL ordering inside one candle.
+
 A horizon is never written before its final candle is fully closed. Missing data beyond the bounded no-tick policy fails closed.
 
 ## Storage
@@ -25,7 +43,14 @@ Derived rows use the separate table `lower_tf_prospective_outcomes` and version:
 
 `lower-tf-outcome-v1-bars-1-3-6-12`
 
-The source event rows remain untouched. Inserts are idempotent through a versioned primary key.
+Stop-aware rows use the separate table
+`lower_tf_prospective_stop_outcomes` and version:
+
+`lower-tf-stop-v1-fixed-bps-50-75-100-150`
+
+The source event rows remain untouched. Both derived datasets use idempotent,
+versioned primary keys. Existing outcome rows are not rewritten; the stop layer
+can backfill every already-mature event and then continue incrementally.
 
 ## Scheduling
 
