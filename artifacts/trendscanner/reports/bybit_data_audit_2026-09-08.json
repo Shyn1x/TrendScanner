@@ -1,0 +1,257 @@
+{
+  "schema_version": 1,
+  "status": "BLOCKED",
+  "as_of_ms": 1788879912934,
+  "ccxt_version": "4.5.66",
+  "sample_symbols": [
+    "BTC/USDT",
+    "ETH/USDT",
+    "SOL/USDT"
+  ],
+  "universe": [
+    "AAVE/USDT",
+    "ADA/USDT",
+    "APT/USDT",
+    "ARB/USDT",
+    "ATOM/USDT",
+    "AVAX/USDT",
+    "BCH/USDT",
+    "BNB/USDT",
+    "BTC/USDT",
+    "DOGE/USDT",
+    "DOT/USDT",
+    "ENA/USDT",
+    "ETC/USDT",
+    "ETH/USDT",
+    "FET/USDT",
+    "FIL/USDT",
+    "HBAR/USDT",
+    "ICP/USDT",
+    "INJ/USDT",
+    "JUP/USDT",
+    "LINK/USDT",
+    "LTC/USDT",
+    "NEAR/USDT",
+    "ONDO/USDT",
+    "OP/USDT",
+    "PENDLE/USDT",
+    "POL/USDT",
+    "RENDER/USDT",
+    "SEI/USDT",
+    "SOL/USDT",
+    "SUI/USDT",
+    "TAO/USDT",
+    "TIA/USDT",
+    "TRX/USDT",
+    "UNI/USDT",
+    "WLD/USDT",
+    "XRP/USDT"
+  ],
+  "timeframes": [
+    "1M",
+    "1w",
+    "1d",
+    "4h",
+    "1h"
+  ],
+  "requested_closed_candles": 100,
+  "exchanges": {
+    "kucoinfutures": {
+      "status": "BLOCKED",
+      "native_timeframes": [
+        "12h",
+        "15m",
+        "1d",
+        "1h",
+        "1m",
+        "1w",
+        "2h",
+        "30m",
+        "4h",
+        "5m",
+        "8h"
+      ],
+      "stage": "load_markets",
+      "error_type": "NetworkError",
+      "error": "kucoinfutures GET https://api.kucoin.com/api/v3/currencies"
+    },
+    "bybit": {
+      "status": "BLOCKED",
+      "native_timeframes": [
+        "12h",
+        "15m",
+        "1M",
+        "1d",
+        "1h",
+        "1m",
+        "1w",
+        "2h",
+        "30m",
+        "3m",
+        "4h",
+        "5m",
+        "6h"
+      ],
+      "stage": "load_markets",
+      "error_type": "NetworkError",
+      "error": "bybit GET https://api.bybit.com/v5/market/instruments-info?category=linear&limit=1000"
+    }
+  },
+  "windows": {
+    "kucoinfutures": {},
+    "bybit": {}
+  },
+  "comparisons": [
+    {
+      "symbol": "BTC/USDT",
+      "timeframe": "1M",
+      "status": "NOT_COMPARABLE",
+      "sources": {
+        "kucoinfutures": "BLOCKED",
+        "bybit": "BLOCKED"
+      },
+      "matched_candles": 0
+    },
+    {
+      "symbol": "BTC/USDT",
+      "timeframe": "1w",
+      "status": "NOT_COMPARABLE",
+      "sources": {
+        "kucoinfutures": "BLOCKED",
+        "bybit": "BLOCKED"
+      },
+      "matched_candles": 0
+    },
+    {
+      "symbol": "BTC/USDT",
+      "timeframe": "1d",
+      "status": "NOT_COMPARABLE",
+      "sources": {
+        "kucoinfutures": "BLOCKED",
+        "bybit": "BLOCKED"
+      },
+      "matched_candles": 0
+    },
+    {
+      "symbol": "BTC/USDT",
+      "timeframe": "4h",
+      "status": "NOT_COMPARABLE",
+      "sources": {
+        "kucoinfutures": "BLOCKED",
+        "bybit": "BLOCKED"
+      },
+      "matched_candles": 0
+    },
+    {
+      "symbol": "BTC/USDT",
+      "timeframe": "1h",
+      "status": "NOT_COMPARABLE",
+      "sources": {
+        "kucoinfutures": "BLOCKED",
+        "bybit": "BLOCKED"
+      },
+      "matched_candles": 0
+    },
+    {
+      "symbol": "ETH/USDT",
+      "timeframe": "1M",
+      "status": "NOT_COMPARABLE",
+      "sources": {
+        "kucoinfutures": "BLOCKED",
+        "bybit": "BLOCKED"
+      },
+      "matched_candles": 0
+    },
+    {
+      "symbol": "ETH/USDT",
+      "timeframe": "1w",
+      "status": "NOT_COMPARABLE",
+      "sources": {
+        "kucoinfutures": "BLOCKED",
+        "bybit": "BLOCKED"
+      },
+      "matched_candles": 0
+    },
+    {
+      "symbol": "ETH/USDT",
+      "timeframe": "1d",
+      "status": "NOT_COMPARABLE",
+      "sources": {
+        "kucoinfutures": "BLOCKED",
+        "bybit": "BLOCKED"
+      },
+      "matched_candles": 0
+    },
+    {
+      "symbol": "ETH/USDT",
+      "timeframe": "4h",
+      "status": "NOT_COMPARABLE",
+      "sources": {
+        "kucoinfutures": "BLOCKED",
+        "bybit": "BLOCKED"
+      },
+      "matched_candles": 0
+    },
+    {
+      "symbol": "ETH/USDT",
+      "timeframe": "1h",
+      "status": "NOT_COMPARABLE",
+      "sources": {
+        "kucoinfutures": "BLOCKED",
+        "bybit": "BLOCKED"
+      },
+      "matched_candles": 0
+    },
+    {
+      "symbol": "SOL/USDT",
+      "timeframe": "1M",
+      "status": "NOT_COMPARABLE",
+      "sources": {
+        "kucoinfutures": "BLOCKED",
+        "bybit": "BLOCKED"
+      },
+      "matched_candles": 0
+    },
+    {
+      "symbol": "SOL/USDT",
+      "timeframe": "1w",
+      "status": "NOT_COMPARABLE",
+      "sources": {
+        "kucoinfutures": "BLOCKED",
+        "bybit": "BLOCKED"
+      },
+      "matched_candles": 0
+    },
+    {
+      "symbol": "SOL/USDT",
+      "timeframe": "1d",
+      "status": "NOT_COMPARABLE",
+      "sources": {
+        "kucoinfutures": "BLOCKED",
+        "bybit": "BLOCKED"
+      },
+      "matched_candles": 0
+    },
+    {
+      "symbol": "SOL/USDT",
+      "timeframe": "4h",
+      "status": "NOT_COMPARABLE",
+      "sources": {
+        "kucoinfutures": "BLOCKED",
+        "bybit": "BLOCKED"
+      },
+      "matched_candles": 0
+    },
+    {
+      "symbol": "SOL/USDT",
+      "timeframe": "1h",
+      "status": "NOT_COMPARABLE",
+      "sources": {
+        "kucoinfutures": "BLOCKED",
+        "bybit": "BLOCKED"
+      },
+      "matched_candles": 0
+    }
+  ],
+  "interpretation": "Descriptive data audit only; COMPARED does not establish signal parity or strategy validity."
+}
