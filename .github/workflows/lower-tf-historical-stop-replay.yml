@@ -1,0 +1,194 @@
+name: Historical Lower TF Stop Replay
+
+on:
+  workflow_dispatch:
+    inputs:
+      bars:
+        description: "Recent candles per symbol and timeframe"
+        required: true
+        default: "1600"
+        type: string
+      fee_bps_per_side:
+        description: "Commission assumption per entry/exit side, in basis points"
+        required: true
+        default: "6"
+        type: string
+      slippage_bps_per_side:
+        description: "Slippage assumption per entry/exit side, in basis points"
+        required: true
+        default: "2"
+        type: string
+      starting_balance:
+        description: "Reference balance for isolated risk PnL"
+        required: true
+        default: "300"
+        type: string
+      risk_pct:
+        description: "Risk per isolated trade as percent of starting balance"
+        required: true
+        default: "1"
+        type: string
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "artifacts/trendscanner/lower_tf_historical_stop_replay.py"
+      - "artifacts/trendscanner/test_lower_tf_historical_stop_replay.py"
+      - ".github/workflows/lower-tf-historical-stop-replay.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout frozen lower-TF strategy contract
+        uses: actions/checkout@v4
+        with:
+          ref: 5547e881078dc97ccb317b5e4f8252eab3fb9a21
+          path: frozen
+
+      - name: Checkout historical replay patch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          path: patch
+
+      - name: Assemble isolated replay workspace
+        run: |
+          cp patch/artifacts/trendscanner/lower_tf_outcome_analyzer.py frozen/artifacts/trendscanner/
+          cp patch/artifacts/trendscanner/lower_tf_historical_stop_replay.py frozen/artifacts/trendscanner/
+          cp patch/artifacts/trendscanner/test_lower_tf_outcome_analyzer.py frozen/artifacts/trendscanner/
+          cp patch/artifacts/trendscanner/test_lower_tf_historical_stop_replay.py frozen/artifacts/trendscanner/
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          working-directory: frozen
+
+      - name: Install dependencies
+        working-directory: frozen
+        run: uv sync --frozen
+
+      - name: Compile strict replay
+        working-directory: frozen
+        env:
+          PYTHONPATH: artifacts/trendscanner
+        run: uv run python -m py_compile artifacts/trendscanner/lower_tf_historical_stop_replay.py
+
+      - name: Run replay and contract tests
+        working-directory: frozen
+        env:
+          PYTHONPATH: artifacts/trendscanner
+        run: >-
+          uv run --with pytest pytest -q
+          artifacts/trendscanner/test_lower_tf_historical_stop_replay.py
+          artifacts/trendscanner/test_lower_tf_outcome_analyzer.py
+          artifacts/trendscanner/test_prospective_lower_tf_collector.py
+          artifacts/trendscanner/test_lower_tf_storage.py
+          artifacts/trendscanner/test_lower_tf_shadow.py
+
+  replay:
+    if: github.event_name == 'workflow_dispatch'
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - timeframe: 15m
+            shard: core
+            symbols: BTC/USDT,ETH/USDT,BNB/USDT,SOL/USDT,XRP/USDT
+          - timeframe: 15m
+            shard: majors
+            symbols: DOGE/USDT,ADA/USDT,LINK/USDT,LTC/USDT,BCH/USDT
+          - timeframe: 15m
+            shard: layer1
+            symbols: AVAX/USDT,DOT/USDT,ATOM/USDT,NEAR/USDT,FIL/USDT
+          - timeframe: 15m
+            shard: newer
+            symbols: ARB/USDT,OP/USDT,INJ/USDT,SUI/USDT,TIA/USDT
+          - timeframe: 15m
+            shard: defi
+            symbols: APT/USDT,PENDLE/USDT,ETC/USDT,AAVE/USDT,UNI/USDT
+          - timeframe: 1h
+            shard: core
+            symbols: BTC/USDT,ETH/USDT,BNB/USDT,SOL/USDT,XRP/USDT
+          - timeframe: 1h
+            shard: majors
+            symbols: DOGE/USDT,ADA/USDT,LINK/USDT,LTC/USDT,BCH/USDT
+          - timeframe: 1h
+            shard: layer1
+            symbols: AVAX/USDT,DOT/USDT,ATOM/USDT,NEAR/USDT,FIL/USDT
+          - timeframe: 1h
+            shard: newer
+            symbols: ARB/USDT,OP/USDT,INJ/USDT,SUI/USDT,TIA/USDT
+          - timeframe: 1h
+            shard: defi
+            symbols: APT/USDT,PENDLE/USDT,ETC/USDT,AAVE/USDT,UNI/USDT
+
+    steps:
+      - name: Checkout frozen lower-TF strategy contract
+        uses: actions/checkout@v4
+        with:
+          ref: 5547e881078dc97ccb317b5e4f8252eab3fb9a21
+          path: frozen
+
+      - name: Checkout historical replay patch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          path: patch
+
+      - name: Assemble isolated replay workspace
+        run: |
+          cp patch/artifacts/trendscanner/lower_tf_outcome_analyzer.py frozen/artifacts/trendscanner/
+          cp patch/artifacts/trendscanner/lower_tf_historical_stop_replay.py frozen/artifacts/trendscanner/
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          working-directory: frozen
+
+      - name: Install dependencies
+        working-directory: frozen
+        run: uv sync --frozen
+
+      - name: Run strict historical replay
+        working-directory: frozen
+        env:
+          PYTHONPATH: artifacts/trendscanner
+        run: >-
+          uv run python artifacts/trendscanner/lower_tf_historical_stop_replay.py
+          --timeframe "${{ matrix.timeframe }}"
+          --symbols "${{ matrix.symbols }}"
+          --bars "${{ inputs.bars }}"
+          --fee-bps-per-side "${{ inputs.fee_bps_per_side }}"
+          --slippage-bps-per-side "${{ inputs.slippage_bps_per_side }}"
+          --starting-balance "${{ inputs.starting_balance }}"
+          --risk-pct "${{ inputs.risk_pct }}"
+          --output "historical-${{ matrix.timeframe }}-${{ matrix.shard }}.json"
+
+      - name: Upload auditable replay report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: historical-${{ matrix.timeframe }}-${{ matrix.shard }}
+          path: frozen/historical-${{ matrix.timeframe }}-${{ matrix.shard }}.json
+          if-no-files-found: error
