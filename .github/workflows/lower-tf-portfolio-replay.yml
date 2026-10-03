@@ -1,0 +1,256 @@
+name: Historical 1h LONG Portfolio Replay
+
+on:
+  workflow_dispatch:
+    inputs:
+      bars:
+        description: "Recent 1h candles per symbol"
+        required: true
+        default: "1600"
+        type: string
+      fee_bps_per_side:
+        description: "Commission per entry/exit side, in basis points"
+        required: true
+        default: "6"
+        type: string
+      slippage_bps_per_side:
+        description: "Slippage per entry/exit side, in basis points"
+        required: true
+        default: "2"
+        type: string
+      starting_balance:
+        description: "Starting portfolio balance"
+        required: true
+        default: "300"
+        type: string
+      risk_pct:
+        description: "Risk per entered trade as percent of realised balance"
+        required: true
+        default: "1"
+        type: string
+      max_total_risk_pct:
+        description: "Maximum total risk reserved by open positions"
+        required: true
+        default: "3"
+        type: string
+      max_open_positions:
+        description: "Maximum simultaneous positions"
+        required: true
+        default: "3"
+        type: string
+      max_leverage:
+        description: "Maximum total notional divided by realised balance"
+        required: true
+        default: "3"
+        type: string
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "artifacts/trendscanner/lower_tf_portfolio_replay.py"
+      - "artifacts/trendscanner/test_lower_tf_portfolio_replay.py"
+      - ".github/workflows/lower-tf-portfolio-replay.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout frozen lower-TF strategy contract
+        uses: actions/checkout@v4
+        with:
+          ref: 5547e881078dc97ccb317b5e4f8252eab3fb9a21
+          path: frozen
+
+      - name: Checkout portfolio replay patch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          path: patch
+
+      - name: Assemble isolated replay workspace
+        run: |
+          cp patch/artifacts/trendscanner/lower_tf_outcome_analyzer.py frozen/artifacts/trendscanner/
+          cp patch/artifacts/trendscanner/lower_tf_historical_stop_replay.py frozen/artifacts/trendscanner/
+          cp patch/artifacts/trendscanner/lower_tf_portfolio_replay.py frozen/artifacts/trendscanner/
+          cp patch/artifacts/trendscanner/test_lower_tf_historical_stop_replay.py frozen/artifacts/trendscanner/
+          cp patch/artifacts/trendscanner/test_lower_tf_portfolio_replay.py frozen/artifacts/trendscanner/
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          working-directory: frozen
+
+      - name: Install dependencies
+        working-directory: frozen
+        run: uv sync --frozen
+
+      - name: Compile portfolio replay
+        working-directory: frozen
+        env:
+          PYTHONPATH: artifacts/trendscanner
+        run: >-
+          uv run python -m py_compile
+          artifacts/trendscanner/lower_tf_historical_stop_replay.py
+          artifacts/trendscanner/lower_tf_portfolio_replay.py
+
+      - name: Run portfolio replay tests
+        working-directory: frozen
+        env:
+          PYTHONPATH: artifacts/trendscanner
+        run: >-
+          uv run --with pytest pytest -q
+          artifacts/trendscanner/test_lower_tf_historical_stop_replay.py
+          artifacts/trendscanner/test_lower_tf_portfolio_replay.py
+
+  replay-inputs:
+    if: github.event_name == 'workflow_dispatch'
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - shard: core
+            symbols: BTC/USDT,ETH/USDT,BNB/USDT,SOL/USDT,XRP/USDT
+          - shard: majors
+            symbols: DOGE/USDT,ADA/USDT,LINK/USDT,LTC/USDT,BCH/USDT
+          - shard: layer1
+            symbols: AVAX/USDT,DOT/USDT,ATOM/USDT,NEAR/USDT,FIL/USDT
+          - shard: newer
+            symbols: ARB/USDT,OP/USDT,INJ/USDT,SUI/USDT,TIA/USDT
+          - shard: defi
+            symbols: APT/USDT,PENDLE/USDT,ETC/USDT,AAVE/USDT,UNI/USDT
+    steps:
+      - name: Checkout frozen lower-TF strategy contract
+        uses: actions/checkout@v4
+        with:
+          ref: 5547e881078dc97ccb317b5e4f8252eab3fb9a21
+          path: frozen
+
+      - name: Checkout portfolio replay patch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          path: patch
+
+      - name: Assemble isolated replay workspace
+        run: |
+          cp patch/artifacts/trendscanner/lower_tf_outcome_analyzer.py frozen/artifacts/trendscanner/
+          cp patch/artifacts/trendscanner/lower_tf_historical_stop_replay.py frozen/artifacts/trendscanner/
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          working-directory: frozen
+
+      - name: Install dependencies
+        working-directory: frozen
+        run: uv sync --frozen
+
+      - name: Generate strict 1h replay input
+        working-directory: frozen
+        env:
+          PYTHONPATH: artifacts/trendscanner
+        run: >-
+          uv run python artifacts/trendscanner/lower_tf_historical_stop_replay.py
+          --timeframe 1h
+          --symbols "${{ matrix.symbols }}"
+          --bars "${{ inputs.bars }}"
+          --fee-bps-per-side "${{ inputs.fee_bps_per_side }}"
+          --slippage-bps-per-side "${{ inputs.slippage_bps_per_side }}"
+          --starting-balance "${{ inputs.starting_balance }}"
+          --risk-pct "${{ inputs.risk_pct }}"
+          --output "portfolio-input-1h-${{ matrix.shard }}.json"
+
+      - name: Upload auditable 1h input
+        uses: actions/upload-artifact@v4
+        with:
+          name: portfolio-input-1h-${{ matrix.shard }}
+          path: frozen/portfolio-input-1h-${{ matrix.shard }}.json
+          if-no-files-found: error
+
+  portfolio:
+    if: github.event_name == 'workflow_dispatch'
+    needs: replay-inputs
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout frozen lower-TF strategy contract
+        uses: actions/checkout@v4
+        with:
+          ref: 5547e881078dc97ccb317b5e4f8252eab3fb9a21
+          path: frozen
+
+      - name: Checkout portfolio replay patch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          path: patch
+
+      - name: Assemble isolated portfolio workspace
+        run: |
+          cp patch/artifacts/trendscanner/lower_tf_outcome_analyzer.py frozen/artifacts/trendscanner/
+          cp patch/artifacts/trendscanner/lower_tf_historical_stop_replay.py frozen/artifacts/trendscanner/
+          cp patch/artifacts/trendscanner/lower_tf_portfolio_replay.py frozen/artifacts/trendscanner/
+
+      - name: Download all strict 1h replay inputs
+        uses: actions/download-artifact@v4
+        with:
+          pattern: portfolio-input-1h-*
+          path: frozen/portfolio-input
+          merge-multiple: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          working-directory: frozen
+
+      - name: Install dependencies
+        working-directory: frozen
+        run: uv sync --frozen
+
+      - name: Run chronological portfolio replay
+        working-directory: frozen
+        env:
+          PYTHONPATH: artifacts/trendscanner
+        run: >-
+          uv run python artifacts/trendscanner/lower_tf_portfolio_replay.py
+          --input-glob "portfolio-input/portfolio-input-1h-*.json"
+          --starting-balance "${{ inputs.starting_balance }}"
+          --risk-pct "${{ inputs.risk_pct }}"
+          --max-total-risk-pct "${{ inputs.max_total_risk_pct }}"
+          --max-open-positions "${{ inputs.max_open_positions }}"
+          --max-leverage "${{ inputs.max_leverage }}"
+          --fee-bps-per-side "${{ inputs.fee_bps_per_side }}"
+          --slippage-bps-per-side "${{ inputs.slippage_bps_per_side }}"
+          --output "historical-1h-long-portfolio-300.json"
+
+      - name: Upload portfolio report
+        uses: actions/upload-artifact@v4
+        with:
+          name: historical-1h-long-portfolio-300
+          path: frozen/historical-1h-long-portfolio-300.json
+          if-no-files-found: error
