@@ -1,0 +1,144 @@
+name: Bybit Demo 1h LONG Executor
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Authenticated read-only preflight or one demo execution cycle"
+        required: true
+        default: preflight
+        type: choice
+        options:
+          - preflight
+          - execute
+  schedule:
+    - cron: "28 * * * *"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "artifacts/trendscanner/bybit_demo_executor.py"
+      - "artifacts/trendscanner/test_bybit_demo_executor.py"
+      - ".github/workflows/bybit-demo-executor.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bybit-demo-1h-long-executor
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    if: github.event_name != 'schedule' || vars.BYBIT_DEMO_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout frozen signal contract
+        uses: actions/checkout@v4
+        with:
+          ref: 5547e881078dc97ccb317b5e4f8252eab3fb9a21
+          path: frozen
+
+      - name: Checkout executor patch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          path: patch
+
+      - name: Assemble isolated executor workspace
+        run: |
+          cp patch/artifacts/trendscanner/bybit_demo_executor.py frozen/artifacts/trendscanner/
+          cp patch/artifacts/trendscanner/test_bybit_demo_executor.py frozen/artifacts/trendscanner/
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          working-directory: frozen
+
+      - name: Install dependencies
+        working-directory: frozen
+        run: uv sync --frozen
+
+      - name: Compile executor
+        working-directory: frozen
+        env:
+          PYTHONPATH: artifacts/trendscanner
+        run: uv run python -m py_compile artifacts/trendscanner/bybit_demo_executor.py
+
+      - name: Run executor safety tests
+        working-directory: frozen
+        env:
+          PYTHONPATH: artifacts/trendscanner
+        run: >-
+          uv run --with pytest pytest -q
+          artifacts/trendscanner/test_bybit_demo_executor.py
+
+  demo-cycle:
+    if: >-
+      (github.event_name == 'workflow_dispatch') ||
+      (github.event_name == 'schedule' && vars.BYBIT_DEMO_ENABLED == 'true')
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout frozen signal contract
+        uses: actions/checkout@v4
+        with:
+          ref: 5547e881078dc97ccb317b5e4f8252eab3fb9a21
+          path: frozen
+
+      - name: Checkout executor patch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          path: patch
+
+      - name: Assemble isolated executor workspace
+        run: cp patch/artifacts/trendscanner/bybit_demo_executor.py frozen/artifacts/trendscanner/
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          working-directory: frozen
+
+      - name: Install dependencies
+        working-directory: frozen
+        run: uv sync --frozen
+
+      - name: Authenticated read-only preflight
+        if: github.event_name == 'workflow_dispatch' && inputs.mode == 'preflight'
+        working-directory: frozen
+        env:
+          BYBIT_DEMO_API_KEY: ${{ secrets.BYBIT_DEMO_API_KEY }}
+          BYBIT_DEMO_API_SECRET: ${{ secrets.BYBIT_DEMO_API_SECRET }}
+          BYBIT_DEMO_START_MS: ${{ vars.BYBIT_DEMO_START_MS }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          PYTHONPATH: artifacts/trendscanner
+        run: uv run python artifacts/trendscanner/bybit_demo_executor.py --preflight
+
+      - name: Execute one guarded demo cycle
+        if: >-
+          (github.event_name == 'workflow_dispatch' && inputs.mode == 'execute') ||
+          github.event_name == 'schedule'
+        working-directory: frozen
+        env:
+          BYBIT_DEMO_API_KEY: ${{ secrets.BYBIT_DEMO_API_KEY }}
+          BYBIT_DEMO_API_SECRET: ${{ secrets.BYBIT_DEMO_API_SECRET }}
+          BYBIT_DEMO_ENABLED: ${{ vars.BYBIT_DEMO_ENABLED }}
+          BYBIT_DEMO_START_MS: ${{ vars.BYBIT_DEMO_START_MS }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          PYTHONPATH: artifacts/trendscanner
+        run: uv run python artifacts/trendscanner/bybit_demo_executor.py --execute
