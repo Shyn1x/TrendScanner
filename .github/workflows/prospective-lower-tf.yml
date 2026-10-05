@@ -2,6 +2,12 @@ name: Prospective Lower TF Collector
 
 on:
   workflow_dispatch:
+    inputs:
+      write:
+        description: "Write validated candles to Neon (manual runs default to dry-run)"
+        required: true
+        default: false
+        type: boolean
   schedule:
     - cron: "7,12 * * * *"
     - cron: "22,27,37,42,52,57 * * * *"
@@ -15,6 +21,12 @@ concurrency:
 
 jobs:
   validate-and-collect:
+    name: Collect ${{ matrix.timeframe }}
+    strategy:
+      # A rejected 15m source must not cancel an independently valid 1h batch.
+      fail-fast: false
+      matrix:
+        timeframe: ${{ fromJSON((github.event_name == 'workflow_dispatch' || github.event.schedule == '7,12 * * * *') && '["1h","15m"]' || '["15m"]') }}
     runs-on: ubuntu-latest
     timeout-minutes: 40
 
@@ -51,26 +63,14 @@ jobs:
           PYTHONPATH: artifacts/trendscanner
         run: uv run --with pytest pytest -q artifacts/trendscanner/test_lower_tf_storage.py artifacts/trendscanner/test_lower_tf_shadow.py artifacts/trendscanner/test_prospective_lower_tf_collector.py
 
-      - name: Dry-run 1h
-        if: github.event_name == 'workflow_dispatch' || github.event.schedule == '7,12 * * * *'
+      - name: Dry-run ${{ matrix.timeframe }}
         env:
           PYTHONPATH: artifacts/trendscanner
-        run: uv run python artifacts/trendscanner/prospective_lower_tf_collector.py --timeframe 1h
+        run: uv run python artifacts/trendscanner/prospective_lower_tf_collector.py --timeframe ${{ matrix.timeframe }}
 
-      - name: Dry-run 15m
-        env:
-          PYTHONPATH: artifacts/trendscanner
-        run: uv run python artifacts/trendscanner/prospective_lower_tf_collector.py --timeframe 15m
-
-      - name: Write 1h baseline/state
-        if: github.event_name == 'workflow_dispatch' || github.event.schedule == '7,12 * * * *'
+      - name: Write ${{ matrix.timeframe }} baseline/state
+        if: github.event_name == 'schedule' || inputs.write
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           PYTHONPATH: artifacts/trendscanner
-        run: uv run python artifacts/trendscanner/prospective_lower_tf_collector.py --timeframe 1h --write
-
-      - name: Write 15m baseline/state
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          PYTHONPATH: artifacts/trendscanner
-        run: uv run python artifacts/trendscanner/prospective_lower_tf_collector.py --timeframe 15m --write
+        run: uv run python artifacts/trendscanner/prospective_lower_tf_collector.py --timeframe ${{ matrix.timeframe }} --write
