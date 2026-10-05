@@ -24,16 +24,20 @@ jobs:
           import json
           import prospective_lower_tf_collector as c
           from scanner import exchange
-          for symbol, tf, target in [
-              ("ETC/USDT", "15m", 1791189900000),
-              ("ETC/USDT", "15m", c._latest_closed_timestamp(exchange.milliseconds(), "15m")),
-              ("ETC/USDT", "1h", c._latest_closed_timestamp(exchange.milliseconds(), "1h")),
-              ("BTC/USDT", "15m", 1791189900000),
-          ]:
-              source = c._fetch_source_for_targets(symbol, tf, target, 1)
-              first = target - (c.CLOSED_BARS - 1) * c.TIMEFRAME_MS[tf]
-              missing = sorted(set(range(first, target + c.TIMEFRAME_MS[tf], c.TIMEFRAME_MS[tf])) - set(source["time"]))
-              window = c._build_window_for_target(source, tf, target)
-              print(json.dumps({"symbol": symbol, "timeframe": tf, "target": target, "source_rows": len(source), "first": None if source.empty else int(source.iloc[0]["time"]), "last": None if source.empty else int(source.iloc[-1]["time"]), "missing_count":len(missing), "missing":missing, "window_rows":len(window)}, sort_keys=True), flush=True)
-          print("CANDLE DIAGNOSTICS: PASS")
+          from scanner import _to_futures_symbol
+          target = 1791189900000
+          source = c._fetch_source_for_targets("ETC/USDT", "15m", target, 1)
+          step = c.TIMEFRAME_MS["15m"]
+          missing = sorted(set(range(target-198*step, target+step, step))-set(source["time"]))
+          for timestamp in missing:
+              direct = exchange.fetch_ohlcv(_to_futures_symbol("ETC/USDT"), "15m", since=timestamp, limit=1)
+              minutes = exchange.fetch_ohlcv(_to_futures_symbol("ETC/USDT"), "1m", since=timestamp, limit=15)
+              direct = [row for row in direct if row[0] == timestamp]
+              minutes = [row for row in minutes if timestamp <= row[0] < timestamp+step]
+              print(json.dumps({"timestamp":timestamp, "direct":direct, "minute_count":len(minutes), "minute_volume":sum(row[5] for row in minutes)},sort_keys=True),flush=True)
+          print("NARROW SOURCE DIAGNOSTICS: PASS")
           PY
+      - name: Validate all current 1h symbols without writes
+        env:
+          PYTHONPATH: artifacts/trendscanner
+        run: uv run python artifacts/trendscanner/prospective_lower_tf_collector.py --timeframe 1h
