@@ -1,76 +1,47 @@
 name: Prospective Lower TF Collector
-
 on:
   workflow_dispatch:
-    inputs:
-      write:
-        description: "Write validated candles to Neon (manual runs default to dry-run)"
-        required: true
-        default: false
-        type: boolean
-  schedule:
-    - cron: "7,12 * * * *"
-    - cron: "22,27,37,42,52,57 * * * *"
-
 permissions:
   contents: read
-
 concurrency:
-  group: prospective-lower-tf-collector
+  group: collector-recovery-read-only-diagnostic
   cancel-in-progress: false
-
 jobs:
-  validate-and-collect:
-    name: Collect ${{ matrix.timeframe }}
-    strategy:
-      # A rejected 15m source must not cancel an independently valid 1h batch.
-      fail-fast: false
-      matrix:
-        timeframe: ${{ fromJSON((github.event_name == 'workflow_dispatch' || github.event.schedule == '7,12 * * * *') && '["1h","15m"]' || '["15m"]') }}
+  read-only-diagnostic:
     runs-on: ubuntu-latest
-    timeout-minutes: 40
-
+    timeout-minutes: 5
     steps:
-      - name: Checkout frozen lower-TF research code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           ref: 5547e881078dc97ccb317b5e4f8252eab3fb9a21
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-
-      - name: Set up uv
-        uses: astral-sh/setup-uv@v6
-        with:
-          enable-cache: true
-
-      - name: Install dependencies
-        run: uv sync --frozen
-
-      - name: Compile lower-TF collector
-        env:
-          PYTHONPATH: artifacts/trendscanner
-        run: |
-          uv run python -m py_compile artifacts/trendscanner/lower_tf_storage.py
-          uv run python -m py_compile artifacts/trendscanner/lower_tf_shadow.py
-          uv run python -m py_compile artifacts/trendscanner/lower_tf_coverage.py
-          uv run python -m py_compile artifacts/trendscanner/prospective_lower_tf_collector.py
-
-      - name: Run lower-TF unit tests
-        env:
-          PYTHONPATH: artifacts/trendscanner
-        run: uv run --with pytest pytest -q artifacts/trendscanner/test_lower_tf_storage.py artifacts/trendscanner/test_lower_tf_shadow.py artifacts/trendscanner/test_prospective_lower_tf_collector.py
-
-      - name: Dry-run ${{ matrix.timeframe }}
-        env:
-          PYTHONPATH: artifacts/trendscanner
-        run: uv run python artifacts/trendscanner/prospective_lower_tf_collector.py --timeframe ${{ matrix.timeframe }}
-
-      - name: Write ${{ matrix.timeframe }} baseline/state
-        if: github.event_name == 'schedule' || inputs.write
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --frozen
+      - name: Read collector progress without database mutations
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          PYTHONPATH: artifacts/trendscanner
-        run: uv run python artifacts/trendscanner/prospective_lower_tf_collector.py --timeframe ${{ matrix.timeframe }} --write
+        run: |
+          uv run python - <<'PY'
+          import json, os, time
+          import psycopg
+          version = "lower-tf-ready-v5-fixed200-catchup"
+          try:
+              with psycopg.connect(os.environ["DATABASE_URL"], connect_timeout=10) as conn:
+                  with conn.cursor() as cur:
+                      cur.execute("SET TRANSACTION READ ONLY")
+                      cur.execute("SET LOCAL statement_timeout = '20s'")
+                      cur.execute("SELECT MAX(ready_timestamp), COALESCE(SUM(gap_candles),0), COUNT(*) FILTER (WHERE ready_timestamp > 1791003600000) FROM lower_tf_prospective_coverage WHERE experiment_version=%s AND timeframe='1h'", (version,))
+                      latest, gaps, recovered = cur.fetchone()
+                      cur.execute("SELECT direction, COUNT(*) FROM lower_tf_prospective_events WHERE experiment_version=%s AND timeframe='1h' AND ready_timestamp > 1791003600000 GROUP BY direction ORDER BY direction", (version,))
+                      new_events = dict(cur.fetchall())
+                      cur.execute("SELECT MIN(last_timestamp), MAX(last_timestamp), COUNT(*) FROM lower_tf_prospective_state WHERE experiment_version=%s AND timeframe='1h'", (version,))
+                      state_min, state_max, identities = cur.fetchone()
+                      now_ms = int(time.time()*1000)
+                      latest_closed = (now_ms // 3600000 - 1) * 3600000
+                      print(json.dumps({"latest_1h_coverage":latest,"total_gap_candles":gaps,"recovered_complete_1h_candles":recovered,"new_1h_events_by_direction":new_events,"state_min_timestamp":state_min,"state_max_timestamp":state_max,"state_identities":identities,"remaining_1h_candles":None if latest is None else (latest_closed-latest)//3600000},sort_keys=True))
+              print("READ ONLY NEON CHECK: PASS")
+          except Exception as exc:
+              raise SystemExit("READ_ONLY_DIAGNOSTIC_FAILED: " + type(exc).__name__) from None
+          PY
