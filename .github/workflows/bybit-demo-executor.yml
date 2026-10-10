@@ -17,6 +17,7 @@ on:
     branches:
       - main
     paths:
+      - "artifacts/trendscanner/prospective_market_data.py"
       - "artifacts/trendscanner/bybit_demo_executor.py"
       - "artifacts/trendscanner/test_bybit_demo_executor.py"
       - ".github/workflows/bybit-demo-executor.yml"
@@ -48,6 +49,7 @@ jobs:
 
       - name: Assemble isolated executor workspace
         run: |
+          cp patch/artifacts/trendscanner/prospective_market_data.py frozen/artifacts/trendscanner/
           cp patch/artifacts/trendscanner/bybit_demo_executor.py frozen/artifacts/trendscanner/
           cp patch/artifacts/trendscanner/test_bybit_demo_executor.py frozen/artifacts/trendscanner/
 
@@ -101,7 +103,9 @@ jobs:
           path: patch
 
       - name: Assemble isolated executor workspace
-        run: cp patch/artifacts/trendscanner/bybit_demo_executor.py frozen/artifacts/trendscanner/
+        run: |
+          cp patch/artifacts/trendscanner/prospective_market_data.py frozen/artifacts/trendscanner/
+          cp patch/artifacts/trendscanner/bybit_demo_executor.py frozen/artifacts/trendscanner/
 
       - name: Set up Python
         uses: actions/setup-python@v5

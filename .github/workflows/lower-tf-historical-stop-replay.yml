@@ -59,6 +59,7 @@ jobs:
 
       - name: Assemble isolated replay workspace
         run: |
+          cp patch/artifacts/trendscanner/prospective_market_data.py frozen/artifacts/trendscanner/
           cp patch/artifacts/trendscanner/lower_tf_outcome_analyzer.py frozen/artifacts/trendscanner/
           cp patch/artifacts/trendscanner/lower_tf_historical_stop_replay.py frozen/artifacts/trendscanner/
           cp patch/artifacts/trendscanner/test_lower_tf_outcome_analyzer.py frozen/artifacts/trendscanner/
@@ -152,6 +153,7 @@ jobs:
 
       - name: Assemble isolated replay workspace
         run: |
+          cp patch/artifacts/trendscanner/prospective_market_data.py frozen/artifacts/trendscanner/
           cp patch/artifacts/trendscanner/lower_tf_outcome_analyzer.py frozen/artifacts/trendscanner/
           cp patch/artifacts/trendscanner/lower_tf_historical_stop_replay.py frozen/artifacts/trendscanner/
 
