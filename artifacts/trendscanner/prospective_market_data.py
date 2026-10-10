@@ -28,6 +28,7 @@ FOUR_H_VERSION = BYBIT_4H_VERSION if MARKET_SOURCE == "bybit_linear" else KUCOIN
 PUBLIC_BASE_URL = "https://api.bybit.com"
 INTERVALS = {"15m": ("15", 900_000), "1h": ("60", 3_600_000), "4h": ("240", 14_400_000)}
 COLUMNS = ["time", "open", "high", "low", "close", "volume"]
+_last_request_at = 0.0
 
 
 def bybit_symbol(symbol):
@@ -40,19 +41,36 @@ def bybit_symbol(symbol):
 
 
 def _get(path, params):
+    global _last_request_at
     url = PUBLIC_BASE_URL + path + "?" + urllib.parse.urlencode(params)
     for attempt in range(3):
         try:
+            # Keep the sequential collector comfortably below burst limits.
+            time.sleep(max(0.0, 0.25 - (time.monotonic() - _last_request_at)))
+            _last_request_at = time.monotonic()
             request = urllib.request.Request(url, headers={"Accept": "application/json"})
             with urllib.request.urlopen(request, timeout=20) as response:
                 payload = json.load(response)
+                reset_at = response.headers.get("X-Bapi-Limit-Reset-Timestamp")
+            if payload.get("retCode") == 10006 and attempt < 2:
+                delay = 5 * (attempt + 1)
+                if reset_at:
+                    try:
+                        delay = max(delay, float(reset_at) / 1000 - time.time() + 1)
+                    except (TypeError, ValueError):
+                        pass
+                time.sleep(min(60, delay))
+                continue
             if payload.get("retCode") != 0:
                 raise ValueError("BYBIT_PUBLIC_API_ERROR:" + str(payload.get("retCode")))
             result = payload.get("result")
             if not isinstance(result, dict):
                 raise ValueError("INVALID_BYBIT_RESULT")
             return result
-        except (urllib.error.URLError, TimeoutError):
+        except (urllib.error.URLError, TimeoutError) as error:
+            # A forbidden response may be an IP ban; never repeatedly probe it.
+            if isinstance(error, urllib.error.HTTPError) and error.code != 429 and error.code < 500:
+                raise
             if attempt == 2:
                 raise
             time.sleep(2 * (attempt + 1))

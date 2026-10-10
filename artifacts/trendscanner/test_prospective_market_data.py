@@ -1,4 +1,5 @@
 import json
+import io
 import os
 import subprocess
 import sys
@@ -137,3 +138,43 @@ def test_invalid_source_fails_instead_of_using_kucoin():
     }, text=True, capture_output=True)
     assert result.returncode != 0
     assert "UNSUPPORTED_MARKET_SOURCE" in result.stderr
+
+
+@pytest.mark.parametrize("codes,success", [([10006, 0], True), ([10006] * 3, False)])
+def test_rate_limit_retries_are_bounded_and_wait_for_reset(monkeypatch, codes, success):
+    sleeps = []
+    calls = []
+
+    class Response(io.StringIO):
+        headers = {"X-Bapi-Limit-Reset-Timestamp": "109000"}
+
+    def open_request(request, timeout):
+        calls.append(request.full_url)
+        return Response(json.dumps({"retCode": codes[len(calls) - 1], "result": {"ok": True}}))
+
+    monkeypatch.setattr(data.urllib.request, "urlopen", open_request)
+    monkeypatch.setattr(data.time, "sleep", sleeps.append)
+    monkeypatch.setattr(data.time, "time", lambda: 100)
+    monkeypatch.setattr(data.time, "monotonic", lambda: 100)
+    monkeypatch.setattr(data, "_last_request_at", 0)
+    if success:
+        assert data._get("/v5/market/kline", {}) == {"ok": True}
+    else:
+        with pytest.raises(ValueError, match="10006"):
+            data._get("/v5/market/kline", {})
+    assert len(calls) == len(codes)
+    assert 10 in sleeps  # reset timestamp plus one-second margin
+
+
+def test_forbidden_is_not_retried(monkeypatch):
+    calls = []
+
+    def forbidden(request, timeout):
+        calls.append(request.full_url)
+        raise data.urllib.error.HTTPError(request.full_url, 403, "Forbidden", {}, None)
+
+    monkeypatch.setattr(data.urllib.request, "urlopen", forbidden)
+    monkeypatch.setattr(data.time, "sleep", lambda _: None)
+    with pytest.raises(data.urllib.error.HTTPError):
+        data._get("/v5/market/kline", {})
+    assert len(calls) == 1
