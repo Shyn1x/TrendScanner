@@ -96,6 +96,24 @@ jobs:
           PYTHONPATH: artifacts/trendscanner
         run: uv run python artifacts/trendscanner/prospective_4h_v2_collector.py
 
+      - name: Verify full Bybit market context on manual runs
+        if: github.event_name == 'workflow_dispatch'
+        working-directory: frozen
+        env:
+          PYTHONPATH: artifacts/trendscanner
+        run: |
+          uv run python - <<'PY'
+          import json
+          from market_regime_shadow_v2 import context_for_target
+          from prospective_4h_v2_collector import _latest_closed_timestamp, exchange
+          target = _latest_closed_timestamp(exchange.milliseconds())
+          snapshot = context_for_target(target).snapshot()
+          print(json.dumps(snapshot, sort_keys=True))
+          assert snapshot['shadow_status'] == 'OK', 'Full Bybit market context failed'
+          assert snapshot['market']['available_symbols'] == 25
+          print('BYBIT 1213-ROW MARKET CONTEXT: PASS')
+          PY
+
       - name: Run sequential 4h collector
         if: github.event_name == 'schedule' || inputs.write
         working-directory: frozen
