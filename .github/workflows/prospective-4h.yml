@@ -97,7 +97,7 @@ jobs:
         run: uv run python artifacts/trendscanner/prospective_4h_v2_collector.py
 
       - name: Verify full Bybit market context on manual runs
-        if: github.event_name == 'workflow_dispatch'
+        if: github.event_name == 'workflow_dispatch' && !inputs.write
         working-directory: frozen
         env:
           PYTHONPATH: artifacts/trendscanner
