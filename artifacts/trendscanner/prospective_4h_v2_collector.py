@@ -9,7 +9,7 @@ from market_regime_shadow_v2 import SHADOW_VERSION, context_for_target, observe_
 from prospective_4h_v2_coverage import latest_coverage_timestamp, record_complete_candle
 from ready_engine import evaluate_ready_candidate
 from ready_outcome_pilot import SYMBOLS
-from research_data import get_research_data_before
+from prospective_market_data import MARKET_SOURCE, get_research_data_before
 from scanner import exchange
 
 EXPECTED_BARS = 200
@@ -117,6 +117,7 @@ def _collect_target(target_timestamp: int, source_by_symbol: dict):
                     continue
 
                 candidate = evaluate_ready_candidate(symbol, "4h", direction, result)
+                candidate["data_quality"] = {"source": MARKET_SOURCE, "placeholder_policy": "flat_open_at_signal_close"}
                 if type(candidate.get("ready")) is not bool:
                     errors.append((symbol, direction, "INVALID_READY"))
                     continue
@@ -208,6 +209,7 @@ def main():
     )
 
     print("Experiment:", SHADOW_VERSION)
+    print("Source:", MARKET_SOURCE)
     print("Timeframe: 4h")
     print("Latest closed target:", latest_target)
     print("Previous coverage:", previous_timestamp)

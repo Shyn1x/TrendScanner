@@ -62,5 +62,16 @@ class Prospective4hV2Tests(unittest.TestCase):
         self.assertTrue(frame.empty)
 
 
+class BybitContextTests(unittest.TestCase):
+    def test_market_context_and_candidates_use_same_selected_loader(self):
+        from market_regime_shadow_v2 import context_for_target, SHADOW_VERSION
+        from prospective_market_data import FOUR_H_VERSION, get_research_data_before
+        from prospective_4h_v2_collector import get_research_data_before as collector_loader
+        context = context_for_target(500 * TIMEFRAME_MS)
+        self.assertIs(context._loader, get_research_data_before)
+        self.assertIs(collector_loader, get_research_data_before)
+        self.assertEqual(SHADOW_VERSION, FOUR_H_VERSION)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -2,8 +2,22 @@ name: Prospective 4h Collector
 
 on:
   workflow_dispatch:
+    inputs:
+      write:
+        description: "Write validated Bybit observations to Neon"
+        type: boolean
+        default: false
   schedule:
     - cron: "15 */4 * * *"
+
+  pull_request:
+    branches: [main]
+    paths:
+      - "artifacts/trendscanner/prospective_market_data.py"
+      - "artifacts/trendscanner/market_regime_shadow_v2.py"
+      - "artifacts/trendscanner/prospective_4h_v2_collector.py"
+      - "artifacts/trendscanner/test_prospective_4h_v2.py"
+      - ".github/workflows/prospective-4h.yml"
 
 permissions:
   contents: read
@@ -12,9 +26,13 @@ concurrency:
   group: prospective-4h-collector
   cancel-in-progress: false
 
+env:
+  TREND_SCANNER_MARKET_SOURCE: bybit_linear
+
 jobs:
   collect:
-    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request'
+    runs-on: [self-hosted, linux, x64, bybit-demo]
     timeout-minutes: 30
 
     steps:
@@ -32,6 +50,7 @@ jobs:
 
       - name: Assemble frozen 4h v2 workspace
         run: |
+          cp patch/artifacts/trendscanner/prospective_market_data.py frozen/artifacts/trendscanner/
           cp patch/artifacts/trendscanner/market_regime_shadow_v2.py frozen/artifacts/trendscanner/
           cp patch/artifacts/trendscanner/prospective_4h_v2_coverage.py frozen/artifacts/trendscanner/
           cp patch/artifacts/trendscanner/prospective_4h_v2_collector.py frozen/artifacts/trendscanner/
@@ -77,9 +96,62 @@ jobs:
           PYTHONPATH: artifacts/trendscanner
         run: uv run python artifacts/trendscanner/prospective_4h_v2_collector.py
 
+      - name: Verify full Bybit market context on manual runs
+        if: github.event_name == 'workflow_dispatch' && !inputs.write
+        working-directory: frozen
+        env:
+          PYTHONPATH: artifacts/trendscanner
+        run: |
+          uv run python - <<'PY'
+          import json
+          from market_regime_shadow_v2 import context_for_target
+          from prospective_4h_v2_collector import _latest_closed_timestamp, exchange
+          target = _latest_closed_timestamp(exchange.milliseconds())
+          snapshot = context_for_target(target).snapshot()
+          print(json.dumps(snapshot, sort_keys=True))
+          assert snapshot['shadow_status'] == 'OK', 'Full Bybit market context failed'
+          assert snapshot['market']['available_symbols'] == 25
+          print('BYBIT 1213-ROW MARKET CONTEXT: PASS')
+          PY
+
       - name: Run sequential 4h collector
+        if: github.event_name == 'schedule' || inputs.write
         working-directory: frozen
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           PYTHONPATH: artifacts/trendscanner
         run: uv run python artifacts/trendscanner/prospective_4h_v2_collector.py --write
+
+  validate-4h:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 69cb70107baecf0e9b8dc3a0731fa885a338d2ef
+          path: frozen
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          path: patch
+      - name: Assemble 4h Bybit workspace
+        run: |
+          cp patch/artifacts/trendscanner/prospective_market_data.py frozen/artifacts/trendscanner/
+          cp patch/artifacts/trendscanner/market_regime_shadow_v2.py frozen/artifacts/trendscanner/
+          cp patch/artifacts/trendscanner/prospective_4h_v2_coverage.py frozen/artifacts/trendscanner/
+          cp patch/artifacts/trendscanner/prospective_4h_v2_collector.py frozen/artifacts/trendscanner/
+          cp patch/artifacts/trendscanner/test_prospective_4h_v2.py frozen/artifacts/trendscanner/
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --frozen
+        working-directory: frozen
+      - name: Check 4h context and signal integrity
+        working-directory: frozen
+        env:
+          PYTHONPATH: artifacts/trendscanner
+        run: |
+          uv run python artifacts/trendscanner/test_prospective_integrity.py
+          uv run python artifacts/trendscanner/test_prospective_4h_v2.py

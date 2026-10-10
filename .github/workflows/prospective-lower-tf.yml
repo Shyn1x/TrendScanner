@@ -12,6 +12,15 @@ on:
     - cron: "7,12 * * * *"
     - cron: "22,27,37,42,52,57 * * * *"
 
+  pull_request:
+    branches: [main]
+    paths:
+      - "artifacts/trendscanner/prospective_market_data.py"
+      - "artifacts/trendscanner/test_prospective_market_data.py"
+      - "artifacts/trendscanner/prospective_lower_tf_collector.py"
+      - "artifacts/trendscanner/lower_tf_shadow.py"
+      - ".github/workflows/prospective-lower-tf.yml"
+
 permissions:
   contents: read
 
@@ -19,15 +28,22 @@ concurrency:
   group: prospective-lower-tf-collector
   cancel-in-progress: false
 
+env:
+  TREND_SCANNER_MARKET_SOURCE: bybit_linear
+
 jobs:
   validate-and-collect:
+    if: github.event_name != 'pull_request'
     name: Collect ${{ matrix.timeframe }}
     strategy:
       # A rejected 15m source must not cancel an independently valid 1h batch.
       fail-fast: false
       matrix:
         timeframe: ${{ fromJSON((github.event_name == 'workflow_dispatch' || github.event.schedule == '7,12 * * * *') && '["1h","15m"]' || '["15m"]') }}
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, x64, bybit-demo]
+    defaults:
+      run:
+        working-directory: frozen
     timeout-minutes: 40
 
     steps:
@@ -35,6 +51,21 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: 5547e881078dc97ccb317b5e4f8252eab3fb9a21
+          path: frozen
+
+      - name: Checkout venue adapter
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          path: patch
+
+      - name: Assemble prospective Bybit workspace
+        working-directory: .
+        run: |
+          cp patch/artifacts/trendscanner/prospective_market_data.py frozen/artifacts/trendscanner/
+          cp patch/artifacts/trendscanner/lower_tf_shadow.py frozen/artifacts/trendscanner/
+          cp patch/artifacts/trendscanner/prospective_lower_tf_collector.py frozen/artifacts/trendscanner/
+          cp patch/artifacts/trendscanner/test_prospective_market_data.py frozen/artifacts/trendscanner/
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -45,6 +76,7 @@ jobs:
         uses: astral-sh/setup-uv@v6
         with:
           enable-cache: true
+          working-directory: frozen
 
       - name: Install dependencies
         run: uv sync --frozen
@@ -61,7 +93,7 @@ jobs:
       - name: Run lower-TF unit tests
         env:
           PYTHONPATH: artifacts/trendscanner
-        run: uv run --with pytest pytest -q artifacts/trendscanner/test_lower_tf_storage.py artifacts/trendscanner/test_lower_tf_shadow.py artifacts/trendscanner/test_prospective_lower_tf_collector.py
+        run: uv run --with pytest pytest -q artifacts/trendscanner/test_lower_tf_storage.py artifacts/trendscanner/test_lower_tf_shadow.py artifacts/trendscanner/test_prospective_lower_tf_collector.py artifacts/trendscanner/test_prospective_market_data.py
 
       - name: Dry-run ${{ matrix.timeframe }}
         env:
@@ -74,3 +106,34 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           PYTHONPATH: artifacts/trendscanner
         run: uv run python artifacts/trendscanner/prospective_lower_tf_collector.py --timeframe ${{ matrix.timeframe }} --write
+
+  validate-adapter:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 5547e881078dc97ccb317b5e4f8252eab3fb9a21
+          path: frozen
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          path: patch
+      - name: Assemble and test market adapter
+        run: |
+          cp patch/artifacts/trendscanner/prospective_market_data.py frozen/artifacts/trendscanner/
+          cp patch/artifacts/trendscanner/test_prospective_market_data.py frozen/artifacts/trendscanner/
+          cp patch/artifacts/trendscanner/lower_tf_shadow.py frozen/artifacts/trendscanner/
+          cp patch/artifacts/trendscanner/prospective_lower_tf_collector.py frozen/artifacts/trendscanner/
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --frozen
+        working-directory: frozen
+      - name: Check venue routing and signal integrity
+        working-directory: frozen
+        env:
+          PYTHONPATH: artifacts/trendscanner
+        run: uv run --with pytest pytest -q artifacts/trendscanner/test_prospective_market_data.py artifacts/trendscanner/test_lower_tf_storage.py artifacts/trendscanner/test_lower_tf_shadow.py artifacts/trendscanner/test_prospective_lower_tf_collector.py

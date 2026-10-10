@@ -33,7 +33,9 @@ from decimal import ROUND_CEILING, ROUND_FLOOR, Decimal
 from typing import Any
 
 DEMO_BASE_URL = "https://api-demo.bybit.com"
-EXPERIMENT_VERSION = "lower-tf-ready-v5-fixed200-catchup"
+from prospective_market_data import BYBIT_LOWER_TF_VERSION
+
+EXPERIMENT_VERSION = BYBIT_LOWER_TF_VERSION
 EVENTS_TABLE = "lower_tf_prospective_events"
 TRADES_TABLE = "bybit_demo_strategy_trades"
 EXECUTOR_VERSION = "bybit-demo-v1-1h-long-12bar-stop150"
@@ -95,7 +97,7 @@ def bybit_symbol(symbol: str) -> str:
 
 
 def order_link_id(symbol: str, ready_timestamp: int, *, exit_order: bool = False) -> str:
-    identity = f"{EXECUTOR_VERSION}|{symbol}|{int(ready_timestamp)}"
+    identity = f"{EXECUTOR_VERSION}|{EXPERIMENT_VERSION}|{symbol}|{int(ready_timestamp)}"
     digest = hashlib.sha256(identity.encode()).hexdigest()[:20]
     suffix = "x" if exit_order else "e"
     value = f"{ORDER_PREFIX}-{suffix}-{digest}"
@@ -413,14 +415,14 @@ def _bootstrap(cur: Any) -> None:
 
 def _load_trades(cur: Any) -> list[dict[str, Any]]:
     cur.execute(
-        f"SELECT symbol, ready_timestamp, signal_close_ms, exit_due_ms, order_link_id, "
+        f"SELECT experiment_version, symbol, ready_timestamp, signal_close_ms, exit_due_ms, order_link_id, "
         "exit_order_link_id, status, risk_amount, reference_price, quantity, stop_price, "
         "entry_order_id, exit_order_id, avg_entry_price, closed_pnl, submitted_ms "
         f"FROM {TRADES_TABLE} WHERE executor_version=%s ORDER BY ready_timestamp, symbol",
         (EXECUTOR_VERSION,),
     )
     keys = (
-        "symbol", "ready_timestamp", "signal_close_ms", "exit_due_ms", "order_link_id",
+        "experiment_version", "symbol", "ready_timestamp", "signal_close_ms", "exit_due_ms", "order_link_id",
         "exit_order_link_id", "status", "risk_amount", "reference_price", "quantity",
         "stop_price", "entry_order_id", "exit_order_id", "avg_entry_price", "closed_pnl",
         "submitted_ms",
@@ -452,7 +454,7 @@ def _load_fresh_events(cur: Any, *, now_ms: int, config: Config) -> list[dict[st
     return events
 
 
-def _update_trade(cur: Any, symbol: str, ready_timestamp: int, **changes: Any) -> None:
+def _update_trade(cur: Any, symbol: str, ready_timestamp: int, *, experiment_version: str = EXPERIMENT_VERSION, **changes: Any) -> None:
     allowed = {
         "status", "entry_order_id", "exit_order_id", "avg_entry_price", "quantity",
         "stop_price", "closed_pnl", "submitted_ms", "last_error",
@@ -462,8 +464,8 @@ def _update_trade(cur: Any, symbol: str, ready_timestamp: int, **changes: Any) -
     assignments = ", ".join(f"{key}=%s" for key in changes)
     cur.execute(
         f"UPDATE {TRADES_TABLE} SET {assignments}, updated_at=now() "
-        "WHERE executor_version=%s AND symbol=%s AND ready_timestamp=%s",
-        (*changes.values(), EXECUTOR_VERSION, symbol, ready_timestamp),
+        "WHERE executor_version=%s AND experiment_version=%s AND symbol=%s AND ready_timestamp=%s",
+        (*changes.values(), EXECUTOR_VERSION, experiment_version, symbol, ready_timestamp),
     )
     if cur.rowcount != 1:
         raise SafetyError("TRADE_JOURNAL_UPDATE_FAILED")
@@ -524,7 +526,7 @@ def execute_cycle(connection: Any, client: BybitDemoClient, *, now_ms: int, conf
     """Reconcile exits first, then submit at most the fresh prospective events."""
     if now_ms < config.start_ms:
         raise SafetyError("EXECUTION_BEFORE_START")
-    summary: dict[str, Any] = {"closed": 0, "exits_submitted": 0, "entries_submitted": 0, "skipped": {}}
+    summary: dict[str, Any] = {"signal_experiment": EXPERIMENT_VERSION, "closed": 0, "exits_submitted": 0, "entries_submitted": 0, "skipped": {}}
     with connection.cursor() as cur:
         cur.execute("SELECT pg_advisory_lock(hashtext(%s))", (f"{EXECUTOR_VERSION}:cycle",))
         try:
@@ -548,7 +550,7 @@ def execute_cycle(connection: Any, client: BybitDemoClient, *, now_ms: int, conf
                     existing = client.order(trade["order_link_id"])
                     if existing:
                         _update_trade(
-                            cur, trade["symbol"], ready, status="SUBMITTED",
+                            cur, trade["symbol"], ready, experiment_version=trade["experiment_version"], status="SUBMITTED",
                             entry_order_id=existing.get("orderId"), submitted_ms=now_ms,
                         )
                         connection.commit()
@@ -557,10 +559,11 @@ def execute_cycle(connection: Any, client: BybitDemoClient, *, now_ms: int, conf
                         position = client.position(api_symbol)
                     else:
                         signal_age = now_ms - int(trade["signal_close_ms"])
-                        if signal_age > config.max_signal_age_ms:
+                        legacy_signal = trade["experiment_version"] != EXPERIMENT_VERSION
+                        if legacy_signal or signal_age > config.max_signal_age_ms:
                             _update_trade(
-                                cur, trade["symbol"], ready, status="SKIPPED",
-                                last_error="STALE_RESERVED_WITHOUT_BYBIT_ORDER",
+                                cur, trade["symbol"], ready, experiment_version=trade["experiment_version"], status="SKIPPED",
+                                last_error="LEGACY_SIGNAL_AFTER_VENUE_SWITCH" if legacy_signal else "STALE_RESERVED_WITHOUT_BYBIT_ORDER",
                             )
                             connection.commit()
                             trade["status"] = "SKIPPED"
@@ -579,7 +582,7 @@ def execute_cycle(connection: Any, client: BybitDemoClient, *, now_ms: int, conf
                         client.set_leverage(api_symbol, config.max_leverage)
                         response = client.create_entry(plan, trade["order_link_id"])
                         _update_trade(
-                            cur, trade["symbol"], ready, status="SUBMITTED",
+                            cur, trade["symbol"], ready, experiment_version=trade["experiment_version"], status="SUBMITTED",
                             entry_order_id=response.get("orderId"), submitted_ms=now_ms,
                         )
                         connection.commit()
@@ -594,14 +597,14 @@ def execute_cycle(connection: Any, client: BybitDemoClient, *, now_ms: int, conf
                         order = client.order(trade["order_link_id"])
                         order_status = (order or {}).get("orderStatus")
                         if order_status in {"Rejected", "Cancelled", "Deactivated"}:
-                            _update_trade(cur, trade["symbol"], ready, status="FAILED", last_error=f"ENTRY_{order_status}")
+                            _update_trade(cur, trade["symbol"], ready, experiment_version=trade["experiment_version"], status="FAILED", last_error=f"ENTRY_{order_status}")
                             connection.commit()
                         elif order_status == "Filled":
                             closed = _find_closed_pnl(client, trade, now_ms)
                             if closed is None:
                                 unresolved_close = True
                             else:
-                                _update_trade(cur, trade["symbol"], ready, status="CLOSED", closed_pnl=closed)
+                                _update_trade(cur, trade["symbol"], ready, experiment_version=trade["experiment_version"], status="CLOSED", closed_pnl=closed)
                                 connection.commit()
                                 trade["status"] = "CLOSED"
                                 trade["closed_pnl"] = closed
@@ -611,7 +614,7 @@ def execute_cycle(connection: Any, client: BybitDemoClient, *, now_ms: int, conf
                     if closed is None:
                         unresolved_close = True
                         continue
-                    _update_trade(cur, trade["symbol"], ready, status="CLOSED", closed_pnl=closed)
+                    _update_trade(cur, trade["symbol"], ready, experiment_version=trade["experiment_version"], status="CLOSED", closed_pnl=closed)
                     connection.commit()
                     trade["status"] = "CLOSED"
                     trade["closed_pnl"] = closed
@@ -626,7 +629,7 @@ def execute_cycle(connection: Any, client: BybitDemoClient, *, now_ms: int, conf
                 if current_stop != exact_stop:
                     client.set_stop(api_symbol, exact_stop)
                 _update_trade(
-                    cur, trade["symbol"], ready, status="OPEN", avg_entry_price=avg_price,
+                    cur, trade["symbol"], ready, experiment_version=trade["experiment_version"], status="OPEN", avg_entry_price=avg_price,
                     quantity=quantity, stop_price=exact_stop,
                 )
                 connection.commit()
@@ -639,7 +642,7 @@ def execute_cycle(connection: Any, client: BybitDemoClient, *, now_ms: int, conf
                     else:
                         response = client.create_exit(api_symbol, quantity, trade["exit_order_link_id"])
                     _update_trade(
-                        cur, trade["symbol"], ready, status="EXIT_SUBMITTED",
+                        cur, trade["symbol"], ready, experiment_version=trade["experiment_version"], status="EXIT_SUBMITTED",
                         exit_order_id=response.get("orderId"),
                     )
                     connection.commit()
@@ -659,10 +662,10 @@ def execute_cycle(connection: Any, client: BybitDemoClient, *, now_ms: int, conf
                 raise SafetyError("VIRTUAL_EQUITY_DEPLETED")
             active = [trade for trade in trades if trade["status"] in ACTIVE_STATUSES]
             events = _load_fresh_events(cur, now_ms=now_ms, config=config)
-            known = {(trade["symbol"], int(trade["ready_timestamp"])) for trade in trades}
+            known = {(trade["experiment_version"], trade["symbol"], int(trade["ready_timestamp"])) for trade in trades}
 
             for event in events:
-                identity = (event["symbol"], int(event["ready_timestamp"]))
+                identity = (EXPERIMENT_VERSION, event["symbol"], int(event["ready_timestamp"]))
                 if identity in known:
                     continue
                 if len(active) >= config.max_open_positions:
@@ -758,6 +761,7 @@ def preflight(connection: Any, client: BybitDemoClient, *, now_ms: int, config: 
         raise SafetyError(f"UNTRACKED_DEMO_POSITIONS:{','.join(untracked)}")
     return {
         "endpoint": DEMO_BASE_URL,
+        "signal_experiment": EXPERIMENT_VERSION,
         "fresh_eligible_events": len(fresh),
         "tracked_active_trades": len(tracked),
         "demo_open_positions": len(positions),

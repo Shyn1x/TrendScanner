@@ -19,7 +19,9 @@ from market_regime_shadow import (
 from scanner import exchange
 from strategy_analytics import DEFAULT_DB_PATH
 
-SHADOW_VERSION = "market-regime-v2-sequential"
+from prospective_market_data import FOUR_H_VERSION, MARKET_SOURCE, get_research_data_before
+
+SHADOW_VERSION = FOUR_H_VERSION
 
 
 def observe_ready(candidate, *, context=None, db_path=DEFAULT_DB_PATH,
@@ -75,6 +77,7 @@ def observe_ready(candidate, *, context=None, db_path=DEFAULT_DB_PATH,
 
         event = {
             "schema_version": 1,
+            "data_quality": {"source": MARKET_SOURCE},
             "shadow_version": SHADOW_VERSION,
             "observed_at": datetime.fromtimestamp(now / 1000, timezone.utc).isoformat(),
             "symbol": symbol,
@@ -114,4 +117,4 @@ def observe_ready(candidate, *, context=None, db_path=DEFAULT_DB_PATH,
 def context_for_target(target_timestamp):
     """Create an immutable market-context cache anchored to one historical target."""
     target = int(target_timestamp)
-    return MarketContextCache(clock=lambda: target + TIMEFRAME_MS)
+    return MarketContextCache(loader=get_research_data_before, clock=lambda: target + TIMEFRAME_MS)

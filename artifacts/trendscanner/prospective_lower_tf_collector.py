@@ -8,7 +8,7 @@ from lower_tf_coverage import latest_coverage_timestamp, record_complete_candle
 from lower_tf_shadow import EXPERIMENT_VERSION, TIMEFRAME_MS, observe_lower_tf
 from ready_engine import evaluate_ready_candidate
 from ready_outcome_pilot import SYMBOLS
-from research_data import get_research_data_before
+from prospective_market_data import MARKET_SOURCE, get_research_data_before
 from scanner import _fetch_recent_ohlcv, _to_futures_symbol, exchange, get_data
 
 TIMEFRAMES = ("1h", "15m")
@@ -286,7 +286,7 @@ def _collect_target(timeframe, target_timestamp, source_by_symbol, latest_target
                     result,
                 )
                 candidate["data_quality"] = {
-                    "source": "kucoin_futures",
+                    "source": MARKET_SOURCE,
                     "collection_mode": collection_mode,
                     "no_tick_fill_policy": NO_TICK_FILL_POLICY,
                     "filled_no_tick_timestamps": filled,
@@ -383,6 +383,7 @@ def main():
         targets = [latest_target]
 
     print("Experiment:", EXPERIMENT_VERSION)
+    print("Source:", MARKET_SOURCE)
     print("Timeframe:", args.timeframe)
     print("Latest closed target:", latest_target)
     print("Previous coverage:", previous_timestamp)

@@ -15,7 +15,7 @@ import pandas as pd
 
 import lower_tf_storage
 from lower_tf_shadow import EXPERIMENT_VERSION, TIMEFRAME_MS, context_4h_timestamp
-from research_data import get_research_data_before
+from prospective_market_data import MARKET_SOURCE, get_research_data_before
 from scanner import exchange
 
 HORIZONS = (1, 3, 6, 12)
@@ -494,6 +494,7 @@ def analyze(*, write=False, database_url=None, now_ms=None):
                 except Exception as exc:
                     failures.append((symbol, timeframe, direction, ready, type(exc).__name__))
 
+            print(f"Experiment: {EXPERIMENT_VERSION}; source: {MARKET_SOURCE}")
             print(f"Outcome version: {OUTCOME_VERSION}")
             print(f"Prospective events: {len(parsed_events)}")
             print(f"Existing completed rows: {len(existing)}")

@@ -282,3 +282,65 @@ def test_position_map_rejects_short_or_hedged_positions():
 
 if __name__ == "__main__":
     raise SystemExit(pytest.main([__file__, "-q"]))
+
+
+def test_demo_selects_only_bybit_signal_namespace():
+    from prospective_market_data import BYBIT_LOWER_TF_VERSION, KUCOIN_LOWER_TF_VERSION
+    assert demo.EXPERIMENT_VERSION == BYBIT_LOWER_TF_VERSION
+    assert demo.EXPERIMENT_VERSION != KUCOIN_LOWER_TF_VERSION
+
+
+def test_order_identity_separates_venues(monkeypatch):
+    new_id = demo.order_link_id("BTC/USDT", 1_800_000_000_000)
+    monkeypatch.setattr(demo, "EXPERIMENT_VERSION", "lower-tf-ready-v5-fixed200-catchup")
+    assert new_id != demo.order_link_id("BTC/USDT", 1_800_000_000_000)
+
+
+def test_legacy_trade_update_uses_its_original_experiment():
+    class Cursor:
+        rowcount = 1
+        def execute(self, sql, params):
+            self.sql, self.params = sql, params
+    cur = Cursor()
+    demo._update_trade(cur, "BTC/USDT", 3_600_000,
+                       experiment_version="legacy", status="CLOSED")
+    assert "experiment_version=%s" in cur.sql
+    assert cur.params[-3:] == ("legacy", "BTC/USDT", 3_600_000)
+
+
+@pytest.mark.parametrize("status", ["OPEN", "RESERVED"])
+def test_venue_switch_manages_old_positions_but_never_retries_old_entries(monkeypatch, status):
+    legacy = {"experiment_version": "lower-tf-ready-v5-fixed200-catchup",
+              "symbol": "BTC/USDT", "ready_timestamp": 3_600_000,
+              "signal_close_ms": 7_200_000, "exit_due_ms": 360_000_000,
+              "order_link_id": "legacy-entry", "exit_order_link_id": "legacy-exit",
+              "status": status, "risk_amount": Decimal(3),
+              "quantity": Decimal(2), "reference_price": Decimal(100), "closed_pnl": None}
+    class Cursor:
+        def __enter__(self): return self
+        def __exit__(self, *args): pass
+        def execute(self, *args): pass
+    class Connection:
+        def cursor(self): return Cursor()
+        def commit(self): pass
+        def rollback(self): pass
+    class Client:
+        def order(self, link_id): return None
+        def instrument(self, symbol): return {"tick_size": Decimal("0.1")}
+        def create_entry(self, *args): raise AssertionError("old signal must not create an entry")
+        def set_stop(self, *args): raise AssertionError("existing correct stop should be preserved")
+    positions = {"BTCUSDT": {"avgPrice": "100", "size": "2", "stopLoss": "98.5"}} if status == "OPEN" else {}
+    updates = []
+    monkeypatch.setattr(demo, "_bootstrap", lambda cur: None)
+    monkeypatch.setattr(demo, "_load_trades", lambda cur: [legacy])
+    monkeypatch.setattr(demo, "_position_map", lambda client: positions)
+    monkeypatch.setattr(demo, "_load_fresh_events", lambda *args, **kwargs: [])
+    monkeypatch.setattr(demo, "_update_trade", lambda cur, symbol, ready, **changes: updates.append(changes))
+    result = demo.execute_cycle(Connection(), Client(), now_ms=10_800_000, config=demo.Config(start_ms=3_600_000))
+    assert result["entries_submitted"] == 0
+    assert updates[0]["experiment_version"] == legacy["experiment_version"]
+    if status == "RESERVED":
+        assert updates[0]["status"] == "SKIPPED"
+        assert updates[0]["last_error"] == "LEGACY_SIGNAL_AFTER_VENUE_SWITCH"
+    else:
+        assert updates[0]["status"] == "OPEN"
