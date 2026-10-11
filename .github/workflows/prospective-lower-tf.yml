@@ -33,7 +33,7 @@ env:
 
 jobs:
   validate-and-collect:
-    if: github.event_name != 'pull_request'
+    if: github.event_name != 'pull_request' && (github.event_name != 'schedule' || vars.TREND_SCANNER_RUNTIME != 'vps')
     name: Collect ${{ matrix.timeframe }}
     strategy:
       # A rejected 15m source must not cancel an independently valid 1h batch.
@@ -47,19 +47,33 @@ jobs:
     timeout-minutes: 40
 
     steps:
+      - name: Check local scheduler ownership
+        id: owner
+        working-directory: .
+        run: |
+          if test -f "$HOME/trendscanner-runtime/ACTIVE"; then
+            echo 'write=false' >> "$GITHUB_OUTPUT"
+            echo 'VPS owns runtime writes; this Actions job will not write or execute orders.'
+          else
+            echo 'write=true' >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Checkout frozen lower-TF research code
+        if: steps.owner.outputs.write == 'true'
         uses: actions/checkout@v4
         with:
           ref: 5547e881078dc97ccb317b5e4f8252eab3fb9a21
           path: frozen
 
       - name: Checkout venue adapter
+        if: steps.owner.outputs.write == 'true'
         uses: actions/checkout@v4
         with:
           ref: ${{ github.sha }}
           path: patch
 
       - name: Assemble prospective Bybit workspace
+        if: steps.owner.outputs.write == 'true'
         working-directory: .
         run: |
           cp patch/artifacts/trendscanner/prospective_market_data.py frozen/artifacts/trendscanner/
@@ -68,20 +82,24 @@ jobs:
           cp patch/artifacts/trendscanner/test_prospective_market_data.py frozen/artifacts/trendscanner/
 
       - name: Set up Python
+        if: steps.owner.outputs.write == 'true'
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
       - name: Set up uv
+        if: steps.owner.outputs.write == 'true'
         uses: astral-sh/setup-uv@v6
         with:
           enable-cache: true
           working-directory: frozen
 
       - name: Install dependencies
+        if: steps.owner.outputs.write == 'true'
         run: uv sync --frozen
 
       - name: Compile lower-TF collector
+        if: steps.owner.outputs.write == 'true'
         env:
           PYTHONPATH: artifacts/trendscanner
         run: |
@@ -91,17 +109,19 @@ jobs:
           uv run python -m py_compile artifacts/trendscanner/prospective_lower_tf_collector.py
 
       - name: Run lower-TF unit tests
+        if: steps.owner.outputs.write == 'true'
         env:
           PYTHONPATH: artifacts/trendscanner
         run: uv run --with pytest pytest -q artifacts/trendscanner/test_lower_tf_storage.py artifacts/trendscanner/test_lower_tf_shadow.py artifacts/trendscanner/test_prospective_lower_tf_collector.py artifacts/trendscanner/test_prospective_market_data.py
 
       - name: Dry-run ${{ matrix.timeframe }}
+        if: steps.owner.outputs.write == 'true'
         env:
           PYTHONPATH: artifacts/trendscanner
         run: uv run python artifacts/trendscanner/prospective_lower_tf_collector.py --timeframe ${{ matrix.timeframe }}
 
       - name: Write ${{ matrix.timeframe }} baseline/state
-        if: github.event_name == 'schedule' || inputs.write
+        if: steps.owner.outputs.write == 'true' && (github.event_name == 'schedule' || inputs.write)
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           PYTHONPATH: artifacts/trendscanner

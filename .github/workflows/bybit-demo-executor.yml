@@ -31,7 +31,7 @@ concurrency:
 
 jobs:
   validate:
-    if: github.event_name != 'schedule' || vars.BYBIT_DEMO_ENABLED == 'true'
+    if: github.event_name != 'schedule' || (vars.BYBIT_DEMO_ENABLED == 'true' && vars.TREND_SCANNER_RUNTIME != 'vps')
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -85,45 +85,61 @@ jobs:
   demo-cycle:
     if: >-
       (github.event_name == 'workflow_dispatch') ||
-      (github.event_name == 'schedule' && vars.BYBIT_DEMO_ENABLED == 'true')
+      (github.event_name == 'schedule' && vars.BYBIT_DEMO_ENABLED == 'true' && vars.TREND_SCANNER_RUNTIME != 'vps')
     needs: validate
     runs-on: [self-hosted, linux, x64, bybit-demo]
     timeout-minutes: 15
     steps:
+      - name: Check local scheduler ownership
+        id: owner
+        run: |
+          if test -f "$HOME/trendscanner-runtime/ACTIVE"; then
+            echo 'write=false' >> "$GITHUB_OUTPUT"
+            echo 'VPS owns runtime writes; this Actions job will not write or execute orders.'
+          else
+            echo 'write=true' >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Checkout frozen signal contract
+        if: steps.owner.outputs.write == 'true'
         uses: actions/checkout@v4
         with:
           ref: 5547e881078dc97ccb317b5e4f8252eab3fb9a21
           path: frozen
 
       - name: Checkout executor patch
+        if: steps.owner.outputs.write == 'true'
         uses: actions/checkout@v4
         with:
           ref: ${{ github.sha }}
           path: patch
 
       - name: Assemble isolated executor workspace
+        if: steps.owner.outputs.write == 'true'
         run: |
           cp patch/artifacts/trendscanner/prospective_market_data.py frozen/artifacts/trendscanner/
           cp patch/artifacts/trendscanner/bybit_demo_executor.py frozen/artifacts/trendscanner/
 
       - name: Set up Python
+        if: steps.owner.outputs.write == 'true'
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
       - name: Set up uv
+        if: steps.owner.outputs.write == 'true'
         uses: astral-sh/setup-uv@v6
         with:
           enable-cache: true
           working-directory: frozen
 
       - name: Install dependencies
+        if: steps.owner.outputs.write == 'true'
         working-directory: frozen
         run: uv sync --frozen
 
       - name: Authenticated read-only preflight
-        if: github.event_name == 'workflow_dispatch' && inputs.mode == 'preflight'
+        if: steps.owner.outputs.write == 'true' && (github.event_name == 'workflow_dispatch' && inputs.mode == 'preflight')
         working-directory: frozen
         env:
           BYBIT_DEMO_API_KEY: ${{ secrets.BYBIT_DEMO_API_KEY }}
@@ -135,8 +151,9 @@ jobs:
 
       - name: Execute one guarded demo cycle
         if: >-
-          (github.event_name == 'workflow_dispatch' && inputs.mode == 'execute') ||
-          github.event_name == 'schedule'
+          steps.owner.outputs.write == 'true' &&
+          ((github.event_name == 'workflow_dispatch' && inputs.mode == 'execute') ||
+          github.event_name == 'schedule')
         working-directory: frozen
         env:
           BYBIT_DEMO_API_KEY: ${{ secrets.BYBIT_DEMO_API_KEY }}

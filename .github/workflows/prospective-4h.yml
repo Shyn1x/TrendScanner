@@ -31,24 +31,38 @@ env:
 
 jobs:
   collect:
-    if: github.event_name != 'pull_request'
+    if: github.event_name != 'pull_request' && (github.event_name != 'schedule' || vars.TREND_SCANNER_RUNTIME != 'vps')
     runs-on: [self-hosted, linux, x64, bybit-demo]
     timeout-minutes: 30
 
     steps:
+      - name: Check local scheduler ownership
+        id: owner
+        working-directory: .
+        run: |
+          if test -f "$HOME/trendscanner-runtime/ACTIVE"; then
+            echo 'write=false' >> "$GITHUB_OUTPUT"
+            echo 'VPS owns runtime writes; this Actions job will not write or execute orders.'
+          else
+            echo 'write=true' >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Checkout frozen 4h research base
+        if: steps.owner.outputs.write == 'true'
         uses: actions/checkout@v4
         with:
           ref: 69cb70107baecf0e9b8dc3a0731fa885a338d2ef
           path: frozen
 
       - name: Checkout sequential v2 patch
+        if: steps.owner.outputs.write == 'true'
         uses: actions/checkout@v4
         with:
           ref: ${{ github.sha }}
           path: patch
 
       - name: Assemble frozen 4h v2 workspace
+        if: steps.owner.outputs.write == 'true'
         run: |
           cp patch/artifacts/trendscanner/prospective_market_data.py frozen/artifacts/trendscanner/
           cp patch/artifacts/trendscanner/market_regime_shadow_v2.py frozen/artifacts/trendscanner/
@@ -57,21 +71,25 @@ jobs:
           cp patch/artifacts/trendscanner/test_prospective_4h_v2.py frozen/artifacts/trendscanner/
 
       - name: Set up Python
+        if: steps.owner.outputs.write == 'true'
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
       - name: Set up uv
+        if: steps.owner.outputs.write == 'true'
         uses: astral-sh/setup-uv@v6
         with:
           enable-cache: true
           working-directory: frozen
 
       - name: Install dependencies
+        if: steps.owner.outputs.write == 'true'
         working-directory: frozen
         run: uv sync --frozen
 
       - name: Verify sequential 4h imports
+        if: steps.owner.outputs.write == 'true'
         working-directory: frozen
         env:
           PYTHONPATH: artifacts/trendscanner
@@ -79,25 +97,28 @@ jobs:
           uv run python -c "import market_regime_shadow, market_regime_shadow_v2, prospective_coverage, prospective_4h_v2_coverage, prospective_4h_v2_collector, shadow_storage; print('4h imports: PASS')"
 
       - name: Run frozen 4h integrity tests
+        if: steps.owner.outputs.write == 'true'
         working-directory: frozen
         env:
           PYTHONPATH: artifacts/trendscanner
         run: uv run python artifacts/trendscanner/test_prospective_integrity.py
 
       - name: Run sequential 4h tests
+        if: steps.owner.outputs.write == 'true'
         working-directory: frozen
         env:
           PYTHONPATH: artifacts/trendscanner
         run: uv run python artifacts/trendscanner/test_prospective_4h_v2.py
 
       - name: Dry-run sequential 4h collector
+        if: steps.owner.outputs.write == 'true'
         working-directory: frozen
         env:
           PYTHONPATH: artifacts/trendscanner
         run: uv run python artifacts/trendscanner/prospective_4h_v2_collector.py
 
       - name: Verify full Bybit market context on manual runs
-        if: github.event_name == 'workflow_dispatch' && !inputs.write
+        if: steps.owner.outputs.write == 'true' && github.event_name == 'workflow_dispatch' && !inputs.write
         working-directory: frozen
         env:
           PYTHONPATH: artifacts/trendscanner
@@ -115,7 +136,7 @@ jobs:
           PY
 
       - name: Run sequential 4h collector
-        if: github.event_name == 'schedule' || inputs.write
+        if: steps.owner.outputs.write == 'true' && (github.event_name == 'schedule' || inputs.write)
         working-directory: frozen
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}

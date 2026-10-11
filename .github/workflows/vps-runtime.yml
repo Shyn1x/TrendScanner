@@ -1,0 +1,116 @@
+name: VPS Runtime Manager
+on:
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: Inspect VPS readiness, install the local timer, or read runtime status
+        required: true
+        default: inspect
+        type: choice
+        options: [inspect, install, status]
+  pull_request:
+    branches: [main]
+    paths:
+      - ops/vps/**
+      - artifacts/trendscanner/bybit_demo_executor.py
+      - artifacts/trendscanner/test_bybit_demo_executor.py
+      - .github/workflows/vps-runtime.yml
+permissions:
+  contents: read
+concurrency:
+  group: trendscanner-vps-install
+  cancel-in-progress: false
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: astral-sh/setup-uv@v6
+      - run: uv run --with pytest --with pyyaml pytest -q ops/vps/test_runtime.py
+  manage:
+    if: github.event_name == 'workflow_dispatch'
+    needs: validate
+    runs-on: [self-hosted, linux, x64, bybit-demo]
+    timeout-minutes: 30
+    steps:
+      - name: Inspect server readiness
+        run: |
+          id
+          date -u
+          df -h "$HOME"
+          timedatectl show -p NTPSynchronized --value
+          if sudo -n true 2>/dev/null; then
+            echo 'PASSWORDLESS_SYSTEMD_INSTALL=YES'
+          else
+            echo 'PASSWORDLESS_SYSTEMD_INSTALL=NO'
+          fi
+          systemctl is-active trendscanner-runtime.timer || true
+          systemctl is-active trendscanner-runtime.service || true
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          path: patch
+      - name: Read local runtime status
+        if: inputs.operation == 'status'
+        run: |
+          python3 patch/ops/vps/runtime.py --status
+          systemctl status trendscanner-runtime.timer trendscanner-runtime.service --no-pager || true
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          root = Path.home() / 'trendscanner-runtime'
+          path = root / 'state/status.json'
+          if path.exists():
+              state = json.loads(path.read_text())
+              for task, record in state.get('tasks', {}).items():
+                  logfile = root / 'logs' / record.get('log', '')
+                  if logfile.is_file():
+                      print('TASK LOG:', task)
+                      print('\n'.join(logfile.read_text().splitlines()[-100:]))
+          PY
+      - name: Require merged main for installation
+        if: inputs.operation == 'install'
+        env:
+          BRANCH_REF: ${{ github.ref }}
+        run: test "$BRANCH_REF" = 'refs/heads/main'
+      - uses: actions/checkout@v4
+        if: inputs.operation == 'install'
+        with:
+          ref: 5547e881078dc97ccb317b5e4f8252eab3fb9a21
+          path: lower
+      - uses: actions/checkout@v4
+        if: inputs.operation == 'install'
+        with:
+          ref: 69cb70107baecf0e9b8dc3a0731fa885a338d2ef
+          path: four
+      - uses: actions/setup-python@v5
+        if: inputs.operation == 'install'
+        with:
+          python-version: '3.11'
+      - uses: astral-sh/setup-uv@v6
+        if: inputs.operation == 'install'
+      - name: Prepare frozen workspaces and authenticated read-only preflight
+        if: inputs.operation == 'install'
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          BYBIT_DEMO_API_KEY: ${{ secrets.BYBIT_DEMO_API_KEY }}
+          BYBIT_DEMO_API_SECRET: ${{ secrets.BYBIT_DEMO_API_SECRET }}
+          BYBIT_DEMO_ENABLED: ${{ vars.BYBIT_DEMO_ENABLED }}
+          BYBIT_DEMO_START_MS: ${{ vars.BYBIT_DEMO_START_MS }}
+          RELEASE_SHA: ${{ github.sha }}
+        run: python patch/ops/vps/install.py --patch patch --lower lower --four four --sha "$RELEASE_SHA"
+      - name: Activate the local timer
+        if: inputs.operation == 'install'
+        run: |
+          if ! sudo -n true 2>/dev/null; then
+            echo 'Prepared successfully. One existing sudo login is needed to install systemd units:'
+            echo "sudo /usr/bin/python3 $HOME/trendscanner-runtime/current/ops/install.py --root $HOME/trendscanner-runtime --activate"
+            exit 1
+          fi
+          sudo -n /usr/bin/python3 "$HOME/trendscanner-runtime/current/ops/install.py" --root "$HOME/trendscanner-runtime" --activate
+          systemctl is-active trendscanner-runtime.timer
