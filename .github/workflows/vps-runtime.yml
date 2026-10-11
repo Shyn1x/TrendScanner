@@ -3,11 +3,11 @@ on:
   workflow_dispatch:
     inputs:
       operation:
-        description: Inspect VPS readiness, install the local timer, or read runtime status
+        description: Inspect VPS readiness, manage the local timer, or audit Demo executions
         required: true
         default: inspect
         type: choice
-        options: [inspect, install, upgrade, status]
+        options: [inspect, install, upgrade, status, audit]
   pull_request:
     branches: [main]
     paths:
@@ -31,7 +31,7 @@ jobs:
         with:
           python-version: '3.11'
       - uses: astral-sh/setup-uv@v6
-      - run: uv run --with pytest --with pyyaml pytest -q ops/vps/test_runtime.py
+      - run: uv run --no-project --with pytest --with pyyaml pytest -q ops/vps/test_runtime.py ops/vps/test_audit_demo.py
   manage:
     if: github.event_name == 'workflow_dispatch'
     needs: validate
@@ -78,6 +78,24 @@ jobs:
                   if logfile.is_file():
                       print('TASK LOG:', task)
                       print('\n'.join(logfile.read_text().splitlines()[-100:]))
+          PY
+      - name: Audit Demo executions without changing orders or the runtime
+        if: inputs.operation == 'audit'
+        run: |
+          python3 - <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+          patch = Path('patch').resolve()
+          sys.path.insert(0, str(patch / 'ops/vps'))
+          from runtime import run_command
+          root = Path.home() / 'trendscanner-runtime'
+          workspace = (root / 'current/lower').resolve(strict=True)
+          config = json.loads((root / 'credentials.json').read_text())
+          args = [str(workspace / '.venv/bin/python'), str(patch / 'ops/vps/audit_demo.py')]
+          code, output = run_command(args, workspace, 'demo', config)
+          print(output)
+          raise SystemExit(code)
           PY
       - name: Require merged main for installation
         if: inputs.operation == 'install' || inputs.operation == 'upgrade'
