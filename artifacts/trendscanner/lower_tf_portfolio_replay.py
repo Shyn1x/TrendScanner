@@ -27,8 +27,10 @@ from lower_tf_historical_stop_replay import (
     _execution_metrics,
 )
 from lower_tf_shadow import TIMEFRAME_MS
+from prospective_market_data import MARKET_SOURCE
 
-PORTFOLIO_REPLAY_VERSION = "lower-tf-portfolio-v1-1h-long-12bar"
+PORTFOLIO_REPLAY_VERSION = ("lower-tf-portfolio-v2-bybit-1h-long-12bar" if MARKET_SOURCE == "bybit_linear"
+                            else "lower-tf-portfolio-v1-1h-long-12bar")
 PORTFOLIO_TIMEFRAME = "1h"
 PORTFOLIO_DIRECTION = "LONG"
 PORTFOLIO_HORIZON_BARS = 12
@@ -271,6 +273,12 @@ def load_reports(paths: Iterable[Path]) -> tuple[list[dict[str, Any]], list[dict
         manifest = report.get("manifest", {})
         if manifest.get("replay_version") != REPLAY_VERSION:
             raise ValueError(f"WRONG_REPLAY_VERSION:{path}")
+        if MARKET_SOURCE == 'bybit_linear' and manifest.get('market_source') != MARKET_SOURCE:
+            raise ValueError(f"WRONG_REPLAY_MARKET_SOURCE:{path}")
+        if MARKET_SOURCE == 'bybit_linear':
+            snapshot_id = manifest.get('candle_snapshot_sha256')
+            if not snapshot_id or (reports and snapshot_id != reports[0]['manifest'].get('candle_snapshot_sha256')):
+                raise ValueError(f"MIXED_OR_MISSING_BYBIT_SNAPSHOT:{path}")
         if report.get("errors"):
             raise ValueError(f"SOURCE_REPORT_HAS_ERRORS:{path}")
         reports.append(report)
@@ -327,6 +335,8 @@ def build_portfolio_report(
         "manifest": {
             "portfolio_replay_version": PORTFOLIO_REPLAY_VERSION,
             "source_replay_version": REPLAY_VERSION,
+            "market_source": MARKET_SOURCE,
+            "primary_stop_loss_bps": 150,
             "timeframe": PORTFOLIO_TIMEFRAME,
             "direction": PORTFOLIO_DIRECTION,
             "horizon_bars": PORTFOLIO_HORIZON_BARS,
@@ -334,6 +344,7 @@ def build_portfolio_report(
             "assumptions": assumptions,
             "source_report_count": len(reports),
             "source_event_count": len(events),
+            "candle_snapshot_sha256": reports[0].get('manifest', {}).get('candle_snapshot_sha256') if reports else None,
         },
         "simulations": simulations,
     }
