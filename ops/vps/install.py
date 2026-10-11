@@ -131,10 +131,59 @@ def activate(root):
     print('VPS TIMER ENABLED: PASS', flush=True)
 
 
+def activate_user_cron(root):
+    if os.geteuid() == 0:
+        raise RuntimeError('USER_CRON_REQUIRES_RUNNER_USER')
+    # Use an existing boot-enabled OS cron service, without granting any new sudo
+    # access. Preserve the user's existing crontab byte-for-byte before appending.
+    if (root / 'ACTIVE').exists():
+        raise RuntimeError('RUNTIME_ALREADY_ACTIVE_USE_STATUS')
+    if not (root / 'credentials.json').is_file() or not (root / 'current').is_symlink():
+        raise RuntimeError('PREPARE_REQUIRED')
+    units(root, pwd.getpwuid(os.getuid()).pw_name)  # Validate shell-safe local paths.
+    if not shutil.which('crontab'):
+        raise RuntimeError('CRON_NOT_INSTALLED_ROOT_ACTIVATION_REQUIRED')
+    invoke(['systemctl', 'is-active', 'cron'], stdout=subprocess.DEVNULL)
+    invoke(['systemctl', 'is-enabled', 'cron'], stdout=subprocess.DEVNULL)
+    previous = subprocess.run(['crontab', '-l'], capture_output=True, text=True)
+    if previous.returncode not in (0, 1) or (previous.returncode == 1 and 'no crontab' not in previous.stderr.lower()):
+        raise RuntimeError('USER_CRONTAB_UNAVAILABLE_ROOT_ACTIVATION_REQUIRED')
+    original = previous.stdout if previous.returncode == 0 else ''
+    if 'TrendScanner local runtime' in original:
+        raise RuntimeError('EXISTING_RUNTIME_CRON_REQUIRES_INSPECTION')
+    backup = root / 'state/crontab.before'
+    descriptor = os.open(backup, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    os.fchmod(descriptor, 0o600)
+    with os.fdopen(descriptor, 'w') as stream:
+        stream.write(original)
+    # Read/log paths are private; the executor still obtains its file lock and
+    # checks NTP and candle freshness on every cron tick.
+    line = (f'* * * * * umask 077; /usr/bin/python3 {root}/current/ops/runtime.py '
+            f'--root {root} >> {root}/logs/scheduler.log 2>&1')
+    content = original + ('\n' if original and not original.endswith('\n') else '')
+    content += '# TrendScanner local runtime\n' + line + '\n'
+    try:
+        subprocess.run(['crontab', '-'], input=content, text=True, check=True,
+                       stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+        verified = subprocess.run(['crontab', '-l'], capture_output=True, text=True, check=True)
+        if line not in verified.stdout:
+            raise RuntimeError('CRONTAB_INSTALL_VERIFICATION_FAILED')
+    except Exception:
+        # Restore the original schedule before handing ownership back to Actions.
+        subprocess.run(['crontab', '-'], input=original, text=True, check=True,
+                       stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+        raise
+    (root / 'ACTIVE').touch(mode=0o600)
+    (root / 'state/manager.json').write_text(json.dumps({'manager': 'cron', 'release': (root/'current').resolve().name}))
+    os.chmod(root / 'state/manager.json', 0o600)
+    print('VPS USER CRON ENABLED: PASS', flush=True)
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--root', type=Path, default=Path.home() / 'trendscanner-runtime')
     parser.add_argument('--activate', action='store_true')
+    parser.add_argument('--activate-user-cron', action='store_true')
     parser.add_argument('--patch', type=Path)
     parser.add_argument('--lower', type=Path)
     parser.add_argument('--four', type=Path)
@@ -142,6 +191,8 @@ def main():
     args = parser.parse_args()
     if args.activate:
         activate(args.root)
+    elif args.activate_user_cron:
+        activate_user_cron(args.root)
     else:
         prepare(args.patch.resolve(), args.lower.resolve(), args.four.resolve(), args.root, args.sha)
 

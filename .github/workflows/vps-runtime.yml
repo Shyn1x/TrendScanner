@@ -49,6 +49,9 @@ jobs:
           else
             echo 'PASSWORDLESS_SYSTEMD_INSTALL=NO'
           fi
+          command -v crontab || true
+          systemctl is-active cron || true
+          systemctl is-enabled cron || true
           systemctl is-active trendscanner-runtime.timer || true
           systemctl is-active trendscanner-runtime.service || true
       - uses: actions/checkout@v4
@@ -59,7 +62,10 @@ jobs:
         if: inputs.operation == 'status'
         run: |
           python3 patch/ops/vps/runtime.py --status
-          systemctl status trendscanner-runtime.timer trendscanner-runtime.service --no-pager || true
+          systemctl status trendscanner-runtime.timer trendscanner-runtime.service cron --no-pager || true
+          if test -f "$HOME/trendscanner-runtime/state/manager.json"; then
+            cat "$HOME/trendscanner-runtime/state/manager.json"
+          fi
           python3 - <<'PY'
           import json
           from pathlib import Path
@@ -107,10 +113,9 @@ jobs:
       - name: Activate the local timer
         if: inputs.operation == 'install'
         run: |
-          if ! sudo -n true 2>/dev/null; then
-            echo 'Prepared successfully. One existing sudo login is needed to install systemd units:'
-            echo "sudo /usr/bin/python3 $HOME/trendscanner-runtime/current/ops/install.py --root $HOME/trendscanner-runtime --activate"
-            exit 1
+          if sudo -n true 2>/dev/null; then
+            sudo -n /usr/bin/python3 "$HOME/trendscanner-runtime/current/ops/install.py" --root "$HOME/trendscanner-runtime" --activate
+            systemctl is-active trendscanner-runtime.timer
+          else
+            python3 "$HOME/trendscanner-runtime/current/ops/install.py" --root "$HOME/trendscanner-runtime" --activate-user-cron
           fi
-          sudo -n /usr/bin/python3 "$HOME/trendscanner-runtime/current/ops/install.py" --root "$HOME/trendscanner-runtime" --activate
-          systemctl is-active trendscanner-runtime.timer

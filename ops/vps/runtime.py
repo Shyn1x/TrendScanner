@@ -116,7 +116,7 @@ def health(state, now, active=True):
         elif now - record.get('finished_at', 0) > (900 if task == 'demo' else 90000):
             problems.append(task + ':STALE')
     return {'checked_at': int(now), 'status': 'PASS' if not problems else 'ATTENTION',
-            'problems': problems, 'entries_allowed': entry_gate(state, now), 'state': state}
+            'problems': problems, 'entries_allowed': bool(active and state.get('clock_ok') and state.get('demo_enabled') and entry_gate(state, now)), 'state': state}
 
 
 def cycle(root, clock=time.time, run=run_command, clock_check=None):

@@ -7,7 +7,9 @@ Only Bybit Demo is supported. No real-money endpoint or credentials are introduc
 
 ## Schedule (UTC)
 
-One systemd timer checks due tasks every minute, starting again after reboot.
+One local timer checks due tasks every minute, starting again after reboot.
+Use systemd when existing sudo access permits it; otherwise use the existing
+boot-enabled OS cron service under the runner user, without new sudo access.
 Tasks execute sequentially under a nonblocking local file lock, in this order:
 
 | Task | Frequency |
@@ -34,8 +36,9 @@ or a new signal. An unsynchronized system clock blocks all scheduled tasks.
    frozen lower-TF and 4h workspaces, overlays the reviewed modules, installs the
    frozen dependencies and performs dry collection plus authenticated read-only
    demo preflight. Only then does it install the timer and switch ownership.
-4. If passwordless sudo is unavailable, the job prints one activation command
-   for the existing server console. Preparation does not activate writes.
+4. If passwordless sudo is unavailable, installation uses the existing active,
+   boot-enabled cron service and preserves the runner's existing crontab. If neither
+   option is available, preparation finishes but root activation is still required.
 5. Run **VPS Runtime Manager → status** to inspect first-cycle results and logs.
 6. Once the timer and runtime results are verified, set repository variable
    `TREND_SCANNER_RUNTIME=vps` to suppress redundant scheduled Actions jobs.
@@ -73,16 +76,22 @@ stop the local timer/service. The journal and exchange-side stops remain durable
 
 ## Stop / fallback
 
-In the existing server console:
+For a systemd installation, in the existing server console:
 
 ```bash
 sudo systemctl stop trendscanner-runtime.timer trendscanner-runtime.service
 ```
 
-For a full return to GitHub scheduling, after verifying the local service stopped:
+For a cron installation, remove only the two-line `TrendScanner local runtime`
+block using `crontab -e` as the runner user, then wait for the current cycle to
+finish before changing ownership. Its file lock is `state/cycle.lock`. The private
+`state/crontab.before` backup retains the original schedule; never blindly restore
+it after unrelated cron entries have been added.
+
+For a full return to GitHub scheduling, after verifying local execution stopped:
 
 ```bash
-sudo rm "$HOME/trendscanner-runtime/ACTIVE"
+sudo rm /home/runner/trendscanner-runtime/ACTIVE
 ```
 
 Then clear `TREND_SCANNER_RUNTIME` or set it to `github` in repository variables.
