@@ -344,3 +344,40 @@ def test_venue_switch_manages_old_positions_but_never_retries_old_entries(monkey
         assert updates[0]["last_error"] == "LEGACY_SIGNAL_AFTER_VENUE_SWITCH"
     else:
         assert updates[0]["status"] == "OPEN"
+
+
+@pytest.mark.parametrize('status', ['RESERVED', 'OPEN'])
+def test_reconcile_only_blocks_entries_but_keeps_protective_stops_and_exits(monkeypatch, status):
+    trade = {'experiment_version':demo.EXPERIMENT_VERSION,'symbol':'BTC/USDT',
+             'ready_timestamp':3_600_000,'signal_close_ms':7_200_000,'exit_due_ms':9_000_000,
+             'order_link_id':'entry','exit_order_link_id':'exit','status':status,
+             'risk_amount':Decimal(3),'quantity':Decimal(2),'reference_price':Decimal(100),'closed_pnl':None}
+    class Cursor:
+        def __enter__(self): return self
+        def __exit__(self,*args): pass
+        def execute(self,*args): pass
+    class Connection:
+        def cursor(self): return Cursor()
+        def commit(self): pass
+        def rollback(self): pass
+    actions=[]
+    class Client:
+        def order(self,link_id): return None
+        def instrument(self,symbol): return {'tick_size':Decimal('0.1')}
+        def create_entry(self,*args): raise AssertionError('entry forbidden')
+        def set_leverage(self,*args): raise AssertionError('leverage changes forbidden')
+        def set_stop(self,*args): actions.append('stop')
+        def create_exit(self,*args):
+            actions.append('exit')
+            return {'orderId':'exit-id'}
+    positions={'BTCUSDT':{'avgPrice':'100','size':'2','stopLoss':'0'}} if status=='OPEN' else {}
+    monkeypatch.setattr(demo,'_bootstrap',lambda cur:None)
+    monkeypatch.setattr(demo,'_load_trades',lambda cur:[trade])
+    monkeypatch.setattr(demo,'_position_map',lambda client:positions)
+    monkeypatch.setattr(demo,'_update_trade',lambda *args,**kwargs:None)
+    def forbidden(*args,**kwargs): raise AssertionError('new signals must not be loaded')
+    monkeypatch.setattr(demo,'_load_fresh_events',forbidden)
+    result=demo.execute_cycle(Connection(),Client(),now_ms=10_800_000,config=demo.Config(start_ms=3_600_000),allow_entries=False)
+    assert result['entries_submitted']==0
+    assert result['entry_gate']=='RECONCILE_ONLY'
+    assert actions == (['stop','exit'] if status=='OPEN' else [])

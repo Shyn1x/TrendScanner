@@ -13,8 +13,8 @@ Execution contract:
 * market exit after twelve complete 1h bars following the signal close;
 * deterministic ``orderLinkId`` and a PostgreSQL journal for idempotency.
 
-Nothing executes unless both ``--execute`` and ``BYBIT_DEMO_ENABLED=true`` are
-present.  API credentials are read from environment variables and never logged.
+Execution requires ``--execute`` or ``--reconcile-only`` together with
+``BYBIT_DEMO_ENABLED=true``. Reconciliation cannot create a new entry.  API credentials are read from environment variables and never logged.
 """
 from __future__ import annotations
 
@@ -522,7 +522,7 @@ def _stop_from_fill(avg_price: Decimal, tick_size: Decimal, stop_pct: Decimal) -
     return _step(raw, tick_size, ROUND_CEILING)
 
 
-def execute_cycle(connection: Any, client: BybitDemoClient, *, now_ms: int, config: Config) -> dict[str, Any]:
+def execute_cycle(connection: Any, client: BybitDemoClient, *, now_ms: int, config: Config, allow_entries: bool = True) -> dict[str, Any]:
     """Reconcile exits first, then submit at most the fresh prospective events."""
     if now_ms < config.start_ms:
         raise SafetyError("EXECUTION_BEFORE_START")
@@ -558,6 +558,10 @@ def execute_cycle(connection: Any, client: BybitDemoClient, *, now_ms: int, conf
                         trade["entry_order_id"] = existing.get("orderId")
                         position = client.position(api_symbol)
                     else:
+                        if not allow_entries:
+                            # A reservation without an exchange order is still a new entry.
+                            # Preserve it for a later healthy cycle; continue managing positions.
+                            continue
                         signal_age = now_ms - int(trade["signal_close_ms"])
                         legacy_signal = trade["experiment_version"] != EXPERIMENT_VERSION
                         if legacy_signal or signal_age > config.max_signal_age_ms:
@@ -661,7 +665,9 @@ def execute_cycle(connection: Any, client: BybitDemoClient, *, now_ms: int, conf
             if equity <= 0:
                 raise SafetyError("VIRTUAL_EQUITY_DEPLETED")
             active = [trade for trade in trades if trade["status"] in ACTIVE_STATUSES]
-            events = _load_fresh_events(cur, now_ms=now_ms, config=config)
+            events = _load_fresh_events(cur, now_ms=now_ms, config=config) if allow_entries else []
+            if not allow_entries:
+                summary["entry_gate"] = "RECONCILE_ONLY"
             known = {(trade["experiment_version"], trade["symbol"], int(trade["ready_timestamp"])) for trade in trades}
 
             for event in events:
@@ -790,6 +796,7 @@ def main() -> None:
     mode = parser.add_mutually_exclusive_group(required=True)
     mode.add_argument("--preflight", action="store_true")
     mode.add_argument("--execute", action="store_true")
+    mode.add_argument("--reconcile-only", action="store_true", help="Manage existing demo orders/stops/exits without new entries")
     args = parser.parse_args()
 
     database_url = os.environ.get("DATABASE_URL", "")
@@ -801,13 +808,13 @@ def main() -> None:
     client = BybitDemoClient(api_key, api_secret)
     now_ms = int(time.time() * 1000)
 
-    if args.execute and os.environ.get("BYBIT_DEMO_ENABLED", "").lower() != "true":
+    if (args.execute or args.reconcile_only) and os.environ.get("BYBIT_DEMO_ENABLED", "").lower() != "true":
         raise SystemExit("FAIL: BYBIT_DEMO_ENABLED must be true")
 
     with _connect(database_url) as connection:
         result = (
-            execute_cycle(connection, client, now_ms=now_ms, config=config)
-            if args.execute
+            execute_cycle(connection, client, now_ms=now_ms, config=config, allow_entries=not args.reconcile_only)
+            if args.execute or args.reconcile_only
             else preflight(connection, client, now_ms=now_ms, config=config)
         )
     print(json.dumps(result, sort_keys=True, default=str))

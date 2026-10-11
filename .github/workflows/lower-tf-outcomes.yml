@@ -26,23 +26,37 @@ env:
 
 jobs:
   analyze:
+    if: github.event_name != 'schedule' || vars.TREND_SCANNER_RUNTIME != 'vps'
     runs-on: ${{ github.event_name == 'pull_request' && 'ubuntu-latest' || fromJSON('["self-hosted","linux","x64","bybit-demo"]') }}
     timeout-minutes: 40
 
     steps:
+      - name: Check local scheduler ownership
+        id: owner
+        run: |
+          if test -f "$HOME/trendscanner-runtime/ACTIVE"; then
+            echo 'write=false' >> "$GITHUB_OUTPUT"
+            echo 'VPS owns runtime writes; this Actions job will not write or execute orders.'
+          else
+            echo 'write=true' >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Checkout frozen lower-TF research base
+        if: steps.owner.outputs.write == 'true'
         uses: actions/checkout@v4
         with:
           ref: 5547e881078dc97ccb317b5e4f8252eab3fb9a21
           path: frozen
 
       - name: Checkout outcome analyzer patch
+        if: steps.owner.outputs.write == 'true'
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           path: patch
 
       - name: Assemble outcome workspace
+        if: steps.owner.outputs.write == 'true'
         run: |
           cp patch/artifacts/trendscanner/prospective_market_data.py frozen/artifacts/trendscanner/
           cp patch/artifacts/trendscanner/lower_tf_shadow.py frozen/artifacts/trendscanner/
@@ -50,34 +64,39 @@ jobs:
           cp patch/artifacts/trendscanner/test_lower_tf_outcome_analyzer.py frozen/artifacts/trendscanner/
 
       - name: Set up Python
+        if: steps.owner.outputs.write == 'true'
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
       - name: Set up uv
+        if: steps.owner.outputs.write == 'true'
         uses: astral-sh/setup-uv@v6
         with:
           enable-cache: true
           working-directory: frozen
 
       - name: Install dependencies
+        if: steps.owner.outputs.write == 'true'
         working-directory: frozen
         run: uv sync --frozen
 
       - name: Compile outcome analyzer
+        if: steps.owner.outputs.write == 'true'
         working-directory: frozen
         env:
           PYTHONPATH: artifacts/trendscanner
         run: uv run python -m py_compile artifacts/trendscanner/lower_tf_outcome_analyzer.py
 
       - name: Run outcome unit tests
+        if: steps.owner.outputs.write == 'true'
         working-directory: frozen
         env:
           PYTHONPATH: artifacts/trendscanner
         run: uv run --with pytest pytest -q artifacts/trendscanner/test_lower_tf_outcome_analyzer.py
 
       - name: Dry-run outcome analyzer
-        if: github.event_name == 'workflow_dispatch' && inputs.write != true
+        if: steps.owner.outputs.write == 'true' && (github.event_name == 'workflow_dispatch' && inputs.write != true)
         working-directory: frozen
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
@@ -85,7 +104,7 @@ jobs:
         run: uv run python artifacts/trendscanner/lower_tf_outcome_analyzer.py
 
       - name: Write completed outcomes
-        if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.write == true)
+        if: steps.owner.outputs.write == 'true' && (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.write == true))
         working-directory: frozen
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
