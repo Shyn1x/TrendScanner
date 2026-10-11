@@ -7,7 +7,7 @@ on:
         required: true
         default: inspect
         type: choice
-        options: [inspect, install, status]
+        options: [inspect, install, upgrade, status]
   pull_request:
     branches: [main]
     paths:
@@ -80,28 +80,28 @@ jobs:
                       print('\n'.join(logfile.read_text().splitlines()[-100:]))
           PY
       - name: Require merged main for installation
-        if: inputs.operation == 'install'
+        if: inputs.operation == 'install' || inputs.operation == 'upgrade'
         env:
           BRANCH_REF: ${{ github.ref }}
         run: test "$BRANCH_REF" = 'refs/heads/main'
       - uses: actions/checkout@v4
-        if: inputs.operation == 'install'
+        if: inputs.operation == 'install' || inputs.operation == 'upgrade'
         with:
           ref: 5547e881078dc97ccb317b5e4f8252eab3fb9a21
           path: lower
       - uses: actions/checkout@v4
-        if: inputs.operation == 'install'
+        if: inputs.operation == 'install' || inputs.operation == 'upgrade'
         with:
           ref: 69cb70107baecf0e9b8dc3a0731fa885a338d2ef
           path: four
       - uses: actions/setup-python@v5
-        if: inputs.operation == 'install'
+        if: inputs.operation == 'install' || inputs.operation == 'upgrade'
         with:
           python-version: '3.11'
       - uses: astral-sh/setup-uv@v6
-        if: inputs.operation == 'install'
+        if: inputs.operation == 'install' || inputs.operation == 'upgrade'
       - name: Prepare frozen workspaces and authenticated read-only preflight
-        if: inputs.operation == 'install'
+        if: inputs.operation == 'install' || inputs.operation == 'upgrade'
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           BYBIT_DEMO_API_KEY: ${{ secrets.BYBIT_DEMO_API_KEY }}
@@ -109,7 +109,13 @@ jobs:
           BYBIT_DEMO_ENABLED: ${{ vars.BYBIT_DEMO_ENABLED }}
           BYBIT_DEMO_START_MS: ${{ vars.BYBIT_DEMO_START_MS }}
           RELEASE_SHA: ${{ github.sha }}
-        run: python patch/ops/vps/install.py --patch patch --lower lower --four four --sha "$RELEASE_SHA"
+          OPERATION: ${{ inputs.operation }}
+        run: |
+          if test "$OPERATION" = 'upgrade'; then
+            python patch/ops/vps/install.py --patch patch --lower lower --four four --sha "$RELEASE_SHA" --upgrade
+          else
+            python patch/ops/vps/install.py --patch patch --lower lower --four four --sha "$RELEASE_SHA"
+          fi
       - name: Activate the local timer
         if: inputs.operation == 'install'
         run: |

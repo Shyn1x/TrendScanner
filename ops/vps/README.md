@@ -53,8 +53,17 @@ No SSH key, new API key, external scheduler or GitHub token is needed. Existing
 `DATABASE_URL`, `BYBIT_DEMO_API_KEY`, `BYBIT_DEMO_API_SECRET`, demo enable flag and
 start timestamp are stored on the same runner under a private directory in a
 0600 JSON configuration file. Values are never put in argv, units, git or artifacts.
-Task output is redacted before it is persisted or displayed. Unit processes run
+Task output is redacted before it is persisted or displayed. Preflight uses the
+same minimal environment as the timer; the interpreter library path is derived
+from its resolved executable, without relying on temporary Actions variables. Unit processes run
 as the existing runner user, with read-only code/home and writable state/log paths.
+
+## Upgrade
+
+After merging an update, run **VPS Runtime Manager → upgrade** on main. It obtains
+the existing cycle lock, prepares and validates a new pinned release, and switches
+the current symlink only after preflight succeeds. Existing journal, schedule,
+ownership and successful task slots are preserved. Busy cycles must finish first.
 
 ## Inspection
 
