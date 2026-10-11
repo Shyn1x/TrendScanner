@@ -1,0 +1,28 @@
+name: VPS Health Probe
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '7,37 * * * *'
+permissions:
+  contents: read
+concurrency:
+  group: trendscanner-vps-health-probe
+  cancel-in-progress: true
+jobs:
+  snapshot:
+    if: github.ref == 'refs/heads/main'
+    runs-on: [self-hosted, linux, x64, bybit-demo]
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          path: health-probe
+      - name: Read runtime evidence without credentials or trading calls
+        run: python3 health-probe/ops/vps/monitor.py snapshot
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vps-health-snapshot
+          path: health-snapshot.json
+          if-no-files-found: error
+          retention-days: 7
