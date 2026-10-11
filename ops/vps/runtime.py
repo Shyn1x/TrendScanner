@@ -71,7 +71,12 @@ def redact(text, config):
 
 
 def run_command(args, workspace, task, config):
-    env = os.environ.copy()
+    # setup-python exports a temporary LD_LIBRARY_PATH inside Actions. Cron
+    # does not inherit it. Derive the reviewed interpreter's library directory
+    # and exercise the same minimal environment during deployment preflight.
+    interpreter = Path(args[0]).resolve()
+    env = {'HOME': str(Path.home()), 'PATH': '/usr/bin:/bin', 'LANG': 'C.UTF-8',
+           'LD_LIBRARY_PATH': str(interpreter.parent.parent / 'lib')}
     env.update(config)
     env['TREND_SCANNER_MARKET_SOURCE'] = 'bybit_linear'
     env['PYTHONPATH'] = str(workspace / 'artifacts/trendscanner')

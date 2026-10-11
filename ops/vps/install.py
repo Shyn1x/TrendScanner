@@ -1,5 +1,6 @@
 """Prepare immutable frozen workspaces and install one systemd timer on the VPS."""
 import argparse
+import fcntl
 import json
 import os
 from pathlib import Path
@@ -58,8 +59,8 @@ WantedBy=timers.target
     return service, timer
 
 
-def prepare(patch, lower, four, root, sha):
-    if (root / 'ACTIVE').exists():
+def prepare(patch, lower, four, root, sha, *, upgrading=False):
+    if (root / 'ACTIVE').exists() and not upgrading:
         raise RuntimeError('RUNTIME_ALREADY_ACTIVE_USE_STATUS')
     if len(sha) != 40 or any(c not in '0123456789abcdef' for c in sha):
         raise RuntimeError('FULL_COMMIT_SHA_REQUIRED')
@@ -184,6 +185,7 @@ def main():
     parser.add_argument('--root', type=Path, default=Path.home() / 'trendscanner-runtime')
     parser.add_argument('--activate', action='store_true')
     parser.add_argument('--activate-user-cron', action='store_true')
+    parser.add_argument('--upgrade', action='store_true')
     parser.add_argument('--patch', type=Path)
     parser.add_argument('--lower', type=Path)
     parser.add_argument('--four', type=Path)
@@ -193,6 +195,24 @@ def main():
         activate(args.root)
     elif args.activate_user_cron:
         activate_user_cron(args.root)
+    elif args.upgrade:
+        if not (args.root / 'ACTIVE').is_file():
+            raise RuntimeError('UPGRADE_REQUIRES_ACTIVE_RUNTIME')
+        with (args.root / 'state/cycle.lock').open('a') as lock:
+            try:
+                fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except BlockingIOError:
+                raise RuntimeError('RUNTIME_BUSY_RETRY_UPGRADE_AFTER_CURRENT_CYCLE')
+            prepare(args.patch.resolve(), args.lower.resolve(), args.four.resolve(), args.root, args.sha, upgrading=True)
+            from runtime import atomic_json
+            path = args.root / 'state/status.json'
+            if path.exists():
+                state = json.loads(path.read_text())
+                for record in state.get('tasks', {}).values():
+                    if not record.get('ok'):
+                        record['attempted_at'] = 0
+                atomic_json(path, state)
+            print('VPS RUNTIME UPGRADED: PASS')
     else:
         prepare(args.patch.resolve(), args.lower.resolve(), args.four.resolve(), args.root, args.sha)
 

@@ -193,3 +193,18 @@ def test_cron_install_failure_restores_other_jobs_and_returns_actions_ownership(
         installer.activate_user_cron(root)
     assert restored==[original]
     assert not (root/'ACTIVE').exists()
+
+
+def test_child_python_runs_with_clean_cron_environment_and_resolved_library_path(tmp_path,monkeypatch):
+    import sys
+    monkeypatch.setenv('LD_LIBRARY_PATH','/temporary/github/action-only/lib')
+    monkeypatch.setenv('ACTION_ONLY_SENTINEL','must-not-leak')
+    code, output=runtime.run_command([sys.executable,'-c',
+        "import os,json; print(json.dumps({key:os.getenv(key) for key in ['LD_LIBRARY_PATH','ACTION_ONLY_SENTINEL','TREND_SCANNER_MARKET_SOURCE','PYTHONPATH']}))"],
+        tmp_path,'demo',{})
+    assert code==0
+    child=json.loads(output)
+    assert child['LD_LIBRARY_PATH']==str(Path(sys.executable).resolve().parent.parent/'lib')
+    assert child['ACTION_ONLY_SENTINEL'] is None
+    assert child['TREND_SCANNER_MARKET_SOURCE']=='bybit_linear'
+    assert child['PYTHONPATH']==str(tmp_path/'artifacts/trendscanner')
