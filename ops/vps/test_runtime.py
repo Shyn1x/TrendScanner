@@ -136,3 +136,60 @@ def test_existing_actions_writes_have_local_ownership_guard():
             assert '&& (>-' not in step['if']
     manager=yaml.load((root/'.github/workflows/vps-runtime.yml').read_text(),Loader=yaml.BaseLoader)
     assert manager['on']['workflow_dispatch']['inputs']['operation']['default']=='inspect'
+
+
+def installer_module():
+    spec=importlib.util.spec_from_file_location('installer',DIRECTORY/'install.py')
+    module=importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_user_cron_preserves_existing_jobs_and_verifies_private_owned_schedule(tmp_path,monkeypatch):
+    import subprocess
+    installer=installer_module()
+    root=fixture_root(tmp_path)
+    (root/'ACTIVE').unlink()
+    original='17 3 * * * echo "existing job"\n'
+    tab=[original]
+    monkeypatch.setattr(installer.os,'geteuid',lambda:1000)
+    monkeypatch.setattr(installer.shutil,'which',lambda name:'/usr/bin/crontab')
+    monkeypatch.setattr(installer,'invoke',lambda *args,**kwargs:None)
+    def run(args,**kwargs):
+        if args==['crontab','-l']:
+            return subprocess.CompletedProcess(args,0,stdout=tab[0],stderr='')
+        assert args==['crontab','-']
+        tab[0]=kwargs['input']
+        return subprocess.CompletedProcess(args,0)
+    monkeypatch.setattr(installer.subprocess,'run',run)
+    installer.activate_user_cron(root)
+    assert tab[0].startswith(original)
+    assert 'umask 077; /usr/bin/python3' in tab[0]
+    assert str(root/'current/ops/runtime.py') in tab[0]
+    assert (root/'ACTIVE').is_file()
+    assert (root/'state/crontab.before').read_text()==original
+    assert (root/'state/crontab.before').stat().st_mode & 0o777 == 0o600
+
+
+def test_cron_install_failure_restores_other_jobs_and_returns_actions_ownership(tmp_path,monkeypatch):
+    import subprocess
+    installer=installer_module()
+    root=fixture_root(tmp_path)
+    (root/'ACTIVE').unlink()
+    original='17 3 * * * echo existing\n'
+    restored=[]
+    monkeypatch.setattr(installer.os,'geteuid',lambda:1000)
+    monkeypatch.setattr(installer.shutil,'which',lambda name:'/usr/bin/crontab')
+    monkeypatch.setattr(installer,'invoke',lambda *args,**kwargs:None)
+    def run(args,**kwargs):
+        if args==['crontab','-l']:
+            return subprocess.CompletedProcess(args,0,stdout=original,stderr='')
+        if 'TrendScanner local runtime' in kwargs['input']:
+            raise subprocess.CalledProcessError(1,args)
+        restored.append(kwargs['input'])
+        return subprocess.CompletedProcess(args,0)
+    monkeypatch.setattr(installer.subprocess,'run',run)
+    with pytest.raises(subprocess.CalledProcessError):
+        installer.activate_user_cron(root)
+    assert restored==[original]
+    assert not (root/'ACTIVE').exists()
