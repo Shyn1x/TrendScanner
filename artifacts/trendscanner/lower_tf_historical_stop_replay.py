@@ -41,8 +41,10 @@ from prospective_lower_tf_collector import (
 from ready_outcome_pilot import SYMBOLS
 from research_data import get_research_data
 from scanner import exchange
+from prospective_market_data import MARKET_SOURCE
 
-REPLAY_VERSION = "lower-tf-historical-stop-v2-fixed200-costs"
+REPLAY_VERSION = ("lower-tf-historical-stop-v3-bybit-fixed200-costs" if MARKET_SOURCE == "bybit_linear"
+                  else "lower-tf-historical-stop-v2-fixed200-costs")
 SPLIT_NAMES = ("DEVELOPMENT", "HOLDOUT_A", "HOLDOUT_B")
 VALID_DIRECTIONS = ("LONG", "SHORT")
 MAX_HORIZON = max(HORIZONS)
@@ -432,6 +434,9 @@ def build_report(
             "replay_version": REPLAY_VERSION,
             "experiment_version": EXPERIMENT_VERSION,
             "fixed_window_bars": CLOSED_BARS + 1,
+            "market_source": MARKET_SOURCE,
+            "price_type": "trade",
+            "stop_trigger_assumption": "trade_candle_extremes; demo uses MarkPrice",
             "signal_candle_index": -2,
             "transition_policy": "independent_split_baseline_then_false_to_true_only",
             "split_order": list(SPLIT_NAMES),
@@ -517,18 +522,30 @@ def main() -> None:
     parser.add_argument("--starting-balance", type=float, default=DEFAULT_STARTING_BALANCE)
     parser.add_argument("--risk-pct", type=float, default=DEFAULT_RISK_PCT)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--candles-file", type=Path, help="Validated offline Bybit candle snapshot")
     args = parser.parse_args()
 
     minimum = CLOSED_BARS + len(SPLIT_NAMES) * (MAX_HORIZON + 2)
     if args.bars < minimum:
         raise SystemExit(f"--bars must be at least {minimum}")
     symbols = _parse_symbols(args.symbols)
-    latest_closed = (int(exchange.milliseconds()) // TIMEFRAME_MS[args.timeframe]) * TIMEFRAME_MS[args.timeframe] - TIMEFRAME_MS[args.timeframe]
+    bundle = None
+    if MARKET_SOURCE == "bybit_linear":
+        if args.candles_file is None:
+            raise SystemExit('BYBIT_OFFLINE_SNAPSHOT_REQUIRED')
+        from bybit_replay_data import load_snapshot, snapshot_frame
+        bundle = load_snapshot(args.candles_file, args.timeframe, args.bars)
+        latest_closed = bundle['manifest']['before_timestamp'] - TIMEFRAME_MS[args.timeframe]
+    else:
+        if args.candles_file is not None:
+            raise SystemExit('BYBIT_SNAPSHOT_REQUIRES_BYBIT_SOURCE')
+        latest_closed = (int(exchange.milliseconds()) // TIMEFRAME_MS[args.timeframe]) * TIMEFRAME_MS[args.timeframe] - TIMEFRAME_MS[args.timeframe]
 
     results = []
     for symbol in symbols:
         print(f"Fetching {symbol} {args.timeframe} ({args.bars} bars)", flush=True)
-        source = get_research_data(symbol, args.timeframe, total_limit=args.bars)
+        source = (snapshot_frame(bundle, symbol) if bundle is not None else
+                  get_research_data(symbol, args.timeframe, total_limit=args.bars))
         source = source[source["time"].map(int) <= latest_closed]
         result = replay_symbol(source, symbol=symbol, timeframe=args.timeframe)
         results.append(result)
@@ -548,6 +565,10 @@ def main() -> None:
         starting_balance=args.starting_balance,
         risk_pct=args.risk_pct,
     )
+    if bundle is not None:
+        from bybit_replay_data import digest
+        report['manifest']['candle_snapshot'] = bundle['manifest']
+        report['manifest']['candle_snapshot_sha256'] = digest(bundle)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(report, indent=2, sort_keys=True, allow_nan=False) + "\n")
     _print_summary(report)

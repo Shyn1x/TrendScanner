@@ -1,0 +1,292 @@
+name: Bybit Historical 1h LONG Portfolio Replay
+
+on:
+  workflow_dispatch:
+    inputs:
+      bars:
+        description: "Recent 1h candles per symbol"
+        required: true
+        default: "1600"
+        type: string
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "artifacts/trendscanner/lower_tf_portfolio_replay.py"
+      - "artifacts/trendscanner/test_lower_tf_portfolio_replay.py"
+      - ".github/workflows/bybit-historical-replay.yml"
+      - "artifacts/trendscanner/lower_tf_historical_stop_replay.py"
+      - "artifacts/trendscanner/bybit_replay_data.py"
+      - "artifacts/trendscanner/test_bybit_replay_data.py"
+
+permissions:
+  contents: read
+
+env:
+  TREND_SCANNER_MARKET_SOURCE: bybit_linear
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout frozen lower-TF strategy contract
+        uses: actions/checkout@v4
+        with:
+          ref: 5547e881078dc97ccb317b5e4f8252eab3fb9a21
+          path: frozen
+
+      - name: Checkout portfolio replay patch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          path: patch
+
+      - name: Assemble isolated replay workspace
+        run: |
+          cp patch/artifacts/trendscanner/prospective_market_data.py frozen/artifacts/trendscanner/
+          cp patch/artifacts/trendscanner/lower_tf_shadow.py frozen/artifacts/trendscanner/
+          cp patch/artifacts/trendscanner/prospective_lower_tf_collector.py frozen/artifacts/trendscanner/
+          cp patch/artifacts/trendscanner/bybit_replay_data.py frozen/artifacts/trendscanner/
+          cp patch/artifacts/trendscanner/lower_tf_outcome_analyzer.py frozen/artifacts/trendscanner/
+          cp patch/artifacts/trendscanner/lower_tf_historical_stop_replay.py frozen/artifacts/trendscanner/
+          cp patch/artifacts/trendscanner/lower_tf_portfolio_replay.py frozen/artifacts/trendscanner/
+          cp patch/artifacts/trendscanner/test_lower_tf_historical_stop_replay.py frozen/artifacts/trendscanner/
+          cp patch/artifacts/trendscanner/test_lower_tf_portfolio_replay.py frozen/artifacts/trendscanner/
+          cp patch/artifacts/trendscanner/test_bybit_replay_data.py frozen/artifacts/trendscanner/
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          working-directory: frozen
+
+      - name: Install dependencies
+        working-directory: frozen
+        run: uv sync --frozen
+
+      - name: Compile portfolio replay
+        working-directory: frozen
+        env:
+          PYTHONPATH: artifacts/trendscanner
+        run: >-
+          uv run python -m py_compile
+          artifacts/trendscanner/lower_tf_historical_stop_replay.py
+          artifacts/trendscanner/lower_tf_portfolio_replay.py
+
+      - name: Run portfolio replay tests
+        working-directory: frozen
+        env:
+          PYTHONPATH: artifacts/trendscanner
+        run: >-
+          uv run --with pytest pytest -q
+          artifacts/trendscanner/test_lower_tf_historical_stop_replay.py
+          artifacts/trendscanner/test_lower_tf_portfolio_replay.py
+          artifacts/trendscanner/test_bybit_replay_data.py
+
+  fetch-candles:
+    if: github.event_name == 'workflow_dispatch'
+    needs: validate
+    runs-on: [self-hosted, linux, x64, bybit-demo]
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 5547e881078dc97ccb317b5e4f8252eab3fb9a21
+          path: frozen
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          path: patch
+      - name: Assemble public candle loader
+        run: |
+          cp patch/artifacts/trendscanner/prospective_market_data.py frozen/artifacts/trendscanner/
+          cp patch/artifacts/trendscanner/bybit_replay_data.py frozen/artifacts/trendscanner/
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          working-directory: frozen
+      - name: Install frozen dependencies
+        working-directory: frozen
+        run: uv sync --frozen
+      - name: Fetch one closed Bybit snapshot for all 25 symbols
+        working-directory: frozen
+        env:
+          BARS: ${{ inputs.bars }}
+          PYTHONPATH: artifacts/trendscanner
+        run: >-
+          uv run python artifacts/trendscanner/bybit_replay_data.py
+          --symbols "BTC/USDT,ETH/USDT,BNB/USDT,SOL/USDT,XRP/USDT,DOGE/USDT,ADA/USDT,LINK/USDT,LTC/USDT,BCH/USDT,AVAX/USDT,DOT/USDT,ATOM/USDT,NEAR/USDT,FIL/USDT,ARB/USDT,OP/USDT,INJ/USDT,SUI/USDT,TIA/USDT,APT/USDT,PENDLE/USDT,ETC/USDT,AAVE/USDT,UNI/USDT"
+          --timeframe 1h --bars "$BARS" --output bybit-candles.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bybit-candle-snapshot
+          path: frozen/bybit-candles.json
+          if-no-files-found: error
+
+  replay-inputs:
+    if: github.event_name == 'workflow_dispatch'
+    needs: [validate, fetch-candles]
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - shard: core
+            symbols: BTC/USDT,ETH/USDT,BNB/USDT,SOL/USDT,XRP/USDT
+          - shard: majors
+            symbols: DOGE/USDT,ADA/USDT,LINK/USDT,LTC/USDT,BCH/USDT
+          - shard: layer1
+            symbols: AVAX/USDT,DOT/USDT,ATOM/USDT,NEAR/USDT,FIL/USDT
+          - shard: newer
+            symbols: ARB/USDT,OP/USDT,INJ/USDT,SUI/USDT,TIA/USDT
+          - shard: defi
+            symbols: APT/USDT,PENDLE/USDT,ETC/USDT,AAVE/USDT,UNI/USDT
+    steps:
+      - name: Checkout frozen lower-TF strategy contract
+        uses: actions/checkout@v4
+        with:
+          ref: 5547e881078dc97ccb317b5e4f8252eab3fb9a21
+          path: frozen
+
+      - name: Checkout portfolio replay patch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          path: patch
+
+      - name: Assemble isolated replay workspace
+        run: |
+          cp patch/artifacts/trendscanner/prospective_market_data.py frozen/artifacts/trendscanner/
+          cp patch/artifacts/trendscanner/lower_tf_shadow.py frozen/artifacts/trendscanner/
+          cp patch/artifacts/trendscanner/prospective_lower_tf_collector.py frozen/artifacts/trendscanner/
+          cp patch/artifacts/trendscanner/bybit_replay_data.py frozen/artifacts/trendscanner/
+          cp patch/artifacts/trendscanner/lower_tf_outcome_analyzer.py frozen/artifacts/trendscanner/
+          cp patch/artifacts/trendscanner/lower_tf_historical_stop_replay.py frozen/artifacts/trendscanner/
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          working-directory: frozen
+
+      - name: Install dependencies
+        working-directory: frozen
+        run: uv sync --frozen
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: bybit-candle-snapshot
+          path: frozen
+
+      - name: Generate strict 1h replay input
+        working-directory: frozen
+        env:
+          PYTHONPATH: artifacts/trendscanner
+          BARS: ${{ inputs.bars }}
+          SYMBOLS: ${{ matrix.symbols }}
+        run: >-
+          uv run python artifacts/trendscanner/lower_tf_historical_stop_replay.py
+          --timeframe 1h
+          --candles-file bybit-candles.json
+          --symbols "$SYMBOLS"
+          --bars "$BARS"
+          --fee-bps-per-side "6"
+          --slippage-bps-per-side "2"
+          --starting-balance "300"
+          --risk-pct "1"
+          --output "portfolio-input-1h-${{ matrix.shard }}.json"
+
+      - name: Upload auditable 1h input
+        uses: actions/upload-artifact@v4
+        with:
+          name: portfolio-input-1h-${{ matrix.shard }}
+          path: frozen/portfolio-input-1h-${{ matrix.shard }}.json
+          if-no-files-found: error
+
+  portfolio:
+    if: github.event_name == 'workflow_dispatch'
+    needs: replay-inputs
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout frozen lower-TF strategy contract
+        uses: actions/checkout@v4
+        with:
+          ref: 5547e881078dc97ccb317b5e4f8252eab3fb9a21
+          path: frozen
+
+      - name: Checkout portfolio replay patch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          path: patch
+
+      - name: Assemble isolated portfolio workspace
+        run: |
+          cp patch/artifacts/trendscanner/prospective_market_data.py frozen/artifacts/trendscanner/
+          cp patch/artifacts/trendscanner/lower_tf_shadow.py frozen/artifacts/trendscanner/
+          cp patch/artifacts/trendscanner/prospective_lower_tf_collector.py frozen/artifacts/trendscanner/
+          cp patch/artifacts/trendscanner/bybit_replay_data.py frozen/artifacts/trendscanner/
+          cp patch/artifacts/trendscanner/lower_tf_outcome_analyzer.py frozen/artifacts/trendscanner/
+          cp patch/artifacts/trendscanner/lower_tf_historical_stop_replay.py frozen/artifacts/trendscanner/
+          cp patch/artifacts/trendscanner/lower_tf_portfolio_replay.py frozen/artifacts/trendscanner/
+
+      - name: Download all strict 1h replay inputs
+        uses: actions/download-artifact@v4
+        with:
+          pattern: portfolio-input-1h-*
+          path: frozen/portfolio-input
+          merge-multiple: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          working-directory: frozen
+
+      - name: Install dependencies
+        working-directory: frozen
+        run: uv sync --frozen
+
+      - name: Run chronological portfolio replay
+        working-directory: frozen
+        env:
+          PYTHONPATH: artifacts/trendscanner
+        run: >-
+          uv run python artifacts/trendscanner/lower_tf_portfolio_replay.py
+          --input-glob "portfolio-input/portfolio-input-1h-*.json"
+          --starting-balance "300"
+          --risk-pct "1"
+          --max-total-risk-pct "3"
+          --max-open-positions "3"
+          --max-leverage "3"
+          --fee-bps-per-side "6"
+          --slippage-bps-per-side "2"
+          --output "bybit-historical-1h-long-portfolio-300.json"
+
+      - name: Upload portfolio report
+        uses: actions/upload-artifact@v4
+        with:
+          name: bybit-historical-1h-long-portfolio-300
+          path: frozen/bybit-historical-1h-long-portfolio-300.json
+          if-no-files-found: error
