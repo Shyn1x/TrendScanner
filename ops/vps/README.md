@@ -79,6 +79,31 @@ Runtime directories:
 - `state/status.json`, `state/health.json`: atomic operational status, 0600.
 - `logs`: task evidence retained for 30 days, 0600; no GitHub artifacts.
 
+### Demo execution comparison
+
+Run **VPS Runtime Manager → audit** for a read-only journal and Bybit execution report.
+It uses the existing release interpreter and private credentials without upgrading
+the runtime or creating orders. PostgreSQL enforces a read-only transaction; Bybit
+requests are restricted to GET calls on the Demo host. No DDL, reconciliation,
+new credentials or API permission expansion is needed.
+
+The report counts all trades in the current Bybit experiment and retrieves execution
+detail for the last 30 days. It matches entries by exact order ID/link and attached
+stops by `parentOrderLinkId`; an unmatched exit remains unknown. Pagination and
+seven-day API windows are handled. Fees come from deduplicated execution IDs;
+closed PnL is checked against the matched exit orders, without subtracting fees twice.
+Funding is a separate signed cash flow, attributed by symbol and holding interval
+only under the existing exclusive-position assumption. Missing funding/fees are
+unknown, not zero. Manual/shared positions invalidate that funding attribution.
+
+Each trade is joined to the same prospective event's mature 12-bar, 150bp outcome,
+using its journal risk amount and the replay's predefined 6bp fee + 2bp slippage per
+side. Signal-close-to-fill price gaps include execution delay and market movement;
+they are not pure exchange slippage. Trade-candle stop hits are distinct from Demo
+MarkPrice stop triggers. A signal candle opens at `ready_timestamp`, closes one hour
+later, and a timed exit is due thirteen hours after that open. No closed matched
+trades means there is no empirical execution comparison yet.
+
 Demo enable/start configuration is a snapshot at installation. Changing a GitHub
 variable afterward does not change a running local process. To stop local execution,
 stop the local timer/service. The journal and exchange-side stops remain durable.
