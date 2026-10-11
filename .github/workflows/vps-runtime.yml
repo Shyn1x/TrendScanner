@@ -31,7 +31,7 @@ jobs:
         with:
           python-version: '3.11'
       - uses: astral-sh/setup-uv@v6
-      - run: uv run --no-project --with pytest --with pyyaml pytest -q ops/vps/test_runtime.py ops/vps/test_audit_demo.py
+      - run: uv run --no-project --with pytest --with pyyaml pytest -q ops/vps/test_runtime.py ops/vps/test_audit_demo.py ops/vps/test_monitor.py
   manage:
     if: github.event_name == 'workflow_dispatch'
     needs: validate

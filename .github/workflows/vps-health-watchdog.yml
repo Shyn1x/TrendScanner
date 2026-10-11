@@ -1,0 +1,61 @@
+name: External VPS Watchdog
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17,47 * * * *'
+  pull_request:
+    branches: [main]
+    paths:
+      - ops/vps/monitor.py
+      - ops/vps/test_monitor.py
+      - .github/workflows/vps-health-*.yml
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: trendscanner-external-watchdog-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: astral-sh/setup-uv@v6
+      - name: Test offline and stale-data detection
+        run: uv run --no-project --with pytest --with pyyaml pytest -q ops/vps/test_monitor.py
+      - name: Find latest completed probe on main
+        if: github.event_name != 'pull_request'
+        id: probe
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const {data} = await github.rest.actions.listWorkflowRuns({
+              ...context.repo, workflow_id: 'vps-health-probe.yml',
+              branch: 'main', status: 'completed', per_page: 100
+            });
+            const run = data.workflow_runs.find(r =>
+              r.head_repository.full_name === `${context.repo.owner}/${context.repo.repo}` &&
+              ['schedule', 'workflow_dispatch'].includes(r.event));
+            if (!run) throw new Error('NO_COMPLETED_VPS_PROBE: VPS may be offline or runner unavailable');
+            const age = (Date.now() - Date.parse(run.created_at)) / 1000;
+            core.summary.addHeading('VPS probe evidence').addLink(`Probe #${run.run_number}`, run.html_url);
+            await core.summary.write();
+            if (age < -60 || age > 5400) throw new Error('MISSING_FRESH_VPS_PROBE: last probe older than 90 minutes');
+            if (run.conclusion !== 'success') throw new Error(`VPS_PROBE_FAILED: ${run.conclusion}`);
+            core.setOutput('run_id', String(run.id));
+      - uses: actions/download-artifact@v4
+        if: github.event_name != 'pull_request'
+        with:
+          name: vps-health-snapshot
+          run-id: ${{ steps.probe.outputs.run_id }}
+          github-token: ${{ github.token }}
+          path: health-evidence
+      - name: Evaluate evidence using the external clock
+        if: github.event_name != 'pull_request'
+        run: python ops/vps/monitor.py check --file health-evidence/health-snapshot.json

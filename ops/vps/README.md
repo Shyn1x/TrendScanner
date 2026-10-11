@@ -135,3 +135,28 @@ The GitHub cron delay remains a limitation of that fallback.
 Catch-up signals retain their `catchup_replay` label and must be distinguished
 from observations collected promptly in research reports. Old KuCoin research
 and the Streamlit scanner are outside this scheduling change.
+# External health monitoring
+
+`VPS Health Probe` reads only the local ACTIVE marker, NTP status and an allowlist
+of scheduler timestamps/status fields every 30 minutes. It uploads a seven-day
+GitHub artifact; it never reads credentials, logs, database or trading APIs and
+does not require a runtime upgrade. Queued probes are replaced by newer probes.
+
+`External VPS Watchdog` runs independently on GitHub-hosted Ubuntu every 30
+minutes, ten minutes after the probe's nominal schedule. It fails if the latest
+completed main-branch probe failed, is older than 90 minutes, has no artifact,
+or reports inactive scheduling, clock failure, disabled Demo, task failure or
+stale runtime/data. Evidence is re-evaluated against the external clock, so a
+freshly uploaded file cannot hide an old scheduler heartbeat. A normal running
+task receives only its existing timeout plus five minutes; candle freshness has
+45 minutes of grace and heartbeat/Demo freshness 50 minutes to accommodate the
+serial daily analyzer's 40-minute limit. These are monitoring tolerances only;
+the stricter existing trading entry gate is unchanged.
+
+The watchdog completes even when the VPS runner is offline. It uses the existing
+ephemeral GitHub token with read-only Actions access, no new secrets or public
+VPS endpoint. GitHub Actions failure notifications must be enabled in the owner's
+notification settings (email/web); delivery is not proven by a successful green
+check. Scheduled workflow notifications follow GitHub's schedule actor rules.
+Schedules can be delayed by GitHub and are not an instant outage SLA. If GitHub
+itself stops scheduling, this monitor cannot report that failure.
