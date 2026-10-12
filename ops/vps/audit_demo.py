@@ -19,7 +19,7 @@ TRADE_FIELDS = ('experiment_version', 'symbol', 'ready_timestamp', 'signal_close
 
 def failure_code(value):
     # Stored exceptions can contain sensitive text. Expose only known error codes.
-    match = re.match(r'^BYBIT_(-?\d+):', str(value or ''))
+    match = re.match(r'^(?:BybitAPIError:)?BYBIT_(-?\d+):', str(value or ''))
     if match:
         return 'BYBIT_' + match.group(1)
     if value in {'ENTRY_Rejected', 'ENTRY_Cancelled', 'ENTRY_Deactivated'}:
