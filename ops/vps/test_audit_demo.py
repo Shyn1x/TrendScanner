@@ -73,6 +73,18 @@ def test_missing_journal_is_read_only_waiting_state_not_a_bootstrap():
     assert result['journal_virtual_equity'] == Decimal(300)
 
 
+def test_failure_codes_never_echo_stored_exception_text(monkeypatch):
+    assert audit.failure_code('BYBIT_110007:SECRET') == 'BYBIT_110007'
+    assert audit.failure_code('connection failed: SECRET') == 'UNKNOWN_REQUIRES_PRIVATE_LOG_REVIEW'
+    assert audit.failure_code('ENTRY_Rejected') == 'ENTRY_Rejected'
+    monkeypatch.setattr(audit, 'load_journal', lambda *args: ([
+        {'symbol': 'BTC/USDT', 'ready_timestamp': 0, 'signal_close_ms': 0,
+         'status': 'FAILED', 'last_error': 'BYBIT_110007:SECRET'}], {}))
+    result = audit.audit(None, audit.Reader(Client([{'list': []}])), 'v', 'e', 31*audit.DAY)
+    assert result['journal_failure_codes'] == {'BYBIT_110007': 1}
+    assert 'SECRET' not in str(result)
+
+
 def trade():
     return {'symbol': 'BTC/USDT', 'ready_timestamp': 0, 'signal_close_ms': audit.HOUR,
             'exit_due_ms': 13*audit.HOUR, 'submitted_ms': audit.HOUR+120000,
