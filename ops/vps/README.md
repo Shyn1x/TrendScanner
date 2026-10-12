@@ -135,6 +135,22 @@ The GitHub cron delay remains a limitation of that fallback.
 Catch-up signals retain their `catchup_replay` label and must be distinguished
 from observations collected promptly in research reports. Old KuCoin research
 and the Streamlit scanner are outside this scheduling change.
+# Manual virtual Demo funds
+
+Run `VPS Runtime Manager` on merged `main` with `operation=wallet` to read the
+Bybit Demo UNIFIED USDT wallet. `operation=fund-demo` requests only the shortfall
+to a 300 USDT wallet using `/v5/account/demo-apply-money`, then reads the wallet
+again to verify credit and positive available account margin. It has no schedule
+and requires an explicit manual dispatch. The helper strictly rejects a live
+host and never reduces funds, transfers assets or submits an order.
+
+Existing balances of at least 300 USDT receive no top-up. An ambiguous POST is
+never retried; any later manual run re-reads the wallet first. The operation
+holds the existing scheduler lock during balance checks, uses existing local
+credentials and does not upgrade the runtime. It never resets FAILED trades or
+replays expired signals. Virtual strategy equity remains a separate journal
+calculation; a wallet top-up is not trading profit.
+
 # External health monitoring
 
 `VPS Health Probe` reads only the local ACTIVE marker, NTP status and an allowlist

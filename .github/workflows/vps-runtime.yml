@@ -3,11 +3,11 @@ on:
   workflow_dispatch:
     inputs:
       operation:
-        description: Inspect VPS readiness, manage the local timer, or audit Demo executions
+        description: Inspect VPS, audit Demo, or request virtual Demo funds
         required: true
         default: inspect
         type: choice
-        options: [inspect, install, upgrade, status, audit]
+        options: [inspect, install, upgrade, status, audit, wallet, fund-demo]
   pull_request:
     branches: [main]
     paths:
@@ -31,7 +31,7 @@ jobs:
         with:
           python-version: '3.11'
       - uses: astral-sh/setup-uv@v6
-      - run: uv run --no-project --with pytest --with pyyaml pytest -q ops/vps/test_runtime.py ops/vps/test_audit_demo.py ops/vps/test_monitor.py
+      - run: uv run --no-project --with pytest --with pyyaml pytest -q ops/vps/test_runtime.py ops/vps/test_audit_demo.py ops/vps/test_monitor.py ops/vps/test_demo_funds.py
   manage:
     if: github.event_name == 'workflow_dispatch'
     needs: validate
@@ -95,6 +95,31 @@ jobs:
           args = [str(workspace / '.venv/bin/python'), str(patch / 'ops/vps/audit_demo.py')]
           code, output = run_command(args, workspace, 'demo', config)
           print(output)
+          raise SystemExit(code)
+          PY
+      - name: Read or request virtual Demo USDT
+        if: (inputs.operation == 'wallet' || inputs.operation == 'fund-demo') && github.ref == 'refs/heads/main'
+        env:
+          OPERATION: ${{ inputs.operation }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import sys
+          from pathlib import Path
+          patch = Path('patch').resolve()
+          sys.path.insert(0, str(patch / 'ops/vps'))
+          from runtime import run_command
+          root = Path.home() / 'trendscanner-runtime'
+          workspace = (root / 'current/lower').resolve(strict=True)
+          config = json.loads((root / 'credentials.json').read_text())
+          args = [str(workspace / '.venv/bin/python'), str(patch / 'ops/vps/demo_funds.py')]
+          if os.environ['OPERATION'] == 'fund-demo':
+              args.append('--apply')
+          code, output = run_command(args, workspace, 'demo', config)
+          print(output)
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as summary:
+              summary.write('### Bybit Demo virtual funds\n\n```json\n' + output + '\n```\n')
           raise SystemExit(code)
           PY
       - name: Require merged main for installation
