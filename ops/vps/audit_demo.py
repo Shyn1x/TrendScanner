@@ -1,6 +1,7 @@
 """Read-only Demo fills versus the same prospective event's 12-bar outcome."""
 import json
 import os
+import re
 import time
 from collections import Counter
 from decimal import Decimal
@@ -13,7 +14,17 @@ STOP_VERSION = 'lower-tf-stop-v1-fixed-bps-50-75-100-150'
 TRADE_FIELDS = ('experiment_version', 'symbol', 'ready_timestamp', 'signal_close_ms',
                 'exit_due_ms', 'order_link_id', 'exit_order_link_id', 'status',
                 'risk_amount', 'reference_price', 'quantity', 'stop_price',
-                'entry_order_id', 'exit_order_id', 'avg_entry_price', 'closed_pnl', 'submitted_ms')
+                'entry_order_id', 'exit_order_id', 'avg_entry_price', 'closed_pnl', 'submitted_ms', 'last_error')
+
+
+def failure_code(value):
+    # Stored exceptions can contain sensitive text. Expose only known error codes.
+    match = re.match(r'^BYBIT_(-?\d+):', str(value or ''))
+    if match:
+        return 'BYBIT_' + match.group(1)
+    if value in {'ENTRY_Rejected', 'ENTRY_Cancelled', 'ENTRY_Deactivated'}:
+        return value
+    return 'UNKNOWN_REQUIRES_PRIVATE_LOG_REVIEW'
 
 
 def number(value):
@@ -189,6 +200,7 @@ def audit(connection, reader, executor_version, experiment, now):
     return {'report_version': 'bybit-demo-execution-audit-v1', 'read_only': True,
             'checked_at_ms': now, 'signal_experiment': experiment, 'journal_trades': len(trades),
             'journal_status_counts': dict(Counter(t['status'] for t in trades)),
+            'journal_failure_codes': dict(Counter(failure_code(t.get('last_error')) for t in trades if t['status'] == 'FAILED')),
             'detail_window_days': 30, 'older_trades_without_execution_detail': omitted,
             'demo_open_positions': len(active_positions),
             'journal_virtual_equity': Decimal(300) + sum(number(t['closed_pnl']) for t in trades if t.get('closed_pnl') is not None),
