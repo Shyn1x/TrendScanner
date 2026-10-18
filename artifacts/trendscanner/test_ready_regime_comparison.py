@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import copy
 
-from ready_regime_comparison import analyze_regime_comparison
+from ready_regime_comparison import analyze_regime_comparison, build_console_summary
 
 
 def _event(symbol="A", direction="LONG", timestamp=1, mfe=3.0, mae=1.0, available=True, state="BULLISH"):
@@ -69,6 +69,36 @@ def test_input_not_mutated():
     original = copy.deepcopy((current, holdout))
     _ = analyze_regime_comparison(current, holdout)
     assert (current, holdout) == original
+
+
+def test_console_summary_handles_empty_periods():
+    summary = build_console_summary(_report([], []))
+    for period in ("CURRENT", "HOLDOUT"):
+        assert f"{period}: LONG N=0 edge=-; SHORT N=0 edge=-; winner=INSUFFICIENT_SAMPLE" in summary
+
+
+def test_console_summary_handles_missing_directions():
+    report = _report([_event(timestamp=100)], [_event(timestamp=1, direction="SHORT")])
+    original = copy.deepcopy(report)
+    summary = build_console_summary(report)
+    assert "CURRENT: LONG N=1 edge=2.00; SHORT N=0 edge=-; winner=INSUFFICIENT_SAMPLE" in summary
+    assert "HOLDOUT: LONG N=0 edge=-; SHORT N=1 edge=2.00; winner=INSUFFICIENT_SAMPLE" in summary
+    assert report == original
+
+
+def test_console_summary_does_not_choose_a_winner_for_tied_edges():
+    current = [_event(timestamp=100, direction=direction) for direction in ("LONG", "SHORT")]
+    holdout = [_event(timestamp=1, direction=direction) for direction in ("LONG", "SHORT")]
+    summary = build_console_summary(_report(current, holdout))
+    assert summary.count("winner=NO_CLEAR_EDGE") == 2
+
+
+def test_console_summary_preserves_observed_direction_winners():
+    current = [_event(timestamp=100), _event(timestamp=100, direction="SHORT", mfe=1, mae=3)]
+    holdout = [_event(timestamp=1, mfe=1, mae=3), _event(timestamp=1, direction="SHORT")]
+    summary = build_console_summary(_report(current, holdout))
+    assert "CURRENT: LONG N=1 edge=2.00; SHORT N=1 edge=-2.00; winner=LONG" in summary
+    assert "HOLDOUT: LONG N=1 edge=-2.00; SHORT N=1 edge=2.00; winner=SHORT" in summary
 
 
 if __name__ == "__main__":

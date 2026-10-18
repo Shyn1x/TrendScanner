@@ -68,6 +68,95 @@ def test_h2_does_not_require_long_sample_but_h3_h4_do():
     assert _hypothesis(rows,"BEAR","SHORT",True)=="INSUFFICIENT_SAMPLE"
 
 
+def _single_direction_rows(regime, direction, edge=1.0, count=15):
+    return [
+        {"period": period, "market_regime": regime, "direction": direction,
+         "n": count, "mfe_minus_mae_pct": edge}
+        for period in ("CURRENT", "HOLDOUT")
+    ]
+
+
+def test_h1_supported_when_short_group_is_absent():
+    rows = _single_direction_rows("BULL", "LONG")
+    assert _hypothesis(rows, "BULL", "LONG", False) == "SUPPORTED"
+    rows.append({"period": "CURRENT", "market_regime": "BULL",
+                 "direction": "SHORT", "n": 15, "mfe_minus_mae_pct": 2.0})
+    assert _hypothesis(rows, "BULL", "LONG", False) == "SUPPORTED"
+
+
+def test_h2_supported_when_long_group_is_absent():
+    rows = _single_direction_rows("BEAR", "SHORT")
+    assert _hypothesis(rows, "BEAR", "SHORT", False) == "SUPPORTED"
+    rows.append({"period": "HOLDOUT", "market_regime": "BEAR",
+                 "direction": "LONG", "n": 15, "mfe_minus_mae_pct": 2.0})
+    assert _hypothesis(rows, "BEAR", "SHORT", False) == "SUPPORTED"
+
+
+def test_single_direction_hypotheses_still_reject_non_positive_edges():
+    for regime, direction in (("BULL", "LONG"), ("BEAR", "SHORT")):
+        for period_index in (0, 1):
+            for edge in (0.0, -1.0):
+                rows = _single_direction_rows(regime, direction)
+                rows[period_index]["mfe_minus_mae_pct"] = edge
+                assert _hypothesis(rows, regime, direction, False) == "NOT_SUPPORTED"
+
+
+def test_single_direction_hypotheses_require_favored_sample_in_both_periods():
+    for regime, direction in (("BULL", "LONG"), ("BEAR", "SHORT")):
+        for period_index in (0, 1):
+            rows = _single_direction_rows(regime, direction)
+            rows[period_index]["n"] = 14
+            assert _hypothesis(rows, regime, direction, False) == "INSUFFICIENT_SAMPLE"
+        rows = _single_direction_rows(regime, direction)
+        assert _hypothesis(rows[:1], regime, direction, False) == "INSUFFICIENT_SAMPLE"
+        assert _hypothesis(rows[1:], regime, direction, False) == "INSUFFICIENT_SAMPLE"
+
+
+def test_relative_hypotheses_require_opposite_group_in_both_periods():
+    for regime, direction, other in (("BULL", "LONG", "SHORT"), ("BEAR", "SHORT", "LONG")):
+        for period in ("CURRENT", "HOLDOUT"):
+            rows = _single_direction_rows(regime, direction)
+            assert _hypothesis(rows, regime, direction, True) == "INSUFFICIENT_SAMPLE"
+            rows.append({"period": period, "market_regime": regime,
+                         "direction": other, "n": 15, "mfe_minus_mae_pct": 0.0})
+            assert _hypothesis(rows, regime, direction, True) == "INSUFFICIENT_SAMPLE"
+
+
+def test_full_report_handles_a_single_direction_per_regime():
+    timeframe_ms = 14_400_000
+    for direction in ("LONG", "SHORT"):
+        current_events, holdout_events = [], []
+        for index in range(213, 228):
+            for base, events in ((1000, current_events), (0, holdout_events)):
+                event = _event((base + index) * timeframe_ms, direction)
+                event["ready_candle_index"] = index
+                events.append(event)
+        current, holdout = _payload(current_events), _payload(holdout_events, True)
+        holdout["runs"][0]["holdout_window"]["holdout_first_timestamp"] = 0
+        original = copy.deepcopy((current, holdout))
+
+        def loader(symbol, timeframe, before_timestamp, total_limit):
+            assert symbol == "BTC/USDT" and timeframe == "4h"
+            assert before_timestamp in (1000 * timeframe_ms, 2000 * timeframe_ms)
+            frame = _frame(228)
+            if direction == "SHORT":
+                frame["close"] = 600 - frame["close"]
+                frame["open"] = frame["close"]
+                frame["high"] = frame["close"] + 1
+                frame["low"] = frame["close"] - 1
+            if before_timestamp == 2000 * timeframe_ms:
+                frame["time"] += 1000 * timeframe_ms
+            return frame
+
+        report = analyze_market_regimes(current, holdout, loader)
+        supported = "H1_long_bull_positive" if direction == "LONG" else "H2_short_bear_positive"
+        assert report["coverage"]["analyzed_events"] == 30
+        assert report["coverage"]["missing_exact_timestamp_events"] == 0
+        assert report["hypotheses"][supported] == "SUPPORTED"
+        assert all(value == "INSUFFICIENT_SAMPLE" for key, value in report["hypotheses"].items() if key != supported)
+        assert (current, holdout) == original
+
+
 def test_breadth_uses_all_exact_symbol_contexts():
     timestamp = 220 * 14_400_000
     features = _frame_features(_frame())

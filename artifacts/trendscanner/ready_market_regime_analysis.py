@@ -142,7 +142,8 @@ def _hypothesis(rows: list[dict], regime: str, favored: str, relative: bool) -> 
         values.extend(data.get((period, other)) for period in PERIODS)
     if any(row is None or row["n"] < MIN_SAMPLE for row in values): return "INSUFFICIENT_SAMPLE"
     favored_edges = [data[(period, favored)]["mfe_minus_mae_pct"] for period in PERIODS]
-    other_edges = [data[(period, other)]["mfe_minus_mae_pct"] for period in PERIODS]
+    # H1/H2 need only the favored direction; an opposite group may be absent.
+    other_edges = [data[(period, other)]["mfe_minus_mae_pct"] for period in PERIODS] if relative else []
     if all(edge > 0 for edge in favored_edges) and (not relative or all(left > right for left, right in zip(favored_edges, other_edges))): return "SUPPORTED"
     if any(edge <= 0 for edge in favored_edges) or (relative and any(left <= right for left, right in zip(favored_edges, other_edges))): return "NOT_SUPPORTED"
     return "MIXED"

@@ -272,13 +272,25 @@ def _label(group: dict[str, Any]) -> str:
     return f"{direction}{group['factor']}={group['factor_value']}"
 
 
+def _fmt(value: float | None) -> str:
+    return "-" if value is None else f"{value:.2f}"
+
+
 def build_console_summary(report: dict[str, Any]) -> str:
     ranges = report["summary"]["period_ranges"]
     lines = ["A. Baseline direction flip", f"CURRENT={ranges['CURRENT']['start_utc']}..{ranges['CURRENT']['end_utc']}; HOLDOUT={ranges['HOLDOUT']['start_utc']}..{ranges['HOLDOUT']['end_utc']}; ranges_overlap={ranges['ranges_overlap']}"]
     for period in PERIODS:
         long, short = report["baseline"][period]["LONG"], report["baseline"][period]["SHORT"]
-        winner = "LONG" if long["mfe_minus_mae_pct"] > short["mfe_minus_mae_pct"] else "SHORT"
-        lines.append(f"{period}: LONG N={long['n']} edge={long['mfe_minus_mae_pct']:.2f}; SHORT N={short['n']} edge={short['mfe_minus_mae_pct']:.2f}; winner={winner}")
+        long_edge, short_edge = long["mfe_minus_mae_pct"], short["mfe_minus_mae_pct"]
+        if long_edge is None or short_edge is None:
+            winner = "INSUFFICIENT_SAMPLE"
+        elif long_edge > short_edge:
+            winner = "LONG"
+        elif long_edge < short_edge:
+            winner = "SHORT"
+        else:
+            winner = "NO_CLEAR_EDGE"
+        lines.append(f"{period}: LONG N={long['n']} edge={_fmt(long_edge)}; SHORT N={short['n']} edge={_fmt(short_edge)}; winner={winner}")
     factors = report["factors"]
     lines.extend(["B. Stable positive groups", "; ".join(_label(row) for row in factors["direction_stable_positive"]) or "none", "C. Stable negative groups", "; ".join(_label(row) for row in factors["direction_stable_negative"]) or "none", "D. Direction-flipping groups", "; ".join(_label(row) for row in factors["direction_flipping"]) or "none", "E. Symbol classifications", str(report["symbols"]["counts"]), "F. Structure alignment"])
     for row in report["structure_alignment"]:
