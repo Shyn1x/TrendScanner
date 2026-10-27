@@ -98,32 +98,21 @@ jobs:
           print(output)
           raise SystemExit(code)
           PY
-      - name: Read fixed-contract research population and historical price paths
+      - name: Read public historical Bybit candles only
         if: inputs.operation == 'review'
         run: |
           python3 - <<'PY'
-          import json
           import sys
           from pathlib import Path
           patch = Path('patch').resolve()
           sys.path.insert(0, str(patch / 'ops/vps'))
           from runtime import run_command
-          root = Path.home() / 'trendscanner-runtime'
-          workspace = (root / 'current/lower').resolve(strict=True)
-          config = json.loads((root / 'credentials.json').read_text())
-          config['STRATEGY_REVIEW_OUTPUT'] = str(Path('review-output').resolve())
+          workspace = (Path.home() / 'trendscanner-runtime/current/lower').resolve(strict=True)
           args = [str(workspace / '.venv/bin/python'), str(patch / 'ops/vps/review_strategy.py')]
-          code, output = run_command(args, workspace, 'collect_4h', config)
+          code, output = run_command(args, workspace, 'collect_4h', {})
           print(output)
           raise SystemExit(code)
           PY
-      - uses: actions/upload-artifact@v4
-        if: inputs.operation == 'review' && always()
-        with:
-          name: strategy-review
-          path: review-output/*.json
-          if-no-files-found: error
-          retention-days: 14
       - name: Read or request virtual Demo USDT
         if: (inputs.operation == 'wallet' || inputs.operation == 'fund-demo') && github.ref == 'refs/heads/main'
         env:

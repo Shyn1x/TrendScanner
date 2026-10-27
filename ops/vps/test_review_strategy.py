@@ -11,6 +11,18 @@ spec.loader.exec_module(review)
 
 
 class ReviewTests(unittest.TestCase):
+    def test_script_has_no_private_data_access(self):
+        import ast
+        tree=ast.parse(Path(__file__).with_name('review_strategy.py').read_text())
+        imports=[]
+        for node in ast.walk(tree):
+            if isinstance(node,ast.Import): imports.extend(a.name for a in node.names)
+            if isinstance(node,ast.ImportFrom): imports.append(node.module)
+        self.assertFalse(set(imports) & {'audit_demo','bybit_demo_executor','psycopg','psycopg2'})
+        source=Path(__file__).with_name('review_strategy.py').read_text()
+        for forbidden in ['credentials.json','DATABASE_URL','API_SECRET','api-demo.bybit.com']:
+            self.assertNotIn(forbidden,source)
+
     def test_public_path_cannot_submit_order(self):
         calls=[]
         with self.assertRaisesRegex(ValueError,'ALLOWLIST'):
@@ -43,21 +55,6 @@ class ReviewTests(unittest.TestCase):
         self.assertTrue(review.long_outcome(candles,0)['stop_hit'])
         del candles[12*h]
         self.assertIsNone(review.long_outcome(candles,0))
-
-    def test_database_is_read_only_before_first_statement(self):
-        class DB:
-            read_only=False
-            def cursor(self):return self
-            def __enter__(self):return self
-            def __exit__(self,*args):pass
-            def execute(self,sql,args=None):
-                self.asserted=True
-                if not self.read_only or not sql.startswith(('SELECT','SET LOCAL statement_timeout')):
-                    raise AssertionError('unexpected write access')
-            def fetchall(self):return []
-        db=DB()
-        self.assertEqual(review.read_population(db,'experiment')[0],[])
-        self.assertTrue(db.read_only)
 
     def test_baseline_requires_all_symbols_at_same_hour(self):
         h=review.HOUR

@@ -1,13 +1,7 @@
-"""Read-only fixed-contract signal review and two execution case reconstructions.
-
-No executor cycle, schema bootstrap, order mutation, or experiment change.
-"""
+"""Fetch only public Bybit candles; never access DB, credentials, or private API."""
 import ast
-from collections import Counter
-from decimal import Decimal
 import hashlib
 import json
-import os
 from pathlib import Path
 import re
 import time
@@ -18,7 +12,6 @@ HOUR = 3_600_000
 MINUTE = 60_000
 DAY = 24 * HOUR
 CUTOFF = 1793103504260  # Fixed prior audit, 2026-10-27 12:18:24 UTC.
-STOP_VERSION = 'lower-tf-stop-v1-fixed-bps-50-75-100-150'
 PATHS = {'/v5/market/kline', '/v5/market/mark-price-kline'}
 CASES = (('AAVE/USDT', 1792501200000), ('FIL/USDT', 1792702800000))
 
@@ -90,32 +83,6 @@ def first_touch(candles, stop, start, end):
     return None
 
 
-def read_population(connection, experiment):
-    connection.read_only = True
-    with connection.cursor() as cur:
-        cur.execute('SET LOCAL statement_timeout = 30000')
-        cur.execute('SELECT symbol, ready_timestamp, entry_reference_price, stop_hit, '
-                    'bars_to_stop, horizon_close_return_pct, stop_adjusted_return_pct, no_tick_fills '
-                    'FROM lower_tf_prospective_stop_outcomes WHERE experiment_version=%s '
-                    'AND stop_outcome_version=%s AND timeframe=%s AND direction=%s '
-                    'AND horizon_bars=12 AND stop_loss_bps=150 '
-                    'AND ready_timestamp + %s <= %s AND created_at <= to_timestamp(%s/1000.0) '
-                    'ORDER BY ready_timestamp, symbol',
-                    (experiment, STOP_VERSION, '1h', 'LONG', 13*HOUR, CUTOFF, CUTOFF))
-        fields = ('symbol', 'ready', 'entry', 'stop_hit', 'bars_to_stop', 'close_pct', 'gross_pct', 'no_tick_fills')
-        outcomes = [dict(zip(fields, row)) for row in cur.fetchall()]
-        cur.execute('SELECT payload FROM lower_tf_prospective_events '
-                    'WHERE experiment_version=%s ORDER BY ready_timestamp, symbol', (experiment,))
-        events = [row[0] for row in cur.fetchall()]
-    keys = [(r['symbol'], int(r['ready'])) for r in outcomes]
-    if len(keys) != len(set(keys)):
-        raise ValueError('DUPLICATE_POPULATION_KEYS')
-    mature = [p for p in events if p.get('timeframe') == '1h' and p.get('direction') == 'LONG'
-              and int(p['ready_timestamp']) + 13*HOUR <= CUTOFF]
-    return outcomes, {'mature_events': len(mature), 'outcomes': len(outcomes),
-                      'missing_outcome_keys': sorted(set((p['symbol'], int(p['ready_timestamp'])) for p in mature)-set(keys))}
-
-
 def read_universe(workspace):
     tree = ast.parse((workspace/'artifacts/trendscanner/ready_outcome_pilot.py').read_text())
     for node in tree.body:
@@ -152,76 +119,24 @@ def build_baseline(outcomes, symbols, hourly):
     return paired, pooled
 
 
-def case_review(trade, model, reader, public):
-    from audit_demo import compare_trade
-    case = compare_trade(reader, trade, model, CUTOFF)
-    entry = case['entry_fills']
-    start = int(case['signal_close_ms']) - MINUTE
-    end = int(case['time_exit_due_ms']) + MINUTE
-    data = {kind: public(path, case['symbol'], '1', start, end) for kind, path in
-            [('trade', '/v5/market/kline'), ('mark', '/v5/market/mark-price-kline')]}
-    model_stop = float(model['entry_price'])*.985
-    actual_stop = float(case['stop_price'])
-    touches = {}
-    for kind, series in data.items():
-        for level, stop in [('model', model_stop), ('actual', actual_stop)]:
-            for origin, timestamp in [('signal', case['signal_close_ms']), ('fill', entry['first_ms'])]:
-                touches[kind+'/'+level+'/'+origin] = first_touch(series, stop, timestamp, case['time_exit_due_ms'])
-    exit_ms = case['exit_fills']['first_ms']
-    windows = {kind: [row for row in series if exit_ms//MINUTE*MINUTE-2*MINUTE <= row[0] <= exit_ms//MINUTE*MINUTE+2*MINUTE]
-               for kind, series in data.items()}
-    case.update(model_stop=model_stop, actual_stop=actual_stop, touches=touches, exit_window=windows,
-                minute_coverage={kind: len(series) for kind, series in data.items()},
-                holding_minima={kind: min(row[3] for row in series if entry['first_ms'] <= row[0] < case['time_exit_due_ms'])
-                                for kind, series in data.items()})
-    orders = reader.window('/v5/order/history', {'category':'linear', 'symbol':trade['symbol'].replace('/',''), 'limit':50},
-                           case['signal_close_ms'], case['time_exit_due_ms']+HOUR)
-    case['related_orders'] = [{k:o.get(k) for k in ('side','orderType','orderStatus','stopOrderType','triggerBy',
-                               'slTriggerBy','triggerPrice','stopLoss','createdTime','updatedTime','avgPrice','cumExecQty')}
-                              for o in orders if o.get('orderId') in {trade.get('entry_order_id'),trade.get('exit_order_id')}
-                              or o.get('parentOrderLinkId')==trade['order_link_id']
-                              or o.get('orderLinkId') in {trade['order_link_id'],trade['exit_order_link_id']}]
-    return case, data
-
-
 def main():
-    from audit_demo import Reader, load_journal
-    from bybit_demo_executor import _connect, BybitDemoClient, EXECUTOR_VERSION, EXPERIMENT_VERSION
+    # Only public candles leave the VPS. No DB, private API, or credential access.
     workspace = Path.cwd()
-    with _connect(os.environ['DATABASE_URL']) as connection:
-        outcomes, coverage = read_population(connection, EXPERIMENT_VERSION)
-        trades, models = load_journal(connection, EXECUTOR_VERSION, EXPERIMENT_VERSION)
-    if not outcomes:
-        raise ValueError('NO_MATURE_OUTCOMES')
     universe = read_universe(workspace)
-    start = min(int(r['ready']) for r in outcomes)
-    end = max(int(r['ready']) for r in outcomes)+13*HOUR
-    hourly = {}
-    for symbol in universe:
-        hourly[symbol] = fetch_klines('/v5/market/kline',symbol,'60',start,end)
-    paired, baseline = build_baseline(outcomes, universe, hourly)
-    reader = Reader(BybitDemoClient(os.environ['BYBIT_DEMO_API_KEY'],os.environ['BYBIT_DEMO_API_SECRET']))
-    cases, candles, errors = [], {}, []
-    for key in CASES:
-        try:
-            trade = next(t for t in trades if (t['symbol'],int(t['ready_timestamp']))==key)
-            case, data = case_review(trade, models[key], reader, fetch_klines)
-            cases.append(case); candles[key[0]] = data
-        except Exception as exc:
-            errors.append({'case':key,'error_type':type(exc).__name__})
-    raw = json.dumps({'hourly':hourly,'minute_cases':candles},sort_keys=True).encode()
-    output = Path(os.environ['STRATEGY_REVIEW_OUTPUT'])
-    output.mkdir(parents=True, exist_ok=True)
-    (output/'strategy-review-candles.json').write_bytes(raw)
-    report = {'read_only':True,'review_version':'strategy-review-v1','fixed_cutoff_ms':CUTOFF,
-              'fetched_at_ms':int(time.time()*1000),'experiment':EXPERIMENT_VERSION,'coverage':coverage,
-              'universe':universe,'population':paired,'baseline':baseline,'cases':cases,'errors':errors,
-              'candle_sha256':hashlib.sha256(raw).hexdigest()}
-    (output/'strategy-review.json').write_text(json.dumps(report,sort_keys=True,default=str))
-    # Pooled baseline can be reproduced from the candle artifact; keep logs bounded.
-    print('STRATEGY_REVIEW_JSON='+json.dumps({**report,'baseline':{'n':len(baseline),'mean_net_pct':sum(r['net_pct'] for r in baseline)/len(baseline)}},sort_keys=True,default=str))
-    print('READ-ONLY STRATEGY REVIEW: '+('FAIL' if errors else 'PASS'))
-    return bool(errors)
+    start = (CUTOFF//HOUR - 21*24)*HOUR
+    end = CUTOFF//HOUR*HOUR
+    hourly = {symbol:fetch_klines('/v5/market/kline',symbol,'60',start,end) for symbol in universe}
+    minute_cases = {}
+    for symbol,ready in CASES:
+        minute_cases[symbol] = {kind:fetch_klines(path,symbol,'1',ready+HOUR-MINUTE,ready+13*HOUR+MINUTE)
+                               for kind,path in [('trade','/v5/market/kline'),('mark','/v5/market/mark-price-kline')]}
+    report = {'public_market_data_only':True,'source':'https://api.bybit.com',
+              'fixed_cutoff_ms':CUTOFF,'fetched_at_ms':int(time.time()*1000),
+              'universe':universe,'hourly':hourly,'minute_cases':minute_cases}
+    raw=json.dumps(report,sort_keys=True)
+    print('PUBLIC_CANDLE_REVIEW_JSON='+raw)
+    print('PUBLIC CANDLE REVIEW: PASS; sha256='+hashlib.sha256(raw.encode()).hexdigest())
+    return False
 
 
 if __name__ == '__main__':
