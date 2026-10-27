@@ -7,7 +7,7 @@ on:
         required: true
         default: inspect
         type: choice
-        options: [inspect, install, upgrade, status, audit, wallet, fund-demo]
+        options: [inspect, install, upgrade, status, audit, review, wallet, fund-demo]
   pull_request:
     branches: [main]
     paths:
@@ -32,6 +32,7 @@ jobs:
           python-version: '3.11'
       - uses: astral-sh/setup-uv@v6
       - run: uv run --no-project --with pytest --with pyyaml pytest -q ops/vps/test_runtime.py ops/vps/test_audit_demo.py ops/vps/test_monitor.py ops/vps/test_demo_funds.py
+      - run: python3 -m unittest discover -s ops/vps -p test_review_strategy.py
   manage:
     if: github.event_name == 'workflow_dispatch'
     needs: validate
@@ -97,6 +98,32 @@ jobs:
           print(output)
           raise SystemExit(code)
           PY
+      - name: Read fixed-contract research population and historical price paths
+        if: inputs.operation == 'review'
+        run: |
+          python3 - <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+          patch = Path('patch').resolve()
+          sys.path.insert(0, str(patch / 'ops/vps'))
+          from runtime import run_command
+          root = Path.home() / 'trendscanner-runtime'
+          workspace = (root / 'current/lower').resolve(strict=True)
+          config = json.loads((root / 'credentials.json').read_text())
+          config['STRATEGY_REVIEW_OUTPUT'] = str(Path('review-output').resolve())
+          args = [str(workspace / '.venv/bin/python'), str(patch / 'ops/vps/review_strategy.py')]
+          code, output = run_command(args, workspace, 'collect_4h', config)
+          print(output)
+          raise SystemExit(code)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: inputs.operation == 'review' && always()
+        with:
+          name: strategy-review
+          path: review-output/*.json
+          if-no-files-found: error
+          retention-days: 14
       - name: Read or request virtual Demo USDT
         if: (inputs.operation == 'wallet' || inputs.operation == 'fund-demo') && github.ref == 'refs/heads/main'
         env:
