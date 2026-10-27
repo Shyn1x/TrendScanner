@@ -121,6 +121,7 @@ def test_durable_enrollment_before_outcome_restart_and_separate_actual_pnl():
     now = BASE + 14 * shadow.HOUR
     summary = shadow.update(state, [trade()], Reader(), save, now_ms=now, market=market)
     assert summary['paired_complete'] == 1 and len(calls) == 4
+    assert summary['last_success_ms'] == now
     restarted = json.loads(json.dumps(state)); closed = trade(status='CLOSED'); closed['closed_pnl'] = '-7'
     shadow.update(restarted, [closed], Reader(), save, now_ms=now + 300000,
                   market=lambda *a, **k: pytest.fail('duplicate fetch'))

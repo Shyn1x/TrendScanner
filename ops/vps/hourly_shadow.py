@@ -191,6 +191,7 @@ def counts(state):
     cohort = [state['candidates'][key] for key in state['cohort']]
     paired = [c for c in cohort if all(str(h) in c.get('outcomes', {}) for h in [1, 12])]
     return {'version': VERSION, 'start_signal_close_ms': state['start_signal_close_ms'],
+            'last_success_ms': state.get('last_success_ms'),
             'target': TARGET, 'enrolled': len(cohort), 'paired_complete': len(paired),
             'actual_closed': sum(c.get('actual_status') == 'CLOSED' for c in cohort),
             'one_hour_complete': sum('1' in c.get('outcomes', {}) for c in cohort),
