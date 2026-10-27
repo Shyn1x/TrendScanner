@@ -119,23 +119,21 @@ def build_baseline(outcomes, symbols, hourly):
     return paired, pooled
 
 
+# Event identities already published in the pre-existing audit, not loaded from DB:
+# https://github.com/Shyn1x/TrendScanner/actions/runs/40502675808
+ENTRY_CASES = [('BTC/USDT', 1791856800000), ('PENDLE/USDT', 1791860400000), ('UNI/USDT', 1791900000000), ('FIL/USDT', 1791914400000), ('PENDLE/USDT', 1791939600000), ('FIL/USDT', 1791950400000), ('UNI/USDT', 1792069200000), ('APT/USDT', 1792072800000), ('AVAX/USDT', 1792072800000), ('AAVE/USDT', 1792245600000), ('BNB/USDT', 1792256400000), ('LTC/USDT', 1792260000000), ('AAVE/USDT', 1792274400000), ('LTC/USDT', 1792314000000), ('ARB/USDT', 1792360800000), ('DOGE/USDT', 1792360800000), ('INJ/USDT', 1792360800000), ('ATOM/USDT', 1792411200000), ('APT/USDT', 1792465200000), ('AAVE/USDT', 1792501200000), ('ADA/USDT', 1792501200000), ('APT/USDT', 1792501200000), ('AVAX/USDT', 1792566000000), ('BNB/USDT', 1792566000000), ('BTC/USDT', 1792566000000), ('FIL/USDT', 1792702800000), ('SUI/USDT', 1792756800000), ('ADA/USDT', 1792760400000), ('SOL/USDT', 1792760400000), ('XRP/USDT', 1792760400000), ('XRP/USDT', 1792857600000), ('INJ/USDT', 1792933200000), ('TIA/USDT', 1792933200000), ('LTC/USDT', 1792936800000), ('BNB/USDT', 1792987200000), ('ETC/USDT', 1792990800000), ('ADA/USDT', 1793023200000), ('LTC/USDT', 1793034000000), ('XRP/USDT', 1793055600000)]
+
+
 def main():
-    # Only public candles leave the VPS. No DB, private API, or credential access.
-    workspace = Path.cwd()
-    universe = read_universe(workspace)
-    start = (CUTOFF//HOUR - 21*24)*HOUR
-    end = CUTOFF//HOUR*HOUR
-    hourly = {symbol:fetch_klines('/v5/market/kline',symbol,'60',start,end) for symbol in universe}
-    minute_cases = {}
-    for symbol,ready in CASES:
-        minute_cases[symbol] = {kind:fetch_klines(path,symbol,'1',ready+HOUR-MINUTE,ready+13*HOUR+MINUTE)
-                               for kind,path in [('trade','/v5/market/kline'),('mark','/v5/market/mark-price-kline')]}
-    report = {'public_market_data_only':True,'source':'https://api.bybit.com',
-              'fixed_cutoff_ms':CUTOFF,'fetched_at_ms':int(time.time()*1000),
-              'universe':universe,'hourly':hourly,'minute_cases':minute_cases}
-    raw=json.dumps(report,sort_keys=True)
-    print('PUBLIC_CANDLE_REVIEW_JSON='+raw)
-    print('PUBLIC CANDLE REVIEW: PASS; sha256='+hashlib.sha256(raw.encode()).hexdigest())
+    # Public first-hour candles only. No credentials, private API, or DB.
+    windows = []
+    for symbol, ready in ENTRY_CASES:
+        windows.append({'symbol':symbol,'ready':ready,
+                        'candles':fetch_klines('/v5/market/kline',symbol,'1',ready+HOUR,ready+2*HOUR)})
+    raw=json.dumps({'public_market_data_only':True,'source':'https://api.bybit.com',
+                    'fixed_cutoff_ms':CUTOFF,'entry_windows':windows},sort_keys=True)
+    print('ENTRY_WINDOW_REVIEW_JSON='+raw)
+    print('ENTRY WINDOW REVIEW: PASS; sha256='+hashlib.sha256(raw.encode()).hexdigest())
     return False
 
 
