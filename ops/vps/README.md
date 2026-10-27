@@ -19,6 +19,7 @@ Tasks execute sequentially under a nonblocking local file lock, in this order:
 | Demo management | Every five minutes; delayed ticks run on the next free cycle |
 | 4h collection | Each closed 4h candle, starting two minutes after its close |
 | Outcome/stop analyzer | Daily at 02:40 UTC, including missed work after reboot |
+| Paired hourly exit shadow | Every five minutes, after existing tasks; no orders |
 
 This is one small VPS, not a real-time execution system. The expensive 4h context
 and daily analyzer can delay the next tick. The scheduler catches up closed candles,
@@ -135,6 +136,64 @@ The GitHub cron delay remains a limitation of that fallback.
 Catch-up signals retain their `catchup_replay` label and must be distinguished
 from observations collected promptly in research reports. Old KuCoin research
 and the Streamlit scanner are outside this scheduling change.
+# Prospective paired hourly exit shadow
+
+After merging, run `VPS Runtime Manager` on `main` with
+`operation=enable-hourly-shadow`. This obtains the existing scheduler lock,
+checks NTP and performs a read-only DB preflight. It atomically activates the
+reviewed scheduler while retaining symlinks to the exact existing lower/4h
+workspaces, dependencies and credentials. It does not run a full runtime upgrade
+or reconcile/submit any order. A busy scheduler aborts activation for later retry.
+
+The experiment freezes its protocol and start boundary before observing trades.
+Only signals closing at/after the next hour boundary qualify. The first 50 full
+Demo entries confirmed by polling are enrolled before their outcomes are queried.
+It uses only the existing 1h LONG executor/Bybit experiment. Existing trades,
+failed/unfilled orders and late entries after the 1h exit are not paired; missing
+fills and late-entry exclusions remain visible in counters. Ties in one poll use
+journal signal-time/symbol order. The cap fixes a research cohort; it does not
+stop or modify the Demo executor. No new entries are enrolled after the cap, but
+pending outcomes and actual closures continue to be reconciled.
+
+Both virtual exits use the same actual Demo fill VWAP, last fill timestamp,
+quantity and journal protective stop. One exits 1h after signal close; the
+control model exits 12h after signal close. The existing actual 12h Demo's closed
+PnL is retained separately, already net according to its journal convention.
+No additional orders are placed and capital freed by a hypothetical earlier exit
+is not reinvested. This is a paired exit study, not a second executable portfolio.
+
+The shadow checks closed contiguous 1m public Bybit Mark Price candles for stop
+triggers, and Trade candles for modeled exit prices. It never includes minutes
+before the fill minute. A touch within the partial fill minute is ambiguous:
+the primary calculation conservatively includes it and an alternative skips it.
+Multi-minute partial fills are flagged. Stop execution uses the worse of the
+stop level and that minute's Trade open. Neither those prices nor the public
+Mark Price path guarantee an actual Demo exit fill. Missing candles remain
+pending/retry; they are never forward-filled or counted as wins.
+
+Modeled costs are fixed at 6bp fee + 2bp slippage per side (0.16% total), the
+predefined research assumption. Actual entry fees are also retained, but are not
+subtracted twice. Funding is excluded from both model arms; the separately saved
+actual Demo PnL must not be confused with either model. New-data evidence is
+required before changing parameters; 50 completed pairs are an initial checkpoint,
+not proof of profitability. Market regime dependence and simultaneous signals
+remain relevant when interpreting confidence intervals.
+
+The worker runs last every five minutes with a 100s soft budget and 180s timeout.
+Failure reports research health but does not affect the existing 1h collection
+entry gate. Code can access only read-only PostgreSQL and authenticated Demo
+execution-history GET. Private fills/outcomes live in
+`state/hourly-shadow.json` (0600), preserved across restarts/activation retries.
+The protocol hash prevents silent resets or parameter changes. `shadow-status`
+prints counts only: no order IDs, prices, PnL, raw DB rows or artifacts. Normal
+runtime logs therefore expose no shadow trade details in GitHub.
+
+To roll back only this activation, with the scheduler idle and its cycle lock
+held, restore `current` to `previous_release` recorded privately in
+`state/hourly-shadow-activation.json`. Keep the shadow state for research; do not
+reset it to restart the same experiment. The previous frozen workspaces and
+existing scheduler ownership/cron remain intact.
+
 # Manual virtual Demo funds
 
 Run `VPS Runtime Manager` on merged `main` with `operation=wallet` to read the
