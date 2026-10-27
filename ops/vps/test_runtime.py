@@ -74,6 +74,8 @@ def test_collector_failure_preserves_demo_reconciliation_and_other_timeframes(tm
             return 0, f'Latest closed target: {target}\nUP TO DATE: PASS\n'
         if task == 'demo':
             return 0, '{"entries_submitted":0}\nBYBIT DEMO EXECUTOR: PASS\n'
+        if task == 'hourly_shadow':
+            return 0, 'HOURLY SHADOW: PASS\n'
         return 0, 'LOWER-TF OUTCOME WRITE: PASS\n'
     assert runtime.cycle(root, clock=lambda:now, run=run, clock_check=lambda:True) == 1
     assert ('demo','--reconcile-only') in calls

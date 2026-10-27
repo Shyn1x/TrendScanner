@@ -9,9 +9,9 @@ import subprocess
 import time
 
 SECRET_NAMES = ('DATABASE_URL', 'BYBIT_DEMO_API_KEY', 'BYBIT_DEMO_API_SECRET')
-PERIODS = {'collect_1h': 3600, 'collect_15m': 900, 'demo': 300, 'collect_4h': 14400, 'outcomes': 86400}
-TIMEOUTS = {'collect_1h': 600, 'collect_15m': 600, 'demo': 300, 'collect_4h': 1500, 'outcomes': 2400}
-ORDER = ('collect_1h', 'collect_15m', 'demo', 'collect_4h', 'outcomes')
+PERIODS = {'collect_1h': 3600, 'collect_15m': 900, 'demo': 300, 'collect_4h': 14400, 'outcomes': 86400, 'hourly_shadow': 300}
+TIMEOUTS = {'collect_1h': 600, 'collect_15m': 600, 'demo': 300, 'collect_4h': 1500, 'outcomes': 2400, 'hourly_shadow': 180}
+ORDER = ('collect_1h', 'collect_15m', 'demo', 'collect_4h', 'outcomes', 'hourly_shadow')
 
 
 def atomic_json(path, data):
@@ -27,7 +27,7 @@ def atomic_json(path, data):
 def slot(task, now):
     # Closed candle collectors start two minutes after the boundary.
     # Outcomes run daily at 02:40 UTC; missed daily work runs on the next tick.
-    offset = 9600 if task == 'outcomes' else (0 if task == 'demo' else 120)
+    offset = 9600 if task == 'outcomes' else (0 if task in ('demo', 'hourly_shadow') else 120)
     return int((now - offset) // PERIODS[task])
 
 
@@ -56,6 +56,8 @@ def command(task, release, state, now):
         args += ['--write']
     elif task == 'outcomes':
         args += ['artifacts/trendscanner/lower_tf_outcome_analyzer.py', '--write']
+    elif task == 'hourly_shadow':
+        args += [str(release / 'ops/hourly_shadow.py'), '--root', str(release.parent.parent)]
     else:
         args += ['artifacts/trendscanner/bybit_demo_executor.py',
                  '--execute' if entry_gate(state, now) else '--reconcile-only']
@@ -118,7 +120,7 @@ def health(state, now, active=True):
             expected = (int((now - 120) // PERIODS[task]) - 1) * PERIODS[task] * 1000
             if (record.get('covered_timestamp') or 0) < expected:
                 problems.append(task + ':BEHIND_CLOSED_CANDLES')
-        elif now - record.get('finished_at', 0) > (900 if task == 'demo' else 90000):
+        elif now - record.get('finished_at', 0) > (900 if task in ('demo', 'hourly_shadow') else 90000):
             problems.append(task + ':STALE')
     return {'checked_at': int(now), 'status': 'PASS' if not problems else 'ATTENTION',
             'problems': problems, 'entries_allowed': bool(active and state.get('clock_ok') and state.get('demo_enabled') and entry_gate(state, now)), 'state': state}
@@ -170,6 +172,8 @@ def cycle(root, clock=time.time, run=run_command, clock_check=None):
             record['mode'] = args[-1]
         if task == 'outcomes' and code == 0:
             record['ok'] = 'LOWER-TF OUTCOME WRITE: PASS' in output
+        if task == 'hourly_shadow' and code == 0:
+            record['ok'] = 'HOURLY SHADOW: PASS' in output
         failed |= not record['ok']
         state['heartbeat'] = finished
         atomic_json(state_path, state)

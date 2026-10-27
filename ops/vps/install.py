@@ -100,6 +100,11 @@ def prepare(patch, lower, four, root, sha, *, upgrading=False):
         print(output, end='', flush=True)
         if code:
             raise RuntimeError('PREFLIGHT_FAILED:' + task)
+    args, workspace = command('hourly_shadow', release, {}, 0)
+    code, output = run_command(args + ['--preflight'], workspace, 'hourly_shadow', values)
+    print(output, end='', flush=True)
+    if code:
+        raise RuntimeError('PREFLIGHT_FAILED:hourly_shadow')
     current = root / 'current'
     temporary = root / 'current.next'
     temporary.unlink(missing_ok=True)
