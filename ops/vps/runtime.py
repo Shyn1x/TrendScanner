@@ -39,6 +39,8 @@ def due(task, state, now):
 
 
 def entry_gate(state, now):
+    if state.get('database_migration_paused'):
+        return False
     record = state.get('tasks', {}).get('collect_1h', {})
     expected = (int(now) // 3600 - 1) * 3_600_000
     return bool(record.get('ok') and record.get('covered_timestamp') == expected
@@ -104,6 +106,8 @@ def collector_result(output):
 
 def health(state, now, active=True):
     problems = []
+    if state.get('database_migration_paused'):
+        problems.append('DATABASE_MIGRATION_PAUSED')
     if not active:
         problems.append('VPS_RUNTIME_INACTIVE')
     if now - state.get('heartbeat', 0) > 1800:
@@ -133,6 +137,12 @@ def cycle(root, clock=time.time, run=run_command, clock_check=None):
     config = json.loads((root / 'credentials.json').read_text())
     if not (root / 'ACTIVE').is_file():
         raise RuntimeError('VPS_RUNTIME_INACTIVE')
+    state['database_migration_paused'] = (root / 'state/database-migration-paused.json').exists()
+    if state['database_migration_paused']:
+        state['heartbeat'] = int(clock())
+        atomic_json(state_path, state)
+        print('DATABASE MIGRATION PAUSED: NO TASKS RUN')
+        return 0
     release = (root / 'current').resolve(strict=True)
     if clock_check is None:
         check = subprocess.run(['timedatectl', 'show', '-p', 'NTPSynchronized', '--value'],
