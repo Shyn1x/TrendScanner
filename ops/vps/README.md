@@ -210,6 +210,71 @@ credentials and does not upgrade the runtime. It never resets FAILED trades or
 replays expired signals. Virtual strategy equity remains a separate journal
 calculation; a wallet top-up is not trading profit.
 
+# Private VPS PostgreSQL migration
+
+The `postgres-inspect` operation reads CPU, memory, disk and available tools only.
+The initial VPS has Ubuntu 24.04, one CPU, ~2 GiB RAM and ~43 GiB free; Neon reports
+~73 MB logical data and PostgreSQL 18. `postgres-prepare` and `postgres-migrate`
+are manual, main-only operations. They never change signal definitions or contact
+an order-creation API. Source data is retained in Neon.
+
+`postgres-prepare` downloads PostgreSQL 18 from signed official PGDG/Ubuntu apt
+repositories into a private user-owned prefix. `apt` is download-only; extracted
+packages do not execute maintainer scripts, install OS services or require sudo.
+The cluster listens on a 0700 Unix-socket directory only, with TCP disabled and
+peer identity mapping to a non-superuser application role. Memory is bounded by
+48 MB shared buffers, 16 connections and 2 MB per work operation. WAL durability
+and checksums stay enabled. Existing crontab entries are preserved; a separate
+minute supervisor restarts this cluster after process/server restarts.
+
+Preparation performs a dump/restore drill on two uniquely named disposable test
+databases containing synthetic numeric/JSON/Unicode values. Only those databases
+created by the drill are removed. Its encrypted proof is exported, never real
+strategy rows. Activation replaces ops/scheduler code atomically while symlinking
+the exact existing frozen lower/4h trading workspaces and retaining credentials.
+
+Migration is separate and refuses an unavailable/exhausted Neon source before
+pausing the runtime. With source access restored, it pauses the existing scheduler,
+exports a read-only consistent snapshot with pg_dump 18 using the direct Neon
+endpoint, restores only to a newly created isolated database, and compares row
+counts and ordered SHA-256 row hashes for every public table. Unexpected schemas,
+extensions or missing journal tables require review rather than partial migration.
+The source is not dropped, truncated or modified. The original connection remains
+private for rollback. An unexpected source change before cutover aborts the switch.
+
+The pre-migration source dump must be encrypted and uploaded offsite successfully
+before `apply` can switch the local runtime's DATABASE_URL. A read-only Demo
+preflight is then required. Failed preflight or failed/uncommitted workflow cleanup
+restores the original connection. A committed local connection survives later full
+runtime upgrades: the old GitHub Neon secret cannot silently replace it. GitHub's
+legacy writers remain disabled by existing VPS ownership guards; the Unix-socket
+DSN is deliberately not copied to GitHub-hosted job secrets.
+
+Backups are custom-format pg_dump archives encrypted with OpenSSL CMS
+AES-256-GCM and an RSA-OAEP/SHA-256 recipient. Only the public certificate lives
+on the VPS/in git. The recovery private key was saved separately in the user's
+private recovery ZIP; it must never be committed or copied onto this VPS. Preserve
+that ZIP to decrypt backups if the VPS is lost. Tamper rejection and recovery were
+tested before publication.
+
+The local daily cron creates encrypted snapshots at 01:17 UTC after cutover.
+`VPS Postgres Encrypted Backup` creates and uploads a fresh encrypted snapshot
+daily at 01:47 UTC, with 14-day GitHub artifact retention and a strict 20 MiB cap
+per export. It skips before local cutover. Exact, immutable .cms paths only are
+uploaded: no credentials, private key, raw .dump, arbitrary JSON or directory globs.
+An acknowledgement is tied to that exact ciphertext hash, avoiding races with a
+concurrent local backup. GitHub schedules may be delayed; this is not continuous
+WAL archiving or point-in-time recovery. At worst, recovery uses the most recent
+successful offsite snapshot. Monitor backup failures/age and periodically perform
+a full recovery drill with the separate recovery key.
+
+Manual rootless packages do not receive OS-level automatic PostgreSQL minor
+updates. Plan maintenance to back up, stop this private cluster, update its signed
+PostgreSQL 18 packages and verify restart. Never upgrade the data directory to a
+different major version by replacing binaries alone. A full future upgrade and
+backup retention policy deserve explicit review if data volume outgrows the VPS
+or the export cap. No paid Neon upgrade or new VPS was purchased by this change.
+
 # External health monitoring
 
 `VPS Health Probe` reads only the local ACTIVE marker, NTP status and an allowlist

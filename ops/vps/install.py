@@ -15,6 +15,16 @@ FOUR_FILES = ('prospective_market_data.py', 'market_regime_shadow_v2.py', 'prosp
               'prospective_4h_v2_collector.py')
 
 
+def database_configuration(root, configured_url):
+    path = root / 'state/postgres-migration.json'
+    if path.exists() and json.loads(path.read_text()).get('phase') == 'COMMITTED':
+        from postgres_manager import validate_local_url
+        local = json.loads((root / 'credentials.json').read_text())['DATABASE_URL']
+        validate_local_url(root.parent / 'trendscanner-postgres', local)
+        return local
+    return configured_url
+
+
 def invoke(args, **kwargs):
     subprocess.run([str(arg) for arg in args], check=True, **kwargs)
 
@@ -66,6 +76,7 @@ def prepare(patch, lower, four, root, sha, *, upgrading=False):
         raise RuntimeError('FULL_COMMIT_SHA_REQUIRED')
     values = {name: os.environ.get(name, '') for name in
               ('DATABASE_URL', 'BYBIT_DEMO_API_KEY', 'BYBIT_DEMO_API_SECRET', 'BYBIT_DEMO_ENABLED', 'BYBIT_DEMO_START_MS')}
+    values['DATABASE_URL'] = database_configuration(root, values['DATABASE_URL'])
     if any(not values[name] for name in ('DATABASE_URL', 'BYBIT_DEMO_API_KEY', 'BYBIT_DEMO_API_SECRET', 'BYBIT_DEMO_START_MS')):
         raise RuntimeError('EXISTING_DEMO_AND_DATABASE_CONFIGURATION_REQUIRED')
     if values['BYBIT_DEMO_ENABLED'] not in ('true', 'false'):

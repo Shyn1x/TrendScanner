@@ -1,0 +1,38 @@
+name: VPS Postgres Encrypted Backup
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '47 1 * * *'
+permissions:
+  contents: read
+concurrency:
+  group: trendscanner-postgres-backup
+  cancel-in-progress: false
+jobs:
+  backup:
+    if: github.ref == 'refs/heads/main'
+    runs-on: [self-hosted, linux, x64, bybit-demo]
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          path: postgres-backup-code
+      - name: Create a private snapshot and encrypt it before export
+        id: encrypted
+        run: python3 postgres-backup-code/ops/vps/postgres_manager.py backup
+      - uses: actions/upload-artifact@v4
+        id: offsite
+        if: steps.encrypted.outputs.ready == 'true'
+        with:
+          name: postgres-encrypted-daily-backup
+          path: ${{ steps.encrypted.outputs.file }}
+          if-no-files-found: error
+          retention-days: 14
+      - name: Record successful offsite backup acknowledgement
+        if: steps.offsite.outcome == 'success'
+        env:
+          OFFSITE_ARTIFACT_ID: ${{ steps.offsite.outputs.artifact-id }}
+          OFFSITE_FILE: ${{ steps.encrypted.outputs.file }}
+          OFFSITE_FILE_SHA256: ${{ steps.encrypted.outputs.sha256 }}
+        run: python3 postgres-backup-code/ops/vps/postgres_manager.py ack-backup --artifact-id "$OFFSITE_ARTIFACT_ID" --file "$OFFSITE_FILE" --sha256 "$OFFSITE_FILE_SHA256"
