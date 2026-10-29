@@ -27,6 +27,28 @@ def test_source_uses_existing_neon_credentials_and_direct_dump_connection():
         with pytest.raises(ValueError): migration.source_parameters(bad)
 
 
+def test_migration_waits_for_existing_cycle_without_interrupting_it(monkeypatch):
+    calls = []
+    def attempt(*args):
+        calls.append(args)
+        if len(calls) == 1:
+            raise BlockingIOError()
+    monkeypatch.setattr(migration.fcntl, 'flock', attempt)
+    monkeypatch.setattr(migration.time, 'sleep', lambda seconds: None)
+    migration.acquire_cycle_lock(object())
+    assert len(calls) == 2
+
+
+def test_migration_lock_wait_is_bounded(monkeypatch):
+    clock = iter([0, 601])
+    monkeypatch.setattr(migration.time, 'monotonic', lambda: next(clock))
+    def busy(*args):
+        raise BlockingIOError()
+    monkeypatch.setattr(migration.fcntl, 'flock', busy)
+    with pytest.raises(ValueError, match='RUNTIME_STILL_BUSY'):
+        migration.acquire_cycle_lock(object())
+
+
 def test_ops_activation_keeps_exact_trading_workspaces_and_credentials(tmp_path):
     root, pgroot, original = fixture_root(tmp_path)
     previous = root / 'releases' / ('a' * 40)
