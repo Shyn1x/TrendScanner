@@ -207,6 +207,22 @@ def abort(root, pgroot):
     print('MIGRATION PAUSE RELEASED: PASS')
 
 
+def acquire_cycle_lock(lock, timeout=600):
+    deadline = time.monotonic() + timeout
+    announced = False
+    while True:
+        try:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            return
+        except BlockingIOError:
+            if time.monotonic() >= deadline:
+                raise ValueError('RUNTIME_STILL_BUSY_RETRY_LATER')
+            if not announced:
+                print('WAITING FOR CURRENT RUNTIME CYCLE', flush=True)
+                announced = True
+            time.sleep(0.5)
+
+
 def main():
     os.umask(0o077)
     parser = argparse.ArgumentParser()
@@ -217,8 +233,11 @@ def main():
     parser.add_argument('--artifact-id')
     args = parser.parse_args()
     try:
+        if args.operation == 'abort' and not (args.root / 'state/database-migration-paused.json').exists():
+            print('NO MIGRATION PAUSE TO RELEASE')
+            return
         with (args.root / 'state/cycle.lock').open('a') as lock:
-            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            acquire_cycle_lock(lock)
             if args.operation == 'activate-ops':
                 activate_ops(args.root, Path(__file__).parent, args.sha)
                 print('POSTGRES OPS ACTIVATED: PASS')
