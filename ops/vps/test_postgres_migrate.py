@@ -118,3 +118,15 @@ def test_workflows_export_exact_encrypted_files_and_no_private_key_or_raw_dump()
                     path = step['with']['path']
                     assert path.endswith('.cms') or path == '${{ steps.encrypted.outputs.file }}'
                     assert '*' not in path and '.dump' not in path and 'credentials' not in path and 'key' not in path
+
+
+def test_dump_environment_uses_explicit_neon_libpq_parameters(tmp_path):
+    params = migration.source_parameters('postgresql://owner:secret@ep-example-pooler.eu.neon.tech/db?sslmode=require&channel_binding=require')
+    env = migration.source_environment(tmp_path, params)
+    assert env['PGDATABASE'] == 'db'
+    assert env['PGHOST'] == 'ep-example.eu.neon.tech'
+    assert env['PGUSER'] == 'owner' and env['PGPASSWORD'] == 'secret'
+    assert env['PGSSLMODE'] == 'require' and env['PGCHANNELBINDING'] == 'require'
+    assert str(tmp_path / 'socket') not in env.values()
+    with pytest.raises(ValueError, match='OPTIONS_REQUIRE_REVIEW'):
+        migration.source_environment(tmp_path, {**params, 'unreviewed': 'value'})
