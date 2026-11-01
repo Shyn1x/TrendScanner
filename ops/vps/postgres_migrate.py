@@ -33,12 +33,19 @@ def source_parameters(url):
 
 
 def source_environment(root, params):
-    from psycopg.conninfo import make_conninfo
+    # PGDATABASE is a database name, not an environment-encoded connection string.
+    # Keep credentials out of argv/logs and set each libpq default explicitly.
+    mapping = {'dbname': 'PGDATABASE', 'host': 'PGHOST', 'port': 'PGPORT',
+               'user': 'PGUSER', 'password': 'PGPASSWORD', 'sslmode': 'PGSSLMODE',
+               'channel_binding': 'PGCHANNELBINDING', 'connect_timeout': 'PGCONNECT_TIMEOUT',
+               'options': 'PGOPTIONS', 'application_name': 'PGAPPNAME',
+               'sslrootcert': 'PGSSLROOTCERT', 'sslcert': 'PGSSLCERT', 'sslkey': 'PGSSLKEY'}
+    if set(params) - set(mapping):
+        raise ValueError('SOURCE_CONNECTION_OPTIONS_REQUIRE_REVIEW')
     env = pg_env(root)
-    env['PGDATABASE'] = make_conninfo(**params)
-    # PGDATABASE carries the complete DSN in the environment, never argv/logs.
-    for name in ['PGHOST', 'PGPORT', 'PGUSER']:
+    for name in ['PGHOST', 'PGPORT', 'PGUSER', 'PGDATABASE']:
         env.pop(name, None)
+    env.update({mapping[key]: str(value) for key, value in params.items()})
     return env
 
 
@@ -249,8 +256,8 @@ def main():
                 abort(args.root, args.pg_root)
     except Exception as exc:
         # Do not leak connection strings, SQL row values or raw private dumps.
-        label = str(exc) if isinstance(exc, (ValueError, BlockingIOError)) else type(exc).__name__
-        if not re.fullmatch('[A-Z0-9_ :]+', label):
+        label = str(exc) if isinstance(exc, (ValueError, BlockingIOError)) or re.fullmatch(r'COMMAND_FAILED:[a-z_]+:[0-9]+', str(exc)) else type(exc).__name__
+        if not re.fullmatch('[A-Za-z0-9_ :]+', label):
             label = type(exc).__name__
         raise SystemExit('POSTGRES MIGRATION BLOCKED: ' + label)
 
