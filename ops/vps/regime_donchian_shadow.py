@@ -18,15 +18,19 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2] / "artifacts/trendscanner"
 sys.path.insert(0, str(ROOT))
 from regime_donchian_research import TIMEFRAME_MS, evaluate
-from ready_market_regime_analysis import _frame_features, classify_regime
 from prospective_market_data import get_research_data_before, MARKET_SOURCE
-from ready_outcome_pilot import SYMBOLS
+# Frozen universe from ready_outcome_pilot; avoid old ccxt imports.
+SYMBOLS = ("BTC/USDT", "ETH/USDT", "BNB/USDT", "SOL/USDT", "XRP/USDT",
+           "DOGE/USDT", "ADA/USDT", "LINK/USDT", "LTC/USDT", "BCH/USDT",
+           "AVAX/USDT", "DOT/USDT", "ATOM/USDT", "NEAR/USDT", "FIL/USDT",
+           "ARB/USDT", "OP/USDT", "INJ/USDT", "SUI/USDT", "TIA/USDT",
+           "APT/USDT", "PENDLE/USDT", "ETC/USDT", "AAVE/USDT", "UNI/USDT")
 
 VERSION = "regime-donchian-4h-shadow-v1"
 HORIZONS = (1, 3, 6)
 COST_PCT = 0.16  # 6bp fee + 2bp slippage, on each side; funding omitted.
 SYMBOL_LIMIT = 25
-BARS = 220
+BARS = 500
 
 
 def latest_target(now_ms: int) -> int:
@@ -34,25 +38,33 @@ def latest_target(now_ms: int) -> int:
 
 
 def known_regime(frames: dict, target: int) -> str:
-    btc = frames.get("BTC/USDT")
-    if btc is None:
-        raise ValueError("BTC_CONTEXT_MISSING")
-    btc_features = _frame_features(btc)
-    row = btc_features.get(target)
-    if row is None:
-        raise ValueError("BTC_FEATURES_MISSING")
-    available = []
+    """Past-only EMA200/BTC and market-breadth classification.
+
+    Independently derives existing BULL/BEAR/MIXED rules without relying
+    on READY-specific persistence. 500 closed bars warm up EMA200.
+    """
+    if "BTC/USDT" not in frames or len(frames) != SYMBOL_LIMIT:
+        raise ValueError("INCOMPLETE_MARKET_CONTEXT")
+    features = {}
     for symbol, frame in frames.items():
-        features = _frame_features(frame).get(target)
-        if features:
-            available.append(features)
-    if len(available) != SYMBOL_LIMIT:
-        raise ValueError("MARKET_BREADTH_INCOMPLETE")
-    breadth = {
-        "breadth_above_ema50": sum(r["close"] > r["ema50"] for r in available) / len(available),
-        "median_return_20": statistics.median(r["return_20"] for r in available),
-    }
-    return classify_regime(row, breadth)
+        if len(frame) < 250 or int(frame.iloc[-1]["time"]) != target:
+            raise ValueError("INVALID_REGIME_FRAME")
+        close = frame["close"].astype(float)
+        if (close <= 0).any():
+            raise ValueError("NONPOSITIVE_CLOSE")
+        ema50 = float(close.ewm(span=50, adjust=False).mean().iloc[-1])
+        ema200 = float(close.ewm(span=200, adjust=False).mean().iloc[-1])
+        features[symbol] = {"close": float(close.iloc[-1]),
+                            "ema50": ema50, "ema200": ema200,
+                            "return_20": float(close.iloc[-1] / close.iloc[-21] - 1) * 100}
+    btc = features["BTC/USDT"]
+    breadth = sum(v["close"] > v["ema50"] for v in features.values()) / len(features)
+    median_return = statistics.median(v["return_20"] for v in features.values())
+    if btc["close"] > btc["ema200"] and breadth >= .60 and median_return > 0:
+        return "BULL"
+    if btc["close"] < btc["ema200"] and breadth <= .40 and median_return < 0:
+        return "BEAR"
+    return "MIXED"
 
 
 def outcome(direction: str, stop: float, future: list[dict], horizon: int) -> dict:
