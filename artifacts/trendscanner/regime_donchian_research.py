@@ -59,11 +59,22 @@ def evaluate(candles: Sequence[Mapping], regime: str, regime_timestamp: int) -> 
     base = {"regime": regime, "signal_close_ms": times[-1] + TIMEFRAME_MS,
             "upper_20": upper, "lower_10": lower, "atr_14": atr,
             "research_only": True}
+    # Exit advisories are independent of market regime; a position must always
+    # be able to close even when entry filters change.
     if current[4] < lower:
+        base["exit_long"] = True
+    if current[4] > upper:
+        base["exit_short"] = True
+    base["exit_long"] = base.get("exit_long", False)
+    base["exit_short"] = base.get("exit_short", False)
+    if regime == "BULL" and current[4] > upper:
+        return {**base, "signal": "ENTER_LONG", "reason": "BULL_20BAR_CLOSE_BREAKOUT",
+                "initial_stop_reference": current[4] - ATR_MULTIPLIER * atr}
+    if regime == "BEAR" and current[4] < min(r[3] for r in prior20):
+        return {**base, "signal": "ENTER_SHORT", "reason": "BEAR_20BAR_CLOSE_BREAKDOWN",
+                "initial_stop_reference": current[4] + ATR_MULTIPLIER * atr}
+    if base["exit_long"]:
         return {**base, "signal": "EXIT_LONG", "reason": "DONCHIAN_10_CLOSE_BREAK"}
-    if regime != "BULL":
-        return {**base, "signal": "NO_TRADE", "reason": "REGIME_NOT_BULL"}
-    if current[4] <= upper:
-        return {**base, "signal": "NO_TRADE", "reason": "NO_20BAR_CLOSE_BREAKOUT"}
-    return {**base, "signal": "ENTER_LONG", "reason": "BULL_20BAR_CLOSE_BREAKOUT",
-            "initial_stop_reference": current[4] - ATR_MULTIPLIER * atr}
+    if base["exit_short"]:
+        return {**base, "signal": "EXIT_SHORT", "reason": "DONCHIAN_10_CLOSE_BREAK"}
+    return {**base, "signal": "NO_TRADE", "reason": "REGIME_OR_CHANNEL_FILTER"}
