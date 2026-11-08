@@ -126,11 +126,12 @@ def collect(db_url: str, now_ms: int, loader=get_research_data_before) -> dict:
 
     regime = known_regime(frames, target)
     events = []
+    fresh = 0 <= now_ms - (target + TIMEFRAME_MS) <= 15 * 60_000
     for symbol, frame in frames.items():
         candles = frame.tail(25).to_dict("records")
         rows = [{**row, "time": int(row["time"])} for row in candles]
         result = evaluate(rows, regime, target)
-        if result["signal"] in ("ENTER_LONG", "ENTER_SHORT"):
+        if fresh and result["signal"] in ("ENTER_LONG", "ENTER_SHORT"):
             events.append((symbol, result))
         elif result.get("reason") in ("GAPPED_OR_DUPLICATE_CANDLES",
                                       "INVALID_4H_TIMESTAMP", "REGIME_TIMESTAMP_MISMATCH"):
@@ -190,6 +191,7 @@ def collect(db_url: str, now_ms: int, loader=get_research_data_before) -> dict:
             cur.execute("SELECT count(*) FROM regime_donchian_shadow_outcomes WHERE version=%s", (VERSION,))
             results = cur.fetchone()[0]
     return {"version": VERSION, "target_ms": target, "market_regime": regime,
+            "fresh_signal_window": fresh,
             "new_signals": saved, "total_signals": total, "new_outcomes": scored,
             "total_outcomes": results, "funding_included": False,
             "portfolio_pnl_available": False, "read_only_exchange": True}
