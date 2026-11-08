@@ -41,7 +41,7 @@ def test_regime_gate_and_stale_or_missing_context_fail_closed():
 def test_breakdown_exit_even_in_bear():
     candles = bars()
     candles[-1].update(open=98, high=99, low=92, close=93)
-    assert strategy.evaluate(candles, "BEAR", candles[-1]["time"])["signal"] == "EXIT_LONG"
+    assert strategy.evaluate(candles, "BEAR", candles[-1]["time"])["signal"] == "ENTER_SHORT"
 
 
 def test_gap_blocks_signals_and_short_history_is_explicit():
@@ -55,3 +55,20 @@ def test_no_order_or_network_dependencies():
     code = path.read_text()
     for forbidden in ("requests", "urllib", "api-demo", "order/create", "database_url", "connect("):
         assert forbidden not in code.lower()
+
+
+def test_bear_short_breakdown_and_conservative_atr_stop():
+    candles = bars()
+    candles[-1].update(open=98, high=99, low=90, close=91)
+    result = strategy.evaluate(candles, "BEAR", candles[-1]["time"])
+    assert result["signal"] == "ENTER_SHORT"
+    assert result["initial_stop_reference"] > 91
+    assert result["exit_long"] is True
+
+
+def test_mixed_can_emit_exit_advisory_without_new_entry():
+    candles = bars()
+    candles[-1].update(open=98, high=99, low=92, close=93)
+    result = strategy.evaluate(candles, "MIXED", candles[-1]["time"])
+    assert result["signal"] == "EXIT_LONG"
+    assert result["exit_long"]
