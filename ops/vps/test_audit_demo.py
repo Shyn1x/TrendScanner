@@ -169,3 +169,57 @@ def test_audit_workflow_uses_existing_credentials_and_does_not_install_release()
     assert '--upgrade' not in audit_step['run']
     assert 'secrets.' not in audit_step['run']
     assert workflow['permissions'] == {'contents': 'read'}
+
+
+def test_summary_mode_reports_all_journal_trades_without_exchange_requests(monkeypatch):
+    rows = [
+        {**trade(), 'ready_timestamp': k * audit.HOUR,
+         'signal_close_ms': (k + 1) * audit.HOUR,
+         'exit_due_ms': (k + 13) * audit.HOUR,
+         'closed_pnl': '-1', 'status': 'CLOSED'}
+        for k in range(4)
+    ]
+    monkeypatch.setattr(audit, 'load_journal', lambda *args: (rows, {}))
+    result = audit.audit(None, None, 'v', 'e', 5 * audit.HOUR, summary_only=True)
+    assert result['journal_trades'] == 4
+    assert result['journal_virtual_equity'] == Decimal('296')
+    assert result['attempted_detail_trades'] == 0
+    assert result['demo_open_positions'] is None
+    assert result['comparison_status'] == 'EVIDENCE_COLLECTED'
+
+
+def test_detail_batch_limits_exchange_requests_and_preserves_totals(monkeypatch):
+    rows = []
+    for k in range(5):
+        t = trade()
+        t.update(ready_timestamp=k * audit.HOUR,
+                 signal_close_ms=(k + 1) * audit.HOUR,
+                 exit_due_ms=(k + 13) * audit.HOUR,
+                 submitted_ms=(k + 1) * audit.HOUR,
+                 closed_pnl='1')
+        rows.append(t)
+    monkeypatch.setattr(audit, 'load_journal', lambda *args: (rows, {}))
+    seen = []
+    def fake_compare(reader, t, model, now):
+        seen.append(t['ready_timestamp'])
+        return {'status': 'CLOSED', 'issues': []}
+    monkeypatch.setattr(audit, 'compare_trade', fake_compare)
+    class PositionReader:
+        def rows(self, path, params):
+            assert path == '/v5/position/list'
+            return []
+    result = audit.audit(None, PositionReader(), 'v', 'e', 6 * audit.HOUR,
+                         detail_limit=2, detail_offset=1)
+    assert seen == [3 * audit.HOUR, 2 * audit.HOUR]
+    assert result['journal_trades'] == 5
+    assert result['journal_virtual_equity'] == Decimal('305')
+    assert result['attempted_detail_trades'] == 2
+    assert result['eligible_detail_trades'] == 5
+    assert result['more_detail_available'] is True
+
+
+def test_invalid_batch_arguments_fail_before_exchange_requests(monkeypatch):
+    monkeypatch.setattr(audit, 'load_journal', lambda *args: ([], {}))
+    for kwargs in ({'detail_limit': -1}, {'detail_limit': 11}, {'detail_offset': -1}):
+        with pytest.raises(ValueError, match='INVALID_AUDIT_BATCH'):
+            audit.audit(None, None, 'v', 'e', 0, **kwargs)
