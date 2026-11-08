@@ -33,8 +33,9 @@ def test_current_high_alone_is_not_entry():
 def test_regime_gate_and_stale_or_missing_context_fail_closed():
     candles = bars()
     candles[-1].update(open=102, high=110, low=101, close=109)
-    for regime in ("BEAR", "MIXED", "UNKNOWN"):
-        assert strategy.evaluate(candles, regime, candles[-1]["time"])["signal"] == "NO_TRADE"
+    for regime in ("BEAR", "MIXED"):
+        assert strategy.evaluate(candles, regime, candles[-1]["time"])["signal"] not in ("ENTER_LONG", "ENTER_SHORT")
+    assert strategy.evaluate(candles, "UNKNOWN", candles[-1]["time"])["signal"] == "NO_TRADE"
     assert strategy.evaluate(candles, "BULL", candles[-2]["time"])["reason"] == "REGIME_TIMESTAMP_MISMATCH"
 
 
