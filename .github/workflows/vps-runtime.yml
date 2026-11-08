@@ -8,6 +8,11 @@ on:
         default: inspect
         type: choice
         options: [inspect, install, upgrade, status, audit, audit-summary, enable-hourly-shadow, shadow-status, postgres-inspect, postgres-prepare, postgres-migrate, wallet, fund-demo]
+      detail_offset:
+        description: First trade index for detailed audit, newest first (0, 2, 4...)
+        required: false
+        default: '0'
+        type: string
   pull_request:
     branches: [main]
     paths:
@@ -99,9 +104,12 @@ jobs:
           PY
       - name: Audit Demo executions without changing orders or the runtime
         if: inputs.operation == 'audit'
+        env:
+          AUDIT_DETAIL_OFFSET: ${{ inputs.detail_offset }}
         run: |
           python3 - <<'PY'
           import json
+          import os
           import sys
           from pathlib import Path
           patch = Path('patch').resolve()
@@ -110,7 +118,7 @@ jobs:
           root = Path.home() / 'trendscanner-runtime'
           workspace = (root / 'current/lower').resolve(strict=True)
           config = json.loads((root / 'credentials.json').read_text())
-          args = [str(workspace / '.venv/bin/python'), str(patch / 'ops/vps/audit_demo.py'), '--detail-limit', '2']
+          args = [str(workspace / '.venv/bin/python'), str(patch / 'ops/vps/audit_demo.py'), '--detail-limit', '2', '--detail-offset', os.environ['AUDIT_DETAIL_OFFSET']]
           code, output = run_command(args, workspace, 'demo', config)
           print(output)
           raise SystemExit(code)
