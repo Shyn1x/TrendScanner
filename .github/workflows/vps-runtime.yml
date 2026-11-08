@@ -7,11 +7,15 @@ on:
         required: true
         default: inspect
         type: choice
-        options: [inspect, install, upgrade, status, audit, audit-summary, enable-hourly-shadow, shadow-status, postgres-inspect, postgres-prepare, postgres-migrate, wallet, fund-demo]
+        options: [inspect, install, upgrade, status, audit, audit-summary, audit-bulk, enable-hourly-shadow, shadow-status, postgres-inspect, postgres-prepare, postgres-migrate, wallet, fund-demo]
       detail_offset:
         description: First trade index for detailed audit, newest first (0, 2, 4...)
         required: false
         default: '0'
+        type: string
+      audit_recipient_cert:
+        description: Public recipient certificate (base64 DER) for the encrypted bulk audit
+        required: false
         type: string
   pull_request:
     branches: [main]
@@ -36,7 +40,7 @@ jobs:
         with:
           python-version: '3.11'
       - uses: astral-sh/setup-uv@v6
-      - run: uv run --no-project --with pytest --with pyyaml --with "psycopg[binary]" pytest -q ops/vps/test_runtime.py ops/vps/test_audit_demo.py ops/vps/test_monitor.py ops/vps/test_demo_funds.py ops/vps/test_hourly_shadow.py ops/vps/test_postgres_host.py ops/vps/test_postgres_manager.py ops/vps/test_postgres_migrate.py
+      - run: uv run --no-project --with pytest --with pyyaml --with "psycopg[binary]" pytest -q ops/vps/test_runtime.py ops/vps/test_audit_demo.py ops/vps/test_audit_demo_bulk.py ops/vps/test_monitor.py ops/vps/test_demo_funds.py ops/vps/test_hourly_shadow.py ops/vps/test_postgres_host.py ops/vps/test_postgres_manager.py ops/vps/test_postgres_migrate.py
   manage:
     if: github.event_name == 'workflow_dispatch'
     needs: validate
@@ -123,6 +127,64 @@ jobs:
           print(output)
           raise SystemExit(code)
           PY
+      - name: Audit all closed Demo trades and encrypt the private report
+        if: inputs.operation == 'audit-bulk'
+        id: audit-bulk
+        env:
+          AUDIT_CERT: ${{ inputs.audit_recipient_cert }}
+        run: |
+          python3 - <<'PY'
+          import base64
+          import json
+          import os
+          import subprocess
+          import sys
+          import tempfile
+          from pathlib import Path
+          patch = Path('patch').resolve()
+          sys.path.insert(0, str(patch / 'ops/vps'))
+          from runtime import run_command
+          root = Path.home() / 'trendscanner-runtime'
+          workspace = (root / 'current/lower').resolve(strict=True)
+          config = json.loads((root / 'credentials.json').read_text())
+          config = {key: config[key] for key in ('DATABASE_URL', 'BYBIT_DEMO_API_KEY', 'BYBIT_DEMO_API_SECRET')}
+          config['AUDIT_CLOCK_SYNC'] = subprocess.check_output(
+              ['timedatectl', 'show', '-p', 'NTPSynchronized', '--value'], text=True).strip()
+          # Scoped to this reviewed revision, run, and recipient; same-run retry
+          # keeps a frozen DB snapshot and completed API windows on the VPS.
+          import hashlib
+          certificate = base64.b64decode(os.environ['AUDIT_CERT'], validate=True)
+          digest = hashlib.sha256(certificate).hexdigest()
+          checkpoint = root / 'state' / 'demo-audit' / (os.environ['GITHUB_RUN_ID'] + '-' + os.environ['GITHUB_SHA'] + '-' + digest)
+          encrypted = Path(os.environ['RUNNER_TEMP']) / ('demo-audit-' + os.environ['GITHUB_RUN_ID'] + '.cms')
+          with tempfile.TemporaryDirectory() as directory:
+              temporary = Path(directory)
+              output = temporary / 'audit.json'
+              cert = temporary / 'recipient.pem'
+              subprocess.run(['openssl', 'x509', '-inform', 'DER', '-out', str(cert)],
+                             input=certificate, check=True)
+              args = [str(workspace / '.venv/bin/python'), str(patch / 'ops/vps/audit_demo_bulk.py'),
+                      '--runtime-root', str(root), '--checkpoint', str(checkpoint), '--output', str(output),
+                      '--four-version', 'market-regime-v3-bybit-sequential']
+              code, status = run_command(args, workspace, 'demo', config)
+              print(status)
+              if not output.is_file():
+                  raise SystemExit(code or 1)
+              subprocess.run(['openssl', 'cms', '-encrypt', '-binary', '-aes256', '-outform', 'DER',
+                              '-in', str(output), '-out', str(encrypted), str(cert)], check=True)
+              with open(os.environ['GITHUB_OUTPUT'], 'a') as result:
+                  result.write(f'file={encrypted}\ncomplete={int(code == 0)}\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: inputs.operation == 'audit-bulk' && steps.audit-bulk.outputs.file != ''
+        with:
+          name: demo-audit-encrypted-attempt-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/demo-audit-${{ github.run_id }}.cms
+          if-no-files-found: error
+          retention-days: 3
+      - name: Flag partial export for same-run retry
+        if: inputs.operation == 'audit-bulk' && steps.audit-bulk.outputs.complete == '0'
+        run: exit 1
       - name: Read private shadow progress as counts only
         if: inputs.operation == 'shadow-status'
         run: |
