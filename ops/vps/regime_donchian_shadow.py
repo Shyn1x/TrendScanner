@@ -138,6 +138,7 @@ def collect(db_url: str, now_ms: int, loader=get_research_data_before) -> dict:
             raise ValueError("STRATEGY_WINDOW_INVALID")
 
     import psycopg
+    from psycopg.types.json import Jsonb
     saved, scored = 0, 0
     with psycopg.connect(db_url) as db:
         with db.cursor() as cur:
@@ -184,16 +185,30 @@ def collect(db_url: str, now_ms: int, loader=get_research_data_before) -> dict:
                     INSERT INTO regime_donchian_shadow_outcomes
                     (version,symbol,target_ms,horizon,result) VALUES (%s,%s,%s,%s,%s)
                     ON CONFLICT DO NOTHING RETURNING horizon""",
-                    (VERSION, symbol, signal_ms, horizon, json.dumps(result)))
+                    (VERSION, symbol, signal_ms, horizon, Jsonb(result)))
                 scored += int(cur.fetchone() is not None)
             cur.execute("SELECT count(*) FROM regime_donchian_shadow_signals WHERE version=%s", (VERSION,))
             total = cur.fetchone()[0]
             cur.execute("SELECT count(*) FROM regime_donchian_shadow_outcomes WHERE version=%s", (VERSION,))
             results = cur.fetchone()[0]
+            cur.execute("""SELECT direction,count(*) FROM regime_donchian_shadow_signals
+                        WHERE version=%s GROUP BY direction""", (VERSION,))
+            by_direction = dict(cur.fetchall())
+            cur.execute("""SELECT s.direction,o.horizon,count(*),
+                           avg((o.result->>'net_return_pct')::double precision)
+                           FROM regime_donchian_shadow_outcomes o
+                           JOIN regime_donchian_shadow_signals s
+                             ON (s.version=o.version AND s.symbol=o.symbol AND s.target_ms=o.target_ms)
+                           WHERE o.version=%s AND o.result->>'status'='SCORED'
+                           GROUP BY s.direction,o.horizon""", (VERSION,))
+            scored_means = [{"direction": direction, "horizon": horizon,
+                             "count": count, "avg_net_pct_ex_funding": avg}
+                            for direction, horizon, count, avg in cur.fetchall()]
     return {"version": VERSION, "target_ms": target, "market_regime": regime,
             "fresh_signal_window": fresh,
             "new_signals": saved, "total_signals": total, "new_outcomes": scored,
-            "total_outcomes": results, "funding_included": False,
+            "total_outcomes": results, "signals_by_direction": by_direction,
+            "scored_groups": scored_means, "funding_included": False,
             "portfolio_pnl_available": False, "read_only_exchange": True}
 
 
