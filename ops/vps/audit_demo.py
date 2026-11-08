@@ -1,4 +1,5 @@
 """Read-only Demo fills versus the same prospective event's 12-bar outcome."""
+import argparse
 import json
 import os
 import re
@@ -181,20 +182,28 @@ def compare_trade(reader, trade, model, now):
     return report
 
 
-def audit(connection, reader, executor_version, experiment, now):
+def audit(connection, reader, executor_version, experiment, now, *, summary_only=False,
+          detail_limit=2, detail_offset=0):
+    if detail_limit < 0 or detail_limit > 10 or detail_offset < 0:
+        raise ValueError('INVALID_AUDIT_BATCH')
     trades, models = load_journal(connection, executor_version, experiment)
-    positions = reader.rows('/v5/position/list', {'category': 'linear', 'settleCoin': 'USDT', 'limit': 200})
+    # Journal totals always include every trade. Only exchange-side detail is batched.
+    positions = [] if summary_only else reader.rows('/v5/position/list',
+        {'category': 'linear', 'settleCoin': 'USDT', 'limit': 200})
     active_positions = [p for p in positions if number(p.get('size') or '0') > 0]
     reports, errors = [], []
-    omitted = 0
-    for trade in trades:
-        if min(int(trade.get('submitted_ms') or trade['signal_close_ms']), int(trade['signal_close_ms'])) < now - 30 * DAY:
-            omitted += 1
-            continue
+    eligible = [t for t in trades if min(int(t.get('submitted_ms') or t['signal_close_ms']),
+                 int(t['signal_close_ms'])) >= now - 30 * DAY]
+    omitted = len(trades) - len(eligible)
+    # Stable newest-first order. Explicit offset allows deliberate, finite follow-on batches.
+    eligible.sort(key=lambda t: (int(t['ready_timestamp']), t['symbol']), reverse=True)
+    selected = [] if summary_only else eligible[detail_offset:detail_offset + detail_limit]
+    for trade in selected:
         try:
-            reports.append(compare_trade(reader, trade, models.get((trade['symbol'], int(trade['ready_timestamp']))), now))
+            reports.append(compare_trade(reader, trade,
+                models.get((trade['symbol'], int(trade['ready_timestamp']))), now))
         except Exception as exc:
-            # No server error text or credential-bearing exceptions in the report.
+            # Never echo API exception messages or private credential-bearing text.
             errors.append({'symbol': trade['symbol'], 'ready_timestamp': trade['ready_timestamp'],
                            'error_type': type(exc).__name__, 'code': getattr(exc, 'code', None)})
     return {'report_version': 'bybit-demo-execution-audit-v1', 'read_only': True,
@@ -202,7 +211,11 @@ def audit(connection, reader, executor_version, experiment, now):
             'journal_status_counts': dict(Counter(t['status'] for t in trades)),
             'journal_failure_codes': dict(Counter(failure_code(t.get('last_error')) for t in trades if t['status'] == 'FAILED')),
             'detail_window_days': 30, 'older_trades_without_execution_detail': omitted,
-            'demo_open_positions': len(active_positions),
+            'summary_only': summary_only, 'detail_offset': detail_offset,
+            'detail_limit': detail_limit, 'eligible_detail_trades': len(eligible),
+            'attempted_detail_trades': len(selected),
+            'more_detail_available': not summary_only and detail_offset + len(selected) < len(eligible),
+            'demo_open_positions': None if summary_only else len(active_positions),
             'journal_virtual_equity': Decimal(300) + sum(number(t['closed_pnl']) for t in trades if t.get('closed_pnl') is not None),
             'matched_closed_trades': sum(r['status'] == 'CLOSED' and 'model' in r and
                                          'bybit_closed_pnl_usdt' in r and not r['issues'] for r in reports),
@@ -216,10 +229,18 @@ def audit(connection, reader, executor_version, experiment, now):
 
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--summary-only', action='store_true')
+    parser.add_argument('--detail-limit', type=int, default=2)
+    parser.add_argument('--detail-offset', type=int, default=0)
+    args = parser.parse_args()
     from bybit_demo_executor import BybitDemoClient, EXECUTOR_VERSION, EXPERIMENT_VERSION, _connect
-    client = BybitDemoClient(os.environ['BYBIT_DEMO_API_KEY'], os.environ['BYBIT_DEMO_API_SECRET'])
+    reader = None if args.summary_only else Reader(BybitDemoClient(
+        os.environ['BYBIT_DEMO_API_KEY'], os.environ['BYBIT_DEMO_API_SECRET']))
     with _connect(os.environ['DATABASE_URL']) as connection:
-        result = audit(connection, Reader(client), EXECUTOR_VERSION, EXPERIMENT_VERSION, int(time.time() * 1000))
+        result = audit(connection, reader, EXECUTOR_VERSION, EXPERIMENT_VERSION,
+                       int(time.time() * 1000), summary_only=args.summary_only,
+                       detail_limit=args.detail_limit, detail_offset=args.detail_offset)
     print(json.dumps(result, sort_keys=True, default=str))
     print('BYBIT DEMO EXECUTION AUDIT: ' + ('FAIL' if result['errors'] else 'PASS'))
     return bool(result['errors'])
