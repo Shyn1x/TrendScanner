@@ -1,13 +1,14 @@
 """One resumable, read-only VPS snapshot for all Demo journal trades."""
 import argparse
-from collections import defaultdict
+from collections import Counter, defaultdict
 import hashlib
 import json
 import os
+import re
 from pathlib import Path
 import time
 
-from audit_demo import DAY, Reader, compare_trade, failure_code, load_journal, number
+from audit_demo import DAY, HOUR, Reader, compare_trade, failure_code, load_journal, number
 from hourly_shadow import counts, validate_state
 from monitor import evaluate, snapshot
 from runtime import atomic_json
@@ -76,6 +77,53 @@ class BulkReader(Reader):
         return list(result.values())
 
 
+def market_contexts(cur, trades, four_version):
+    anchors = sorted({int(t['signal_close_ms']) // (4 * HOUR) * (4 * HOUR) - 4 * HOUR for t in trades})
+    cur.execute('SELECT to_regclass(%s)', ('market_regime_shadow_events',))
+    if not anchors or not cur.fetchone()[0]:
+        return {}
+    cur.execute("SELECT ready_timestamp, payload::jsonb->'market' FROM market_regime_shadow_events"
+                " WHERE shadow_version=%s AND timeframe='4h' AND ready_timestamp=ANY(%s)"
+                " AND payload::jsonb->'shadow'->>'shadow_status'='OK'", (four_version, anchors))
+    observed = defaultdict(set)
+    for anchor, market in cur.fetchall():
+        if market.get('target_4h_timestamp') == anchor and market.get('market_regime') and market.get('volatility'):
+            observed[anchor].add((market['market_regime'], market['volatility']))
+    return {anchor: next(iter(values)) for anchor, values in observed.items() if len(values) == 1}
+
+
+def recent_demo_logs(root, now_ms):
+    cutoff = now_ms // 1000 - 3 * 86_400
+    logs = sorted((root / 'logs').glob('demo-*.log'))
+    results, errors = Counter(), Counter()
+    for log in logs:
+        stamp = log.stem.removeprefix('demo-')
+        if not stamp.isdecimal() or not cutoff <= int(stamp) <= now_ms // 1000:
+            continue
+        content = log.read_text(errors='replace')
+        results['logs'] += 1
+        results['timeouts'] += 'TASK TIMEOUT' in content
+        results['successful_summaries'] += any(line.startswith('{') for line in content.splitlines())
+        errors.update(set(re.findall(r'BYBIT_(-?\d+):', content)))
+    return {'lookback_hours': 72, 'results': dict(results), 'logs_by_error_code': dict(errors)}
+
+
+def failed_evidence(reader, trade, now):
+    symbol = trade['symbol'].replace('/', '')
+    orders = reader.window('/v5/order/history', {'category': 'linear', 'symbol': symbol, 'limit': 50},
+                           int(trade['signal_close_ms']), now)
+    linked = {o['orderId']: o for o in orders if o.get('orderLinkId') == trade['order_link_id']}
+    fills = {}
+    for order_id in linked:
+        for fill in reader.window('/v5/execution/list', {'category': 'linear', 'orderId': order_id, 'limit': 100},
+                                  int(trade['signal_close_ms']), now):
+            if fill.get('execType') == 'Trade':
+                fills[fill['execId']] = fill
+    return {'symbol': trade['symbol'], 'ready_timestamp': trade['ready_timestamp'],
+            'order_count': len(linked), 'fill_count': len(fills),
+            'order_statuses': sorted({o.get('orderStatus') or 'UNKNOWN' for o in linked.values()})}
+
+
 def database_snapshot(connection, executor, experiment, four_version):
     connection.read_only = True
     trades, models = load_journal(connection, executor, experiment)
@@ -102,6 +150,10 @@ def database_snapshot(connection, executor, experiment, four_version):
                 'incomplete_rows': sum(expected != actual for _, expected, actual, _ in rows),
                 'reported_gap_slots': sum(gaps for _, _, _, gaps in rows),
             }
+        regimes = market_contexts(cur, trades, four_version)
+    for trade in trades:
+        anchor = int(trade['signal_close_ms']) // (4 * HOUR) * (4 * HOUR) - 4 * HOUR
+        trade['market_context'] = regimes.get(anchor)
     return trades, models, coverage, local_database
 
 
@@ -126,10 +178,12 @@ def collect(args):
             validate_state(state)
             shadow = {**counts(state), 'cohort': [state['candidates'][key] for key in state['cohort']]}
         for trade in trades:
-            trade['failure_code'] = failure_code(trade.pop('last_error', None)) if trade['status'] == 'FAILED' else None
+            error = trade.pop('last_error', None)
+            trade['failure_code'] = failure_code(error) if trade['status'] == 'FAILED' else None
         frozen = {'cutoff_ms': now, 'journal': trades, 'models': [[*key, model] for key, model in models.items()],
                   'coverage': coverage, 'local_database': local_db, 'health': health,
-                  'health_evaluation': evaluate(health, now // 1000), 'shadow': shadow}
+                  'health_evaluation': evaluate(health, now // 1000), 'shadow': shadow,
+                  'demo_logs': recent_demo_logs(args.runtime_root, now)}
         atomic_json(frozen_path, json.loads(json.dumps(frozen, default=str)))
     frozen = json.loads(frozen_path.read_text())
     now = frozen['cutoff_ms']
@@ -142,16 +196,19 @@ def collect(args):
         atomic_json(positions_path, {'observed_ms': int(time.time() * 1000),
                                     'open': sum(number(p['size']) > 0 for p in positions)})
     models = {(symbol, stamp): model for symbol, stamp, model in frozen.pop('models')}
-    reports, errors = [], []
+    reports, errors, failed_reports = [], [], []
     claims = defaultdict(list)
     for trade in frozen['journal']:
-        if trade['status'] != 'CLOSED':
+        if trade['status'] not in {'CLOSED', 'FAILED'}:
             continue
         key = (trade['symbol'], trade['ready_timestamp'])
         if int(trade['signal_close_ms']) < reader.start:
             errors.append([*key, 'BEFORE_DEMO_RETENTION_WINDOW'])
             continue
         try:
+            if trade['status'] == 'FAILED':
+                failed_reports.append(failed_evidence(reader, trade, now))
+                continue
             ids = set()
             report = compare_trade(reader, trade, models.get(key), now, execution_ids=ids)
             reports.append(report)
@@ -170,7 +227,7 @@ def collect(args):
     for trade in frozen['journal']:
         for field in ('entry_order_id', 'exit_order_id', 'order_link_id', 'exit_order_link_id'):
             trade.pop(field)
-    frozen.update(reports=reports, errors=errors, api_requests=reader.requests,
+    frozen.update(reports=reports, failed_reports=failed_reports, errors=errors, api_requests=reader.requests,
                   positions=json.loads(positions_path.read_text()))
     atomic_json(args.output, json.loads(json.dumps(frozen, default=str)))
     print(f'DEMO BULK AUDIT: closed evidence {len(reports)}, errors {len(errors)}, API requests {reader.requests}')

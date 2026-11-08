@@ -132,7 +132,13 @@ def compare_trade(reader, trade, model, now, *, execution_ids=None):
     fills = []
     for order in entry_orders + exits:
         fills.extend(reader.window('/v5/execution/list', {'category': 'linear', 'orderId': order['orderId'], 'limit': 100}, start, now))
-    unique = {f['execId']: f for f in fills if f.get('execType') == 'Trade'}
+    unique = {}
+    for fill in fills:
+        if fill.get('execType') != 'Trade':
+            continue
+        previous = unique.setdefault(fill['execId'], fill)
+        if previous != fill:
+            raise ValueError('CONFLICTING_EXECUTION_ID')
     if execution_ids is not None:
         execution_ids.update(unique)
     buys = [f for f in unique.values() if f.get('side') == 'Buy']
