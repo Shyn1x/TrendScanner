@@ -7,7 +7,7 @@ on:
         required: true
         default: inspect
         type: choice
-        options: [inspect, install, upgrade, status, audit, enable-hourly-shadow, shadow-status, postgres-inspect, postgres-prepare, postgres-migrate, wallet, fund-demo]
+        options: [inspect, install, upgrade, status, audit, audit-summary, enable-hourly-shadow, shadow-status, postgres-inspect, postgres-prepare, postgres-migrate, wallet, fund-demo]
   pull_request:
     branches: [main]
     paths:
@@ -79,6 +79,24 @@ jobs:
                       print('TASK LOG:', task)
                       print('\n'.join(logfile.read_text().splitlines()[-100:]))
           PY
+      - name: Summarize all Demo journal trades without Bybit API calls
+        if: inputs.operation == 'audit-summary'
+        run: |
+          python3 - <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+          patch = Path('patch').resolve()
+          sys.path.insert(0, str(patch / 'ops/vps'))
+          from runtime import run_command
+          root = Path.home() / 'trendscanner-runtime'
+          workspace = (root / 'current/lower').resolve(strict=True)
+          config = json.loads((root / 'credentials.json').read_text())
+          args = [str(workspace / '.venv/bin/python'), str(patch / 'ops/vps/audit_demo.py'), '--summary-only']
+          code, output = run_command(args, workspace, 'demo', {'DATABASE_URL': config['DATABASE_URL']})
+          print(output)
+          raise SystemExit(code)
+          PY
       - name: Audit Demo executions without changing orders or the runtime
         if: inputs.operation == 'audit'
         run: |
@@ -92,7 +110,7 @@ jobs:
           root = Path.home() / 'trendscanner-runtime'
           workspace = (root / 'current/lower').resolve(strict=True)
           config = json.loads((root / 'credentials.json').read_text())
-          args = [str(workspace / '.venv/bin/python'), str(patch / 'ops/vps/audit_demo.py')]
+          args = [str(workspace / '.venv/bin/python'), str(patch / 'ops/vps/audit_demo.py'), '--detail-limit', '2']
           code, output = run_command(args, workspace, 'demo', config)
           print(output)
           raise SystemExit(code)
