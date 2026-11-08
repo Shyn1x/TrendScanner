@@ -105,6 +105,32 @@ MarkPrice stop triggers. A signal candle opens at `ready_timestamp`, closes one 
 later, and a timed exit is due thirteen hours after that open. No closed matched
 trades means there is no empirical execution comparison yet.
 
+For a full history check, select **audit-bulk** in the same workflow. Generate
+a temporary recipient certificate locally, and paste the public DER certificate
+as a single base64 string into `audit_recipient_cert`:
+
+```bash
+umask 077
+openssl req -x509 -newkey rsa:2048 -nodes -days 3 -subj '/CN=Demo audit' \
+  -keyout audit-private.pem -out audit-recipient.pem
+openssl x509 -in audit-recipient.pem -outform DER | openssl base64 -A
+```
+
+Keep the private key off GitHub and the VPS. Download and unzip the encrypted
+artifact from the run, then decrypt its CMS file locally:
+
+```bash
+openssl cms -decrypt -binary -inform DER -in demo-audit-RUN_ID.cms \
+  -recip audit-recipient.pem -inkey audit-private.pem -out audit.json
+```
+
+Each run freezes the journal, health and shadow snapshot and checks all closed
+and failed rows in available Demo history. For a partial export, use **Re-run
+failed jobs** on the same run to keep its snapshot and completed request windows.
+A fresh dispatch takes a new snapshot. Cache files stay private on the VPS.
+The export separates fills, fees, funding and P&L, and reports a missing 4h
+market label when the exact timestamp has no stored context.
+
 Demo enable/start configuration is a snapshot at installation. Changing a GitHub
 variable afterward does not change a running local process. To stop local execution,
 stop the local timer/service. The journal and exchange-side stops remain durable.

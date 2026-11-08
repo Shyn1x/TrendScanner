@@ -42,13 +42,16 @@ class Reader:
             raise ValueError('DEMO_ENDPOINT_REQUIRED')
         self.client = client
 
+    def request_page(self, path, params):
+        return self.client.request('GET', path, params)
+
     def rows(self, path, params):
         if path not in READ_PATHS:
             raise ValueError('READ_ENDPOINT_REQUIRED')
         rows, cursors = {}, set()
         values = dict(params)
         for _ in range(100):
-            result = self.client.request('GET', path, values)
+            result = self.request_page(path, values)
             for row in result['list']:
                 # Full row identity avoids deleting several fills of one order.
                 rows[json.dumps(row, sort_keys=True)] = row
@@ -85,6 +88,7 @@ def load_journal(connection, executor_version, experiment):
             return [], {}
         cur.execute('SELECT ' + ', '.join(TRADE_FIELDS) +
                     ' FROM bybit_demo_strategy_trades WHERE executor_version=%s AND experiment_version=%s'
+                    " AND timeframe='1h' AND direction='LONG'"
                     ' ORDER BY ready_timestamp, symbol', (executor_version, experiment))
         trades = [dict(zip(TRADE_FIELDS, row)) for row in cur.fetchall()]
         models = {}
@@ -100,7 +104,7 @@ def load_journal(connection, executor_version, experiment):
     return trades, models
 
 
-def compare_trade(reader, trade, model, now):
+def compare_trade(reader, trade, model, now, *, execution_ids=None):
     ready = int(trade['ready_timestamp'])
     report = {key: trade.get(key) for key in ('symbol', 'ready_timestamp', 'status', 'risk_amount',
                                              'avg_entry_price', 'stop_price', 'closed_pnl')}
@@ -128,7 +132,15 @@ def compare_trade(reader, trade, model, now):
     fills = []
     for order in entry_orders + exits:
         fills.extend(reader.window('/v5/execution/list', {'category': 'linear', 'orderId': order['orderId'], 'limit': 100}, start, now))
-    unique = {f['execId']: f for f in fills if f.get('execType') == 'Trade'}
+    unique = {}
+    for fill in fills:
+        if fill.get('execType') != 'Trade':
+            continue
+        previous = unique.setdefault(fill['execId'], fill)
+        if previous != fill:
+            raise ValueError('CONFLICTING_EXECUTION_ID')
+    if execution_ids is not None:
+        execution_ids.update(unique)
     buys = [f for f in unique.values() if f.get('side') == 'Buy']
     sells = [f for f in unique.values() if f.get('side') == 'Sell']
     for label, rows in (('entry', buys), ('exit', sells)):
@@ -144,9 +156,10 @@ def compare_trade(reader, trade, model, now):
         else:
             report[label + '_fees_usdt'] = None
             issues.append(label.upper() + '_FILLS_NOT_AVAILABLE')
+    if buys:
+        report['entry_delay_ms'] = report['entry_fills']['first_ms'] - (ready + HOUR)
     if buys and model:
         report['entry_gap_from_signal_close_bps'] = (report['entry_fills']['average_price'] / number(model['entry_price']) - 1) * 10000
-        report['entry_delay_ms'] = report['entry_fills']['first_ms'] - (ready + HOUR)
     reasons = {'STOP_LOSS' if o.get('stopOrderType') == 'StopLoss' else
                'TIME_EXIT' if o.get('orderLinkId') == trade['exit_order_link_id'] else 'OTHER' for o in exits}
     report['exit_reason'] = next(iter(reasons)) if len(reasons) == 1 else 'UNKNOWN_OR_MIXED'
@@ -155,7 +168,7 @@ def compare_trade(reader, trade, model, now):
         exit_ids = {o['orderId'] for o in exits}
         pnl_rows = reader.window('/v5/position/closed-pnl', {'category': 'linear', 'symbol': trade['symbol'].replace('/', ''), 'limit': 100}, start, now)
         matched = [r for r in pnl_rows if r.get('orderId') in exit_ids]
-        if {r['orderId'] for r in matched} == exit_ids:
+        if len(matched) == len(exit_ids) and {r['orderId'] for r in matched} == exit_ids:
             report['bybit_closed_pnl_usdt'] = sum(number(r['closedPnl']) for r in matched)
             if trade.get('closed_pnl') is not None and abs(number(trade['closed_pnl']) - report['bybit_closed_pnl_usdt']) > Decimal('.000001'):
                 issues.append('JOURNAL_PNL_DIFFERS_FROM_MATCHED_EXIT_ORDERS')
