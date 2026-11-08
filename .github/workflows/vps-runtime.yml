@@ -40,7 +40,7 @@ jobs:
         with:
           python-version: '3.11'
       - uses: astral-sh/setup-uv@v6
-      - run: uv run --no-project --with pytest --with pyyaml --with "psycopg[binary]" --with pandas pytest -q ops/vps/test_regime_donchian_shadow.py ops/vps/test_runtime.py ops/vps/test_audit_demo.py ops/vps/test_audit_demo_bulk.py ops/vps/test_monitor.py ops/vps/test_demo_funds.py ops/vps/test_hourly_shadow.py ops/vps/test_postgres_host.py ops/vps/test_postgres_manager.py ops/vps/test_postgres_migrate.py
+      - run: uv run --no-project --with pytest --with pyyaml --with "psycopg[binary]" --with pandas pytest -q artifacts/trendscanner/test_regime_donchian_research.py ops/vps/test_regime_donchian_shadow.py ops/vps/test_runtime.py ops/vps/test_audit_demo.py ops/vps/test_audit_demo_bulk.py ops/vps/test_monitor.py ops/vps/test_demo_funds.py ops/vps/test_hourly_shadow.py ops/vps/test_postgres_host.py ops/vps/test_postgres_manager.py ops/vps/test_postgres_migrate.py
   manage:
     if: github.event_name == 'workflow_dispatch'
     needs: validate
