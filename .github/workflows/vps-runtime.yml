@@ -7,7 +7,7 @@ on:
         required: true
         default: inspect
         type: choice
-        options: [inspect, install, upgrade, status, audit, audit-summary, audit-bulk, enable-hourly-shadow, shadow-status, postgres-inspect, postgres-prepare, postgres-migrate, wallet, fund-demo]
+        options: [inspect, install, upgrade, status, audit, audit-summary, audit-bulk, regime-shadow-collect, enable-regime-shadow, regime-shadow-status, enable-hourly-shadow, shadow-status, postgres-inspect, postgres-prepare, postgres-migrate, wallet, fund-demo]
       detail_offset:
         description: First trade index for detailed audit, newest first (0, 2, 4...)
         required: false
@@ -40,7 +40,7 @@ jobs:
         with:
           python-version: '3.11'
       - uses: astral-sh/setup-uv@v6
-      - run: uv run --no-project --with pytest --with pyyaml --with "psycopg[binary]" pytest -q ops/vps/test_runtime.py ops/vps/test_audit_demo.py ops/vps/test_audit_demo_bulk.py ops/vps/test_monitor.py ops/vps/test_demo_funds.py ops/vps/test_hourly_shadow.py ops/vps/test_postgres_host.py ops/vps/test_postgres_manager.py ops/vps/test_postgres_migrate.py
+      - run: uv run --no-project --with pytest --with pyyaml --with "psycopg[binary]" --with pandas pytest -q artifacts/trendscanner/test_regime_donchian_research.py ops/vps/test_regime_donchian_shadow.py ops/vps/test_runtime.py ops/vps/test_audit_demo.py ops/vps/test_audit_demo_bulk.py ops/vps/test_monitor.py ops/vps/test_demo_funds.py ops/vps/test_hourly_shadow.py ops/vps/test_postgres_host.py ops/vps/test_postgres_manager.py ops/vps/test_postgres_migrate.py
   manage:
     if: github.event_name == 'workflow_dispatch'
     needs: validate
@@ -185,6 +185,62 @@ jobs:
       - name: Flag partial export for same-run retry
         if: inputs.operation == 'audit-bulk' && steps.audit-bulk.outputs.complete == '0'
         run: exit 1
+      - name: Collect prospective 4h LONG/SHORT market regime signals (no orders)
+        if: inputs.operation == 'regime-shadow-collect'
+        run: |
+          python3 - <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+          patch = Path('patch').resolve()
+          sys.path.insert(0, str(patch / 'ops/vps'))
+          from runtime import run_command
+          root = Path.home() / 'trendscanner-runtime'
+          workspace = (root / 'current/lower').resolve(strict=True)
+          config = json.loads((root / 'credentials.json').read_text())
+          args = [str(workspace / '.venv/bin/python'), str(patch / 'ops/vps/regime_donchian_shadow.py'), '--collect']
+          code, output = run_command(args, workspace, 'collect_4h', {'DATABASE_URL': config['DATABASE_URL']})
+          print(output)
+          raise SystemExit(code)
+          PY
+      - name: Enable independent prospective 4h regime shadow cron (no orders)
+        if: inputs.operation == 'enable-regime-shadow'
+        run: |
+          python3 - <<'PY'
+          import os
+          import shutil
+          from pathlib import Path
+          from subprocess import run
+          source = Path('patch').resolve()
+          base = Path.home() / 'trendscanner-regime-shadow'
+          code = base / 'code'
+          base.mkdir(mode=0o700, parents=True, exist_ok=True)
+          (code / 'artifacts').mkdir(parents=True, exist_ok=True)
+          (code / 'ops/vps').mkdir(parents=True, exist_ok=True)
+          shutil.copytree(source / 'artifacts/trendscanner',
+                          code / 'artifacts/trendscanner', dirs_exist_ok=True)
+          for name in ('regime_donchian_shadow.py', 'run_regime_shadow.py', 'runtime.py'):
+              shutil.copy2(source / 'ops/vps' / name, code / 'ops/vps' / name)
+          current = run(['crontab', '-l'], capture_output=True, text=True)
+          if current.returncode not in (0, 1):
+              raise RuntimeError('CRONTAB_READ_FAILED')
+          lines = [line for line in current.stdout.splitlines()
+                   if 'trendscanner-regime-shadow-v1' not in line]
+          line = ('7 */4 * * * /usr/bin/python3 "$HOME/trendscanner-regime-shadow/code/ops/vps/run_regime_shadow.py" '
+                  '>> "$HOME/trendscanner-regime-shadow/cron.log" 2>&1 # trendscanner-regime-shadow-v1')
+          run(['crontab', '-'], input='\n'.join(lines + [line]) + '\n',
+              text=True, check=True)
+          print('REGIME_SHADOW_CRON_ENABLED: PASS')
+          PY
+      - name: Read 4h regime shadow progress
+        if: inputs.operation == 'regime-shadow-status'
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          root = Path.home() / 'trendscanner-regime-shadow'
+          status = root / 'status.json'
+          print(status.read_text() if status.is_file() else 'NO_SHADOW_STATUS_YET')
+          PY
       - name: Read private shadow progress as counts only
         if: inputs.operation == 'shadow-status'
         run: |
