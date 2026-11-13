@@ -1,0 +1,30 @@
+name: Lomenti VPS bootstrap
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: [.github/workflows/lomenti-vps.yml]
+permissions:
+  contents: read
+concurrency:
+  group: lomenti-vps-deploy
+  cancel-in-progress: false
+jobs:
+  prepare:
+    runs-on: [self-hosted, linux, x64, bybit-demo]
+    timeout-minutes: 5
+    steps:
+      - name: Check isolated Lomenti deployment readiness
+        shell: bash
+        run: |
+          set -eu
+          sudo -n true
+          free -m
+          df -Pm /opt
+          sudo -n install -d -m 700 /etc/lomenti-deploy
+          if ! sudo -n test -f /etc/lomenti-deploy/recipient.key; then
+            sudo -n openssl req -x509 -newkey rsa:3072 -nodes -subj /CN=lomenti-vps-deploy -days 7 -keyout /etc/lomenti-deploy/recipient.key -out /etc/lomenti-deploy/recipient.pem 2>/dev/null
+            sudo -n chmod 600 /etc/lomenti-deploy/recipient.key
+          fi
+          sudo -n cat /etc/lomenti-deploy/recipient.pem
+          echo LOMENTI_VPS_BOOTSTRAP_READY
