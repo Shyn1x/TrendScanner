@@ -1,6 +1,6 @@
 """Atomic update of Lomenti eligibility only. Requires administrator privileges."""
 import fcntl,hashlib,json,os,pathlib,pwd,shutil,subprocess,sys,time
-EXPECTED='b8a9a05d9ce797e01a4c99eb072b11d1dd6828471afad30fe92f0366803cc94a'
+EXPECTED='fd64f9d2e70acf547831ef556d34861a80570115e6d83270ab61769b5aed19a9'
 BASE=pathlib.Path('/home/runner/lomenti-eligibility-update')
 TARGET=pathlib.Path('/opt/lomenti-b2b-collector/call_eligibility.py')
 def run(*args):
@@ -31,7 +31,7 @@ def main():
             os.chown(temporary,0,pwd.getpwnam('lomenti').pw_gid);os.chmod(temporary,0o640)
             os.replace(temporary,TARGET);replaced=True
             run('systemctl','start','lomenti-collector.service')
-            activated={'success':True,'sha256':EXPECTED,'activated_at':time.strftime('%Y-%m-%dT%H:%M:%SZ',time.gmtime()),'service_result':'success','release':'15153f0c90359016a738ee8538075490b230fcff'}
+            activated={'success':True,'sha256':EXPECTED,'activated_at':time.strftime('%Y-%m-%dT%H:%M:%SZ',time.gmtime()),'service_result':'success','release':'e90dff3e1a0b919bc21861bf5a97b55799dd3748'}
             stamp=BASE/'activated.json';stamp.write_text(json.dumps(activated));os.chown(stamp,0,0);os.chmod(stamp,0o644)
             print('LOMENTI_ELIGIBILITY_UPDATED; SERVICE_TEST_OK')
         except Exception:
