@@ -9,7 +9,7 @@ def main():
     if os.geteuid()!=0: raise RuntimeError('Administrator required')
     source=BASE/'source/call_eligibility.py'
     proof=json.loads((BASE/'preflight.json').read_text())
-    if not proof.get('success') or hashlib.sha256(source.read_bytes()).hexdigest()!=EXPECTED:
+    if not proof.get('success') or proof.get('sha256')!=EXPECTED or hashlib.sha256(source.read_bytes()).hexdigest()!=EXPECTED:
         raise RuntimeError('Verified source mismatch')
     with open('/run/lock/lomenti-eligibility-update.lock','w') as lock:
         fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
