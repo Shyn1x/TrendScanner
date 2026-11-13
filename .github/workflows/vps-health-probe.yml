@@ -20,9 +20,13 @@ jobs:
           path: health-probe
       - name: Read runtime evidence without credentials or trading calls
         run: python3 health-probe/ops/vps/monitor.py snapshot
+      - name: Read VPS capacity (no credentials or processes)
+        run: python3 health-probe/ops/vps/capacity_probe.py
       - uses: actions/upload-artifact@v4
         with:
           name: vps-health-snapshot
-          path: health-snapshot.json
+          path: |
+            health-snapshot.json
+            vps-capacity.json
           if-no-files-found: error
           retention-days: 7
