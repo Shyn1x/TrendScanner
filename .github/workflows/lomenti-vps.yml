@@ -39,3 +39,25 @@ jobs:
           clock=subprocess.run(['timedatectl','show','-p','NTPSynchronized','--value'],capture_output=True,text=True).stdout.strip()=='yes'
           print('TRENDSCANNER '+json.dumps(module.snapshot(pathlib.Path.home()/'trendscanner-runtime',time.time(),clock)))
           PY
+      - name: Verify first timed run completes successfully
+        run: |
+          python3 - <<'PY'
+          import subprocess,time
+          def field(unit,name):
+              result=subprocess.run(['systemctl','show',unit,'--value','--property='+name],capture_output=True,text=True)
+              return result.stdout.strip()
+          deadline=time.monotonic()+240
+          while time.monotonic()<deadline:
+              triggered=field('lomenti-collector.timer','LastTriggerUSec')
+              state=field('lomenti-collector.service','ActiveState')
+              if triggered and state not in ('activating','active','reloading'):
+                  result=field('lomenti-collector.service','Result')
+                  print('TIMER_TRIGGERED='+triggered)
+                  print('TIMED_SERVICE_RESULT='+result)
+                  print('TIMER_ENABLED='+field('lomenti-collector.timer','UnitFileState'))
+                  if result!='success': raise SystemExit(1)
+                  break
+              time.sleep(10)
+          else:
+              raise SystemExit('FIRST_TIMED_RUN_NOT_CONFIRMED')
+          PY
