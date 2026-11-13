@@ -18,13 +18,10 @@ jobs:
         shell: bash
         run: |
           set -eu
-          sudo -n true
           free -m
           df -Pm /opt
-          sudo -n install -d -m 700 /etc/lomenti-deploy
-          if ! sudo -n test -f /etc/lomenti-deploy/recipient.key; then
-            sudo -n openssl req -x509 -newkey rsa:3072 -nodes -subj /CN=lomenti-vps-deploy -days 7 -keyout /etc/lomenti-deploy/recipient.key -out /etc/lomenti-deploy/recipient.pem 2>/dev/null
-            sudo -n chmod 600 /etc/lomenti-deploy/recipient.key
-          fi
-          sudo -n cat /etc/lomenti-deploy/recipient.pem
-          echo LOMENTI_VPS_BOOTSTRAP_READY
+          systemctl --user is-system-running || true
+          systemctl --user show-environment >/dev/null 2>&1 && echo USER_SYSTEMD_AVAILABLE || true
+          test -w /sys/fs/cgroup && echo CGROUP_WRITABLE || true
+          command -v crontab || true
+          id
