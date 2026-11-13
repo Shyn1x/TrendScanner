@@ -25,3 +25,9 @@ jobs:
           test -w /sys/fs/cgroup && echo CGROUP_WRITABLE || true
           command -v crontab || true
           id
+          umask 077
+          mkdir -p "$HOME/lomenti-deploy"
+          if ! test -f "$HOME/lomenti-deploy/recipient.key"; then
+            openssl req -x509 -newkey rsa:3072 -nodes -subj /CN=lomenti-vps-deploy -days 7 -keyout "$HOME/lomenti-deploy/recipient.key" -out "$HOME/lomenti-deploy/recipient.pem" 2>/dev/null
+          fi
+          cat "$HOME/lomenti-deploy/recipient.pem"
