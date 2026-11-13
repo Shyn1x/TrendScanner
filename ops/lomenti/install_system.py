@@ -19,6 +19,8 @@ def main():
     except KeyError:
         run("/usr/sbin/useradd", "--system", "--no-create-home", "--home-dir", str(target), "--shell", "/usr/sbin/nologin", "lomenti")
     identity = pwd.getpwnam("lomenti")
+    if not str((stage / ".venv/bin/python").resolve()).startswith("/usr/"):
+        raise RuntimeError("System Python preflight is required")
     config = json.loads((stage / "credentials.json").read_text())
     url = config["LOMENTI_DATABASE_URL"]
     if "\n" in url or "\r" in url:
