@@ -26,16 +26,11 @@ jobs:
           proof=base/'preflight.json'
           if proof.is_file():
               data=json.loads(proof.read_text())
-              # Refresh only the reviewed activation helper, never trading code.
-              installer=base/'install_system.py'
-              shutil.copy2('lomenti-installer/ops/lomenti/install_system.py',installer)
-              data['installer_sha256']=hashlib.sha256(installer.read_bytes()).hexdigest()
-              proof.write_text(json.dumps(data))
               print('LOMENTI_PREFLIGHT '+json.dumps(data))
           else:
               print('LOMENTI_PREFLIGHT_MISSING')
           for unit in ['lomenti-collector.service','lomenti-collector.timer']:
-              result=subprocess.run(['systemctl','show',unit,'--property=LoadState,ActiveState,SubState,Result,ExecMainStatus,ExecMainStartTimestamp,LastTriggerUSec,NextElapseUSecRealtime'],capture_output=True,text=True)
+              result=subprocess.run(['systemctl','show',unit,'--property=LoadState,ActiveState,SubState,Result,ExecMainStatus,ExecMainStartTimestamp,ExecMainExitTimestamp,LastTriggerUSec,NextElapseUSecRealtime,MemoryMax,MemoryHigh,CPUQuotaPerSecUSec,User,UnitFileState'],capture_output=True,text=True)
               print(unit+'\n'+result.stdout.strip())
           source=pathlib.Path('lomenti-installer/ops/vps/monitor.py')
           spec=importlib.util.spec_from_file_location('trend_monitor',source)
