@@ -32,6 +32,14 @@ jobs:
           for unit in ['lomenti-collector.service','lomenti-collector.timer']:
               result=subprocess.run(['systemctl','show',unit,'--property=LoadState,ActiveState,SubState,Result,ExecMainStatus,ExecMainStartTimestamp,ExecMainExitTimestamp,LastTriggerUSec,NextElapseUSecRealtime,MemoryMax,MemoryHigh,CPUQuotaPerSecUSec,User,UnitFileState'],capture_output=True,text=True)
               print(unit+'\n'+result.stdout.strip())
+          audit=pathlib.Path.home()/'lomenti-eligibility-update'
+          log=audit/'full_audit.log'
+          if log.is_file():
+              progress=[line for line in log.read_text(errors='replace').splitlines() if line.startswith('ENRICH_PROGRESS ') and line.split()[-1].isdigit()]
+              print('ELIGIBILITY_PROGRESS '+(progress[-1] if progress else 'RUNNING_OR_WAITING'))
+          activated=audit/'activated.json'
+          if activated.is_file():
+              print('LOMENTI_ELIGIBILITY_ACTIVATED '+activated.read_text())
           source=pathlib.Path('lomenti-installer/ops/vps/monitor.py')
           spec=importlib.util.spec_from_file_location('trend_monitor',source)
           module=importlib.util.module_from_spec(spec)
