@@ -7,7 +7,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: lomenti-vps-deploy
+  group: lomenti-vps-status
   cancel-in-progress: false
 jobs:
   status:
