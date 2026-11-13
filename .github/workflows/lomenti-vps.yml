@@ -56,7 +56,9 @@ jobs:
                       timeout=1800,preexec_fn=limits if limit else None)
               print(name+': '+('PASS' if result.returncode==0 else 'FAIL'),flush=True)
               if result.returncode: raise SystemExit('STAGING_FAILED: '+name)
-          if not (source/'.venv/bin/pip').exists(): step('venv',[sys.executable,'-m','venv',str(source/'.venv')])
+          if not (source/'.venv/bin/pip').exists():
+              if (source/'.venv').exists(): shutil.rmtree(source/'.venv')
+              step('venv',[sys.executable,'-m','venv',str(source/'.venv')])
           step('dependencies',[str(python),'-m','pip','install','--disable-pip-version-check','-q','-r','requirements.txt'])
           step('unit_tests',[str(python),'-m','unittest','-v','test_verification'])
           step('collector_test',[str(python),'collector.py'],True)
