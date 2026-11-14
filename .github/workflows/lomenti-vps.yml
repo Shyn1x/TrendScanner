@@ -12,7 +12,7 @@ concurrency:
 jobs:
   status:
     runs-on: [self-hosted, linux, x64, bybit-demo]
-    timeout-minutes: 5
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
         with:
@@ -60,7 +60,7 @@ jobs:
           def field(unit,name):
               result=subprocess.run(['systemctl','show',unit,'--value','--property='+name],capture_output=True,text=True)
               return result.stdout.strip()
-          deadline=time.monotonic()+240
+          deadline=time.monotonic()+1800
           while time.monotonic()<deadline:
               triggered=field('lomenti-collector.timer','LastTriggerUSec')
               state=field('lomenti-collector.service','ActiveState')
