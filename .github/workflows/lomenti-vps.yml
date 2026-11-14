@@ -39,7 +39,10 @@ jobs:
               print('ELIGIBILITY_PROGRESS '+(progress[-1] if progress else 'RUNNING_OR_WAITING'))
           activated=audit/'activated.json'
           if activated.is_file():
-              print('LOMENTI_ELIGIBILITY_ACTIVATED '+activated.read_text())
+              activation=json.loads(activated.read_text())
+              assert activated.stat().st_uid==0 and activation.get('success'), 'UNVERIFIED_ACTIVATION_PROOF'
+              assert activation.get('sha256')=='cc8d69392d0d3a44c58715d0758bb28a30fd6faf90105864a7b7911b88b8f0ef', 'ELIGIBILITY_VERSION_MISMATCH'
+              print('LOMENTI_ELIGIBILITY_ACTIVATED '+json.dumps(activation))
           source=pathlib.Path('lomenti-installer/ops/vps/monitor.py')
           spec=importlib.util.spec_from_file_location('trend_monitor',source)
           module=importlib.util.module_from_spec(spec)
@@ -50,7 +53,10 @@ jobs:
       - name: Verify first timed run completes successfully
         run: |
           python3 - <<'PY'
-          import subprocess,time
+          import subprocess,time,json,pathlib
+          from datetime import datetime,timezone
+          activation=json.loads((pathlib.Path.home()/'lomenti-eligibility-update/activated.json').read_text())
+          activated_at=datetime.fromisoformat(activation['activated_at'].replace('Z','+00:00')).timestamp()
           def field(unit,name):
               result=subprocess.run(['systemctl','show',unit,'--value','--property='+name],capture_output=True,text=True)
               return result.stdout.strip()
@@ -58,7 +64,9 @@ jobs:
           while time.monotonic()<deadline:
               triggered=field('lomenti-collector.timer','LastTriggerUSec')
               state=field('lomenti-collector.service','ActiveState')
-              if triggered and state not in ('activating','active','reloading'):
+              parsed=subprocess.run(['date','-d',triggered,'+%s'],capture_output=True,text=True).stdout.strip() if triggered else ''
+              new_trigger=parsed.isdigit() and int(parsed)>=activated_at
+              if new_trigger and state not in ('activating','active','reloading'):
                   result=field('lomenti-collector.service','Result')
                   print('TIMER_TRIGGERED='+triggered)
                   print('TIMED_SERVICE_RESULT='+result)
