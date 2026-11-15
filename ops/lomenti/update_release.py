@@ -1,0 +1,54 @@
+"""Verified multi-file Lomenti update with rollback; no TrendScanner mutations."""
+import fcntl,hashlib,json,os,pathlib,pwd,shutil,subprocess,sys,time
+BASE=pathlib.Path('/home/runner/lomenti-release-20261115')
+TARGET=pathlib.Path('/opt/lomenti-b2b-collector')
+EXPECTED={
+'collector.py':'856117f281e4d2316c99967117c760b32007f330c0b6ba97c16b1edd983e677e',
+'call_eligibility.py':'3a842d8877f252424cd3e82190dd384b8c6e4c483e36439b98a52302de291900',
+'registry.py':'79f3b9e2d4ccbd0a658c5fc7bc8f7b171d759efe380cd0e40bf25fd80f8560f4',
+'source_verification.py':'8b213b482169f0f2b396542f7f83484888c8da6226623cedc1b6c192d1a691a3',
+'discovery.py':'030b054b5f08b95ed3d38a59a78478fa1a86e2fe99340628ecd2e7af46f63e48'}
+RELEASE='532315fc1945db57bc09dede9dc02476b0ef7e72'
+def run(*args):subprocess.run(args,check=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+def install(source,target):
+    tmp=target.with_suffix('.next');tmp.write_bytes(source.read_bytes())
+    os.chown(tmp,0,pwd.getpwnam('lomenti').pw_gid);os.chmod(tmp,0o640);os.replace(tmp,target)
+def main():
+    if os.geteuid()!=0:raise RuntimeError('Administrator required')
+    proof=json.loads((BASE/'preflight.json').read_text())
+    if not proof.get('success') or proof.get('hashes')!=EXPECTED:raise RuntimeError('Preflight mismatch')
+    for name,digest in EXPECTED.items():
+        if hashlib.sha256((BASE/'source'/name).read_bytes()).hexdigest()!=digest:raise RuntimeError('Source mismatch')
+    trend=pathlib.Path('/home/runner/trendscanner-runtime/ACTIVE');before=trend.exists()
+    with open('/run/lock/lomenti-eligibility-update.lock','w') as lock:
+        fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
+        backup=pathlib.Path('/var/backups/lomenti')/str(int(time.time()));backup.mkdir(mode=0o700,parents=True)
+        run('systemctl','stop','lomenti-collector.timer');replaced=[]
+        try:
+            deadline=time.monotonic()+1800
+            while time.monotonic()<deadline:
+                state=subprocess.run(['systemctl','show','lomenti-collector.service','--value','-p','ActiveState'],capture_output=True,text=True).stdout.strip()
+                if state not in ('active','activating','deactivating'):break
+                time.sleep(3)
+            else:raise RuntimeError('Lomenti busy')
+            for name in EXPECTED:
+                if (TARGET/name).exists():shutil.copy2(TARGET/name,backup/name)
+                install(BASE/'source'/name,TARGET/name);replaced.append(name)
+            run('systemctl','start','lomenti-collector.service')
+            audit=json.loads((TARGET/'artifacts/call_eligibility_v3.json').read_text())
+            if not audit.get('results') or any(r.get('policy')!='LV_MANUAL_CORPORATE_V3_2026-11-15' for r in audit['results']):raise RuntimeError('Old policy result')
+            activation={'success':True,'release':RELEASE,'hashes':EXPECTED,'run_id':audit['run_id'],'counts':audit['counts'],'activated_at':time.strftime('%Y-%m-%dT%H:%M:%SZ',time.gmtime()),'service_result':'success','trend_active_before':before,'trend_active_after':trend.exists()}
+            if before and not trend.exists():raise RuntimeError('Trend active flag changed')
+            stamp=BASE/'activated.json';stamp.write_text(json.dumps(activation));os.chown(stamp,0,0);os.chmod(stamp,0o644)
+            print('LOMENTI_RELEASE_UPDATED; SERVICE_TEST_OK; '+json.dumps(audit['counts']))
+        except Exception:
+            for name in reversed(replaced):
+                if (backup/name).exists():install(backup/name,TARGET/name)
+                elif (TARGET/name).exists():(TARGET/name).unlink()
+            raise
+        finally:
+            run('systemctl','start','lomenti-collector.timer')
+            print('LOMENTI_TIMER_RESTORED; TrendScanner untouched')
+if __name__=='__main__':
+    try:main()
+    except Exception as e:print('LOMENTI_UPDATE_FAILED:',type(e).__name__);sys.exit(1)
