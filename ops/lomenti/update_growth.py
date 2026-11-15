@@ -4,11 +4,11 @@ BASE=pathlib.Path('/home/runner/lomenti-growth-20261115')
 TARGET=pathlib.Path('/opt/lomenti-b2b-collector')
 EXPECTED={
 'collector.py':'6e7975e048b31286e263d82344392845cb1cee56cb54f5e4cf7218dbe8b6f31b',
-'call_eligibility.py':'d9843fadd0987422d96732e45e17dc2c711058b1643987efa2f598b707260de6',
+'call_eligibility.py':'eec9f39e2ce42687d3fb3d301e3bb649d1c2592990cf17b37cfd871452b137ec',
 'registry.py':'5cd2ecc94b5842b14c39cf1459c2f5aa644a9f9553af2e002d547faa15706535',
 'source_verification.py':'09711b1158a41e8784d475f2c2421dac8d6ef7520ab67ea630d6de8ceb44c52a',
 'discovery.py':'6680e2df958ccd482afb99f320e2a2d583a8e57a6a5c7eae273b315d81f8e686'}
-RELEASE='265634db8e278c8018a6087decb119336a4ca002'
+RELEASE='6c76ad1d30d3e9bb77c2012fa707f89d0d93e8fd'
 def run(*args):subprocess.run(args,check=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
 def install(source,target):
     tmp=target.with_suffix('.next');tmp.write_bytes(source.read_bytes())
