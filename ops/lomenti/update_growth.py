@@ -7,8 +7,8 @@ EXPECTED={
 'call_eligibility.py':'eec9f39e2ce42687d3fb3d301e3bb649d1c2592990cf17b37cfd871452b137ec',
 'registry.py':'5cd2ecc94b5842b14c39cf1459c2f5aa644a9f9553af2e002d547faa15706535',
 'source_verification.py':'09711b1158a41e8784d475f2c2421dac8d6ef7520ab67ea630d6de8ceb44c52a',
-'discovery.py':'6680e2df958ccd482afb99f320e2a2d583a8e57a6a5c7eae273b315d81f8e686'}
-RELEASE='1fb1bb0a7a9e8bd69c9a63f99d2a4ae0604b25d5'
+'discovery.py':'8606d2371456d5a726520653f9e42ada61c56e755fe80a220b6d41992e2ded8f'}
+RELEASE='33b386eb4c41116d625d2babd0066269717a7f27'
 def run(*args):subprocess.run(args,check=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
 def install(source,target):
     tmp=target.with_suffix('.next');tmp.write_bytes(source.read_bytes())
