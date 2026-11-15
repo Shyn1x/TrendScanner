@@ -41,7 +41,7 @@ jobs:
           if activated.is_file():
               activation=json.loads(activated.read_text())
               assert activated.stat().st_uid==0 and activation.get('success'), 'UNVERIFIED_ACTIVATION_PROOF'
-              assert activation.get('release')=='6c76ad1d30d3e9bb77c2012fa707f89d0d93e8fd', 'ELIGIBILITY_VERSION_MISMATCH'
+              assert activation.get('release')=='1fb1bb0a7a9e8bd69c9a63f99d2a4ae0604b25d5', 'ELIGIBILITY_VERSION_MISMATCH'
               print('LOMENTI_ELIGIBILITY_ACTIVATED '+json.dumps(activation))
           if not activated.is_file():
               print('GROWTH_ACTIVATION_PENDING')
