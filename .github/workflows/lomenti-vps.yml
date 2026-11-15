@@ -31,8 +31,7 @@ jobs:
               print('LOMENTI_PREFLIGHT_MISSING')
           for unit in ['lomenti-collector.service','lomenti-collector.timer']:
               result=subprocess.run(['systemctl','show',unit,'--property=LoadState,ActiveState,SubState,Result,ExecMainStatus,ExecMainStartTimestamp,ExecMainExitTimestamp,LastTriggerUSec,NextElapseUSecRealtime,MemoryMax,MemoryHigh,CPUQuotaPerSecUSec,User,UnitFileState'],capture_output=True,text=True)
-              print(unit+'
-'+result.stdout.strip())
+              print(unit+'\n'+result.stdout.strip())
           audit=pathlib.Path.home()/'lomenti-growth-20261115'
           log=audit/'full_audit.log'
           if log.is_file():
@@ -42,7 +41,7 @@ jobs:
           if activated.is_file():
               activation=json.loads(activated.read_text())
               assert activated.stat().st_uid==0 and activation.get('success'), 'UNVERIFIED_ACTIVATION_PROOF'
-              assert activation.get('release')=='265634db8e278c8018a6087decb119336a4ca002', 'ELIGIBILITY_VERSION_MISMATCH'
+              assert activation.get('release')=='6c76ad1d30d3e9bb77c2012fa707f89d0d93e8fd', 'ELIGIBILITY_VERSION_MISMATCH'
               print('LOMENTI_ELIGIBILITY_ACTIVATED '+json.dumps(activation))
           if not activated.is_file():
               print('GROWTH_ACTIVATION_PENDING')
