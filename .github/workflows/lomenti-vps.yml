@@ -55,3 +55,20 @@ jobs:
           clock=subprocess.run(['timedatectl','show','-p','NTPSynchronized','--value'],capture_output=True,text=True).stdout.strip()=='yes'
           print('TRENDSCANNER '+json.dumps(module.snapshot(pathlib.Path.home()/'trendscanner-runtime',time.time(),clock)))
           PY
+      - name: Apply verified release if existing administrator permission allows it
+        run: |
+          python3 - <<'PY'
+          import json,pathlib,subprocess
+          base=pathlib.Path.home()/'lomenti-release-20261115'
+          proof=base/'preflight.json'
+          if not proof.is_file() or not json.loads(proof.read_text()).get('success'):
+              raise SystemExit('VERIFIED_PREFLIGHT_NOT_READY')
+          with (base/'activation-attempt.log').open('wb') as log:
+              result=subprocess.run(['sudo','-n','python3',str(base/'update_release.py')],stdout=log,stderr=subprocess.STDOUT,timeout=2100)
+          if result.returncode:
+              print('ADMINISTRATOR_ACTION_REQUIRED: sudo python3 /home/runner/lomenti-release-20261115/update_release.py')
+          else:
+              receipt=base/'activated.json'
+              assert receipt.stat().st_uid==0
+              print('VERIFIED_PRODUCTION_ACTIVATION '+receipt.read_text())
+          PY
