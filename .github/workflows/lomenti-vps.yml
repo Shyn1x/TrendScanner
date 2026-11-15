@@ -41,7 +41,7 @@ jobs:
           if activated.is_file():
               activation=json.loads(activated.read_text())
               assert activated.stat().st_uid==0 and activation.get('success'), 'UNVERIFIED_ACTIVATION_PROOF'
-              assert activation.get('release')=='532315fc1945db57bc09dede9dc02476b0ef7e72', 'ELIGIBILITY_VERSION_MISMATCH'
+              assert activation.get('release')=='2e0df18618d120c459e840c3b6ba3ec16af59688', 'ELIGIBILITY_VERSION_MISMATCH'
               print('LOMENTI_ELIGIBILITY_ACTIVATED '+json.dumps(activation))
           if not activated.is_file(): print('ROOT_ACTIVATION_PENDING')
           preflight=audit/'preflight.json'
