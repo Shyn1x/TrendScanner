@@ -4,11 +4,11 @@ BASE=pathlib.Path('/home/runner/lomenti-release-20261115')
 TARGET=pathlib.Path('/opt/lomenti-b2b-collector')
 EXPECTED={
 'collector.py':'fac9011ff99b9d323a9790ee1b5cc91e287de4c392925cf6189d388c9d70752c',
-'call_eligibility.py':'c3d7bad8170b0e40c546b4a1643ee11e64fcc2087280e16844d34034dcbb3953',
+'call_eligibility.py':'554ed41ad616de7981825f77006174069aa4391eadb55273c1e020bc5538de0c',
 'registry.py':'4d2bb85de04cab545e953f357650158a9d131274e19a1ec895db65b36787d753',
 'source_verification.py':'4970396b8d4502a23eb788fed943e034a25765ea9eeeef1a8fc87fe8019b4622',
 'discovery.py':'030b054b5f08b95ed3d38a59a78478fa1a86e2fe99340628ecd2e7af46f63e48'}
-RELEASE='2e0df18618d120c459e840c3b6ba3ec16af59688'
+RELEASE='c99f916dc61a1f6667359f856cbff4b0f540a83e'
 def run(*args):subprocess.run(args,check=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
 def install(source,target):
     tmp=target.with_suffix('.next');tmp.write_bytes(source.read_bytes())
