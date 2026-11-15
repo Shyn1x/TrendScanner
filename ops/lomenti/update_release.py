@@ -3,12 +3,12 @@ import fcntl,hashlib,json,os,pathlib,pwd,shutil,subprocess,sys,time
 BASE=pathlib.Path('/home/runner/lomenti-release-20261115')
 TARGET=pathlib.Path('/opt/lomenti-b2b-collector')
 EXPECTED={
-'collector.py':'856117f281e4d2316c99967117c760b32007f330c0b6ba97c16b1edd983e677e',
-'call_eligibility.py':'3a842d8877f252424cd3e82190dd384b8c6e4c483e36439b98a52302de291900',
-'registry.py':'79f3b9e2d4ccbd0a658c5fc7bc8f7b171d759efe380cd0e40bf25fd80f8560f4',
-'source_verification.py':'8b213b482169f0f2b396542f7f83484888c8da6226623cedc1b6c192d1a691a3',
+'collector.py':'fac9011ff99b9d323a9790ee1b5cc91e287de4c392925cf6189d388c9d70752c',
+'call_eligibility.py':'c3d7bad8170b0e40c546b4a1643ee11e64fcc2087280e16844d34034dcbb3953',
+'registry.py':'4d2bb85de04cab545e953f357650158a9d131274e19a1ec895db65b36787d753',
+'source_verification.py':'4970396b8d4502a23eb788fed943e034a25765ea9eeeef1a8fc87fe8019b4622',
 'discovery.py':'030b054b5f08b95ed3d38a59a78478fa1a86e2fe99340628ecd2e7af46f63e48'}
-RELEASE='532315fc1945db57bc09dede9dc02476b0ef7e72'
+RELEASE='2e0df18618d120c459e840c3b6ba3ec16af59688'
 def run(*args):subprocess.run(args,check=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
 def install(source,target):
     tmp=target.with_suffix('.next');tmp.write_bytes(source.read_bytes())
