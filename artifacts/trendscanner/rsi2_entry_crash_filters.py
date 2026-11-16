@@ -128,10 +128,10 @@ def replay(data,mode,start,end,cost):
         for s,p in positions.items():
             a=data[s]
             holding_days=i-p["opened"]+1
-            max_days=10 if mode=="base10" else 20
+            max_days=20
             if a["close"][i]>a["sma5"][i] or holding_days>=max_days:
                 pending_exits.add(s)
-            elif (mode=="add20" and not p["added"]
+            elif (not p["added"]
                   and a["close"][i]<=p["first_entry"]*(1-ADD_DROP)):
                 pending_adds.append(s)
         free=max(0,base.SLOTS-len(positions)+len(pending_exits))
