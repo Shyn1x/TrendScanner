@@ -1,0 +1,33 @@
+name: Donchian 4h GO NO GO Research
+on:
+  push:
+    branches: [research/donchian-go-no-go-4h]
+    paths:
+      - artifacts/trendscanner/donchian_go_nogo_4h.py
+      - artifacts/trendscanner/test_donchian_go_nogo_4h.py
+      - .github/workflows/donchian-go-nogo.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  historical-replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      TREND_SCANNER_MARKET_SOURCE: bybit_linear
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: astral-sh/setup-uv@v6
+      - name: Run frozen replay unit tests
+        run: uv run --no-project --with pytest --with pandas pytest -q artifacts/trendscanner/test_donchian_go_nogo_4h.py
+      - name: Run public Bybit-only historical replay (no credentials or orders)
+        run: |
+          uv run --no-project --with pandas python artifacts/trendscanner/donchian_go_nogo_4h.py | tee donchian-go-nogo-result.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: donchian-4h-frozen-decision-report
+          path: donchian-go-nogo-result.json
+          retention-days: 30
