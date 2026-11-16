@@ -247,7 +247,7 @@ jobs:
           config = json.loads((root / 'credentials.json').read_text())
           args = [str(workspace / '.venv/bin/python'),
                   str(patch / 'ops/vps/regime_shadow_diagnostics.py'), '--report']
-          code, output = run_command(args, workspace, 'diagnose_4h',
+          code, output = run_command(args, workspace, 'collect_4h',
                                      {'DATABASE_URL': config['DATABASE_URL']})
           print(output)
           raise SystemExit(code)
