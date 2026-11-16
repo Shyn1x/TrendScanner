@@ -37,8 +37,8 @@ CONTRACT={
     "direction":"asset EMA50 > EMA200: LONG, EMA50 < EMA200: SHORT",
     "ema_pullback":"touch EMA20; candle close back above/below EMA20 with bullish/bearish body",
     "sweep":"wick breaches previous 10-bar low/high; close recaptures prior level with reversal body",
-    "sweep_ob":"same sweep plus wick intersects proxy OB of most recent opposite-color candle among previous 8 bars",
-    "ob_definition":"bullish proxy [low,open] of prior bearish candle; bearish proxy [open,high] of prior bullish candle; does NOT infer real orders",
+    "sweep_ob":"same sweep plus retest of prior opposite-body candle with subsequent 0.5ATR close displacement before the sweep",
+    "ob_definition":"bullish [low,open] of prior bearish candle followed by a close > its high +0.5ATR; bearish [open,high] of prior bullish candle followed by close < its low -0.5ATR; sweep wick revisits zone",
     "entry":"next bar open only; deterministic symbol sort for capacity priority",
     "stop":"2x ATR14 from signal close; stop at worst of stop or bar open for gaps",
     "exit":"stop first or 6 closed 4H candles, exit on close of sixth candle",
@@ -98,13 +98,18 @@ def signal(a,i,mode):
     side=1 if bullish else -1
     if mode=="sweep":return side
     if mode!="sweep_ob":raise ValueError("UNKNOWN_MODE")
-    # Known proxy BEFORE sweep candle. Never identify OB retrospectively.
-    for j in range(i-1,i-LOOKBACK_OB-1,-1):
+    # A proxy OB must be formed BEFORE the sweep, followed by a confirmed
+    # impulse BEFORE the sweep. A mere opposite-colored candle is not enough.
+    for j in range(i-2,i-LOOKBACK_OB-1,-1):
         op,cl,lo,hi=[a[k][j] for k in ("open","close","low","high")]
         if side==1 and cl<op:
-            return side if low<=op and high>=lo else 0
+            displaced=any(a["close"][k]>hi+0.5*a["atr"][j]
+                          for k in range(j+1,i))
+            if displaced and low<=op and high>=lo:return side
         if side==-1 and cl>op:
-            return side if high>=op and low<=hi else 0
+            displaced=any(a["close"][k]<lo-0.5*a["atr"][j]
+                          for k in range(j+1,i))
+            if displaced and high>=op and low<=hi:return side
     return 0
 
 
