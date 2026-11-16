@@ -1,0 +1,35 @@
+name: Historical Engine Integrity Audit
+on:
+  push:
+    branches: [audit/research-backtester-integrity]
+    paths:
+      - artifacts/trendscanner/audit_research_engines.py
+      - artifacts/trendscanner/test_audit_research_engines.py
+      - .github/workflows/research-engine-integrity.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  read-only-audit:
+    runs-on: [self-hosted, linux, x64, bybit-demo]
+    timeout-minutes: 25
+    env:
+      TREND_SCANNER_MARKET_SOURCE: bybit_linear
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: astral-sh/setup-uv@v6
+      - name: Validate known exit disagreement, fees, and gap model
+        run: uv run --no-project --with pytest --with pandas pytest -q artifacts/trendscanner/test_audit_research_engines.py
+      - name: Evaluate cost sensitivity on unchanged market history
+        run: |
+          set -o pipefail
+          uv run --no-project --with pandas python artifacts/trendscanner/audit_research_engines.py | tee research-engine-integrity-results.json
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: research-engine-integrity-results
+          path: research-engine-integrity-results.json
+          retention-days: 30
