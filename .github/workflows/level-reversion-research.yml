@@ -1,0 +1,30 @@
+name: TrendScanner Levels Research (read only)
+on:
+  push:
+    branches: [research/rsi2-long-leverage-5x-10x]
+    paths:
+      - artifacts/trendscanner/level_reversion_research.py
+      - .github/workflows/level-reversion-research.yml
+permissions:
+  contents: read
+jobs:
+  levels:
+    runs-on: [self-hosted, linux, x64, bybit-demo]
+    timeout-minutes: 30
+    env:
+      TREND_SCANNER_MARKET_SOURCE: bybit_linear
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - name: Verify research script syntax
+        run: python3 -m py_compile artifacts/trendscanner/level_reversion_research.py
+      - name: Run weekly monthly and daily levels backtests
+        run: |
+          set -o pipefail
+          uv run --no-project --with pandas python artifacts/trendscanner/level_reversion_research.py | tee level-reversion-results.json
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: level-reversion-results
+          path: level-reversion-results.json
+          retention-days: 30
