@@ -18,12 +18,12 @@ class Checks(unittest.TestCase):
     def test_masks_only_new_entry_rsi(self):
         d,v=sample()
         d["BTC/USDT"]["close"][255]=80
-        d["BTC/USDT"]["rsi"][255]=1
-        orig_rsi=d["BTC/USDT"]["rsi"].copy()
+        d["ETH/USDT"]["rsi"][255]=1
+        orig_rsi=d["ETH/USDT"]["rsi"].copy()
         modified,count=m.masked_data(d,v,"btc_trend")
         self.assertGreater(count,0)
-        self.assertEqual(modified["BTC/USDT"]["rsi"][255],50)
-        self.assertEqual(d["BTC/USDT"]["rsi"],orig_rsi)
+        self.assertEqual(modified["ETH/USDT"]["rsi"][255],50)
+        self.assertEqual(d["ETH/USDT"]["rsi"],orig_rsi)
         self.assertEqual(modified["BTC/USDT"]["close"],d["BTC/USDT"]["close"])
     def test_selloff_3days_gate(self):
         d,v=sample()
