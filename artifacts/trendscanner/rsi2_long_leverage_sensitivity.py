@@ -15,8 +15,8 @@ PER_SYMBOL_CAP=reference.PER_SYMBOL_CAP
 GROSS_CAP=reference.GROSS_CAP
 entry_candidates=reference.entry_candidates
 entry_filter=reference.entry_filter
-def replay(data,mode,start,end,cost,lev=1,funding_daily=0):
-    if mode not in MODES or start<=base.WARMUP or not 0<=cost<.1:
+def replay(data,mode,start,end,cost,lev=1,funding_daily=0,entry_rsi=5):
+    if mode not in MODES or start<=base.WARMUP or not 0<=cost<.1 or entry_rsi not in (5,10,15):
         raise ValueError("BAD_MODEL")
     capital=10000.
     liquidation_idx=None
@@ -125,8 +125,9 @@ def replay(data,mode,start,end,cost,lev=1,funding_daily=0):
                   and a["close"][i]<=p["first_entry"]*(1-ADD_DROP)):
                 pending_adds.append(s)
         free=max(0,base.SLOTS-len(positions)+len(pending_exits))
-        candidates=[s for s in entry_candidates(data,i,positions)
-                         if s not in pending_exits]
+        # Closed-candle RSI threshold; preserve SMA200 and lowest-RSI priority.
+        candidates=[s for s in base.entry_candidates(data,i,"rsi5" if entry_rsi==5 else "rsi10",positions)
+                         if s not in pending_exits] if entry_rsi!=15 else [s for _,s in sorted((data[s]["rsi"][i],s) for s in base.SYMBOLS if s not in positions and data[s]["close"][i]>data[s]["sma200"][i] and data[s]["rsi"][i]<15) if s not in pending_exits]
         rejected_by_filter+=sum(not entry_filter(data,s,i,mode) for s in candidates)
         pending_entries=[s for s in candidates if entry_filter(data,s,i,mode)][:free]
     # End-of-split forced liquidation, same convention for every model.
@@ -227,12 +228,32 @@ def evaluate(frames):
                                 k:v for k,v in stat.items() if not k.startswith("daily_equity")}
     finally:
         base.CAP,globals()["ADD_SIZE"],globals()["PER_SYMBOL_CAP"],globals()["GROSS_CAP"]=original
+    # New independent stress grid. Five-percent margin is the reference case.
+    # 5/7/10% margin tests position risk; 5x/10x tests leverage independently.
+    # RSI<5/10/15 tests signal frequency independently and in combination.
+    aggressive={}
+    for margin_pct in (.05,.07,.10):
+        base.CAP=margin_pct
+        globals()["ADD_SIZE"]=margin_pct/2
+        globals()["PER_SYMBOL_CAP"]=margin_pct*1.5
+        globals()["GROSS_CAP"]=margin_pct*4.5
+        for leverage in (5,10):
+            for entry_rsi in (5,10,15):
+                key=f"margin_{int(margin_pct*100)}pct_leverage_{leverage}x_rsi_below_{entry_rsi}"
+                aggressive[key]={}
+                for period,(start,end) in windows.items():
+                    # Conservative cost scenario. Funding is hypothetical, not observed.
+                    stat=replay(data,"volume_btc_high_vol",start,end,.0016,leverage,.0001,entry_rsi=entry_rsi)
+                    liq=stat["liquidation_idx"]
+                    stat["liquidation_date"]=(datetime.fromtimestamp(times[liq]/1000,timezone.utc).date().isoformat() if liq is not None else None)
+                    aggressive[key][period]={k:v for k,v in stat.items() if not k.startswith("daily_equity")}
+    base.CAP,globals()["ADD_SIZE"],globals()["PER_SYMBOL_CAP"],globals()["GROSS_CAP"]=original
     return {"model":"LONG RSI2 high-vol BTC volume filter with 1x,2x,3x,5x,10x scaled position notional",
             "capital":"10000 USDT for comparability, percentages apply equally to 300 USDT if perfect fractional fills; small-cap order mins may differ",
             "assumed_risk":"Initially 20% x leverage equity notional per symbol; 3 slots; gross initial cap 60% x leverage, one 10% x leverage addition after a 5% dip",
             "liquidation_model":"Synthetic conservative all daily lows at once; gross 0.5% maintenance, complete equity wiped upon trigger. Not authentic Bybit risk engine or mark-price simulation.",
             "funding":"No actual funding history; 1bp/day of held gross is separate hypothetical stress",
-            "results":out,"cross_leverage_1_to_5x_1_to_3pct_margin":cross_results,"cross_assumptions":"Cross margin, 1x/2x/3x/5x, 3 slots max, 1/2/3% equity as initial margin per new trade; one add capped at half initial; total gross capped at 4.5*initial*leverage; account-wide equity maintenance proxy 0.5% of gross, synchronized daily lows (NOT Bybit exact Mark Price, MMR tiers or liquidation engine).","parity":"PASS",
+            "results":out,"cross_leverage_1_to_5x_1_to_3pct_margin":cross_results,"cross_assumptions":"Cross margin, 1x/2x/3x/5x, 3 slots max, 1/2/3% equity as initial margin per new trade; one add capped at half initial; total gross capped at 4.5*initial*leverage; account-wide equity maintenance proxy 0.5% of gross, synchronized daily lows (NOT Bybit exact Mark Price, MMR tiers or liquidation engine).","aggressive_cross_grid":aggressive,"aggressive_assumptions":"Cross proxy, up to three positions, one half-size margin add, margin 5/7/10 percent, leverage 5/10, RSI2 thresholds 5/10/15, historical reused, fee 16bps per side and hypothetical daily 1bp funding.","parity":"PASS",
             "data_end":datetime.fromtimestamp(times[-1]/1000,timezone.utc).date().isoformat(),
             "limitations":"Repeated researched historical splits, no blind forward test; no slippage beyond 8/16bps per side, no actual tiered isolated liquidation, no partial deleveraging or Bybit instrument minimum order sizes."}
 
