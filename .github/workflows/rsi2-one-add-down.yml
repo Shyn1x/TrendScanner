@@ -1,0 +1,34 @@
+name: RSI2 One Capped Add-Down Research
+on:
+  push:
+    branches: [research/rsi2-one-add-down]
+    paths:
+      - artifacts/trendscanner/rsi2_one_add_down.py
+      - artifacts/trendscanner/test_rsi2_one_add_down.py
+      - .github/workflows/rsi2-one-add-down.yml
+permissions:
+  contents: read
+jobs:
+  research-only:
+    runs-on: [self-hosted, linux, x64, bybit-demo]
+    timeout-minutes: 30
+    env:
+      TREND_SCANNER_MARKET_SOURCE: bybit_linear
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: astral-sh/setup-uv@v6
+      - name: Test no-lookahead, one add, risk limits and baseline parity
+        run: uv run --no-project --with pandas python -m unittest discover -s artifacts/trendscanner -p test_rsi2_one_add_down.py -v
+      - name: Replay no-add vs extended hold vs one-add with fee stress
+        run: |
+          set -o pipefail
+          uv run --no-project --with pandas python artifacts/trendscanner/rsi2_one_add_down.py | tee rsi2-one-add-down-results.json
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: rsi2-one-add-down-results
+          path: rsi2-one-add-down-results.json
+          retention-days: 30
