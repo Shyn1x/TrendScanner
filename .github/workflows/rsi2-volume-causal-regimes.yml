@@ -1,0 +1,34 @@
+name: RSI2 LONG Causal Volume Regime Research
+on:
+  push:
+    branches: [research/rsi2-causal-volume-regimes]
+    paths:
+      - artifacts/trendscanner/rsi2_volume_causal_regimes.py
+      - artifacts/trendscanner/test_rsi2_volume_causal_regimes.py
+      - .github/workflows/rsi2-volume-causal-regimes.yml
+permissions:
+  contents: read
+jobs:
+  read-only-research:
+    runs-on: [self-hosted, linux, x64, bybit-demo]
+    timeout-minutes: 30
+    env:
+      TREND_SCANNER_MARKET_SOURCE: bybit_linear
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: astral-sh/setup-uv@v6
+      - name: Test baseline parity and causality
+        run: uv run --no-project --with pandas python -m unittest discover -s artifacts/trendscanner -p test_rsi2_volume_causal_regimes.py -v
+      - name: Compare unmodified LONG and causal BTC regime gates
+        run: |
+          set -o pipefail
+          uv run --no-project --with pandas python artifacts/trendscanner/rsi2_volume_causal_regimes.py | tee rsi2-volume-causal-regimes.json
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: rsi2-volume-causal-regimes
+          path: rsi2-volume-causal-regimes.json
+          retention-days: 30
