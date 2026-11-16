@@ -1,0 +1,35 @@
+name: Compression Breakout 4h Research
+on:
+  push:
+    branches: [research/compression-breakout-4h]
+    paths:
+      - artifacts/trendscanner/compression_breakout_4h.py
+      - artifacts/trendscanner/test_compression_breakout_4h.py
+      - .github/workflows/compression-breakout-4h.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  research-only:
+    runs-on: [self-hosted, linux, x64, bybit-demo]
+    timeout-minutes: 25
+    env:
+      TREND_SCANNER_MARKET_SOURCE: bybit_linear
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: astral-sh/setup-uv@v6
+      - name: Check signal timing and no-order tests
+        run: uv run --no-project --with pandas --with pytest pytest -q artifacts/trendscanner/test_compression_breakout_4h.py
+      - name: Run frozen public Bybit-only portfolio replay
+        run: |
+          set -o pipefail
+          uv run --no-project --with pandas python artifacts/trendscanner/compression_breakout_4h.py | tee compression-breakout-4h-result.json
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: compression-breakout-4h-report
+          path: compression-breakout-4h-result.json
+          retention-days: 30
