@@ -1,0 +1,37 @@
+name: Bybit Demo VPS Latency Root Cause (Read Only)
+on:
+  push:
+    branches: [audit/demo-latency-root-causes]
+    paths:
+      - ops/vps/latency_root_cause_report.py
+      - .github/workflows/demo-latency-root-cause.yml
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: [self-hosted, linux, x64, bybit-demo]
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Read-only journal and VPS scheduler aggregate
+        run: |
+          set -o pipefail
+          python3 - <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+          root=Path.home()/'trendscanner-runtime'
+          workspace=(root/'current/lower').resolve(strict=True)
+          config=json.loads((root/'credentials.json').read_text())
+          sys.path.insert(0,str(Path('ops/vps').resolve()))
+          from runtime import run_command
+          args=[str(workspace/'.venv/bin/python'),str(Path('ops/vps/latency_root_cause_report.py').resolve())]
+          code,output=run_command(args,workspace,'demo',{'DATABASE_URL':config['DATABASE_URL']})
+          try:
+              result=json.loads(next(x for x in output.splitlines() if x.startswith('{') and '"journal_rows"' in x))
+              print(json.dumps(result,sort_keys=True))
+          except Exception as exc:
+              print(json.dumps({'status':'AUDIT_FAILED','error_type':type(exc).__name__}))
+              raise SystemExit(1)
+          if code: raise SystemExit(1)
+          PY
