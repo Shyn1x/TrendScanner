@@ -1,0 +1,46 @@
+name: Momentum Loss Attribution Research
+on:
+  push:
+    branches: [research/momentum-loss-attribution]
+    paths:
+      - artifacts/trendscanner/momentum_loss_audit.py
+      - artifacts/trendscanner/test_momentum_loss_audit.py
+      - .github/workflows/momentum-loss-audit.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: [self-hosted, linux, x64, bybit-demo]
+    timeout-minutes: 25
+    env:
+      TREND_SCANNER_MARKET_SOURCE: bybit_linear
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: astral-sh/setup-uv@v6
+      - name: Test causal timing and position limits
+        run: uv run --no-project --with pytest --with pandas pytest -q artifacts/trendscanner/test_momentum_loss_audit.py
+      - name: Backtest with per-trade entry feature log
+        run: |
+          set -o pipefail
+          uv run --no-project --with pandas python artifacts/trendscanner/momentum_loss_audit.py > momentum-loss-audit.json
+          python - <<'PY'
+          import json
+          data=json.load(open('momentum-loss-audit.json'))
+          print(json.dumps({
+              "range":[data["start_utc"],data["train_end_utc"],data["end_utc"]],
+              "metrics":{k:{m:r["metrics"] for m,r in v.items()}
+                          for k,v in data["results"].items()},
+              "training_feature_groups":{m:r["features"] for m,r in data["results"]["train"].items()},
+              "holdout_feature_groups_untouched":{m:r["features"] for m,r in data["results"]["holdout"].items()}
+          },sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: momentum-loss-audit-full-trade-ledger
+          path: momentum-loss-audit.json
+          retention-days: 30
