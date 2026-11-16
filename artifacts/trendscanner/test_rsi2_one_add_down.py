@@ -52,6 +52,7 @@ class Tests(unittest.TestCase):
             a["open"][i]=90
             a["close"][i]=90
             a["sma5"][i]=110
+        a["open"][252]=100  # Original entry at 100; next close at 90 triggers add
         r=m.replay(d,"add20",251,300,.0008)
         self.assertEqual(r["completed_additions"],1)
         self.assertEqual(r["median_holding_days"],20)
