@@ -1,0 +1,31 @@
+name: RSI2 100 Symbol Universe Research
+on:
+  push:
+    branches: [research/rsi2-long-leverage-5x-10x]
+    paths:
+      - artifacts/trendscanner/rsi2_100_symbol_research.py
+      - .github/workflows/rsi2-100-symbol-research.yml
+permissions:
+  contents: read
+jobs:
+  research:
+    runs-on: [self-hosted, linux, x64, bybit-demo]
+    timeout-minutes: 60
+    env:
+      TREND_SCANNER_MARKET_SOURCE: bybit_linear
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - name: Validate researcher syntax
+        run: python3 -m py_compile artifacts/trendscanner/rsi2_100_symbol_research.py
+      - name: Replay current top 100 eligible Bybit symbols versus reference 12
+        run: |
+          set -o pipefail
+          uv run --no-project --with pandas python artifacts/trendscanner/rsi2_100_symbol_research.py | tee rsi2-100-symbol-results.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: rsi2-100-symbol-results
+          path: rsi2-100-symbol-results.json
+          if-no-files-found: warn
+          retention-days: 30
