@@ -1,0 +1,34 @@
+name: RSI2 Short vs Long Research
+on:
+  push:
+    branches: [research/rsi2-short-vs-long]
+    paths:
+      - artifacts/trendscanner/rsi2_short_comparison.py
+      - artifacts/trendscanner/test_rsi2_short_comparison.py
+      - .github/workflows/rsi2-short-comparison.yml
+permissions:
+  contents: read
+jobs:
+  research-only:
+    runs-on: [self-hosted, linux, x64, bybit-demo]
+    timeout-minutes: 30
+    env:
+      TREND_SCANNER_MARKET_SOURCE: bybit_linear
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: astral-sh/setup-uv@v6
+      - name: Test SHORT timing, risk direction, and unchanged LONG baseline
+        run: uv run --no-project --with pandas python -m unittest discover -s artifacts/trendscanner -p test_rsi2_short_comparison.py -v
+      - name: Replay SHORT vs LONG and hybrid at frozen costs
+        run: |
+          set -o pipefail
+          uv run --no-project --with pandas python artifacts/trendscanner/rsi2_short_comparison.py | tee rsi2-short-comparison-results.json
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: rsi2-short-comparison-results
+          path: rsi2-short-comparison-results.json
+          retention-days: 30
