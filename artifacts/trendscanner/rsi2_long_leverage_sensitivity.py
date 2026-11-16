@@ -201,9 +201,9 @@ def evaluate(frames):
                                               if liq is not None else None)
                     per[str(lev)+"x"]={k:v for k,v in stat.items() if not k.startswith("daily_equity")}
                 out[key][label][period]=per
-    # Cross-margin 5x: 1/2/3% of account equity posted as initial margin per trade.
+    # Cross-margin comparison 1x/2x/3x/5x: 1/2/3% equity initial margin per trade.
     # Unlike the legacy 20%-equity-per-slot sizing, here 3 slots together use
-    # at most 3 * (margin_pct * 5) initial notional; one add per slot uses
+    # at most 3 * (margin_pct * leverage) initial notional; one add per slot uses
     # half the initial margin, subject to exposure caps.
     original=(base.CAP, globals()["ADD_SIZE"], globals()["PER_SYMBOL_CAP"], globals()["GROSS_CAP"])
     cross_results={}
@@ -215,15 +215,16 @@ def evaluate(frames):
             globals()["GROSS_CAP"]=margin_pct*4.5
             key=f"{int(margin_pct*100)}pct_margin_per_entry"
             cross_results[key]={}
-            for cost in (.0008,.0016):
-                for funding_daily in (0,.0001):
-                    for period,(start,end) in windows.items():
-                        stat=replay(data,"volume_btc_high_vol",start,end,cost,5,funding_daily)
-                        liq=stat["liquidation_idx"]
-                        stat["liquidation_date"]=(datetime.fromtimestamp(times[liq]/1000,timezone.utc).date().isoformat()
-                                                 if liq is not None else None)
-                        cross_results[key][f"{int(cost*1e4)}bps_{int(funding_daily*1e4)}bp_daily_{period}"]={
-                            k:v for k,v in stat.items() if not k.startswith("daily_equity")}
+            for leverage in (1,2,3,5):
+                for cost in (.0008,.0016):
+                    for funding_daily in (0,.0001):
+                        for period,(start,end) in windows.items():
+                            stat=replay(data,"volume_btc_high_vol",start,end,cost,leverage,funding_daily)
+                            liq=stat["liquidation_idx"]
+                            stat["liquidation_date"]=(datetime.fromtimestamp(times[liq]/1000,timezone.utc).date().isoformat()
+                                                     if liq is not None else None)
+                            cross_results[key][f"{leverage}x_{int(cost*1e4)}bps_{int(funding_daily*1e4)}bp_daily_{period}"]={
+                                k:v for k,v in stat.items() if not k.startswith("daily_equity")}
     finally:
         base.CAP,globals()["ADD_SIZE"],globals()["PER_SYMBOL_CAP"],globals()["GROSS_CAP"]=original
     return {"model":"LONG RSI2 high-vol BTC volume filter with 1x,2x,3x,5x,10x scaled position notional",
@@ -231,7 +232,7 @@ def evaluate(frames):
             "assumed_risk":"Initially 20% x leverage equity notional per symbol; 3 slots; gross initial cap 60% x leverage, one 10% x leverage addition after a 5% dip",
             "liquidation_model":"Synthetic conservative all daily lows at once; gross 0.5% maintenance, complete equity wiped upon trigger. Not authentic Bybit risk engine or mark-price simulation.",
             "funding":"No actual funding history; 1bp/day of held gross is separate hypothetical stress",
-            "results":out,"cross_5x_1_to_3pct_margin":cross_results,"cross_assumptions":"5x cross margin, 3 slots max, 1/2/3% equity as initial margin per new trade; one add capped at half initial; total gross capped at 4.5*initial*5; account-wide equity maintenance proxy 0.5% of gross, synchronized daily lows (NOT Bybit exact Mark Price, MMR tiers or liquidation engine).","parity":"PASS",
+            "results":out,"cross_leverage_1_to_5x_1_to_3pct_margin":cross_results,"cross_assumptions":"Cross margin, 1x/2x/3x/5x, 3 slots max, 1/2/3% equity as initial margin per new trade; one add capped at half initial; total gross capped at 4.5*initial*leverage; account-wide equity maintenance proxy 0.5% of gross, synchronized daily lows (NOT Bybit exact Mark Price, MMR tiers or liquidation engine).","parity":"PASS",
             "data_end":datetime.fromtimestamp(times[-1]/1000,timezone.utc).date().isoformat(),
             "limitations":"Repeated researched historical splits, no blind forward test; no slippage beyond 8/16bps per side, no actual tiered isolated liquidation, no partial deleveraging or Bybit instrument minimum order sizes."}
 
