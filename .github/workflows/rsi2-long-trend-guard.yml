@@ -1,0 +1,34 @@
+name: RSI2 LONG SMA200 Add-Guard Research
+on:
+  push:
+    branches: [research/rsi2-long-guarded-add]
+    paths:
+      - artifacts/trendscanner/rsi2_long_trend_guard.py
+      - artifacts/trendscanner/test_rsi2_long_trend_guard.py
+      - .github/workflows/rsi2-long-trend-guard.yml
+permissions:
+  contents: read
+jobs:
+  research-only:
+    runs-on: [self-hosted, linux, x64, bybit-demo]
+    timeout-minutes: 30
+    env:
+      TREND_SCANNER_MARKET_SOURCE: bybit_linear
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: astral-sh/setup-uv@v6
+      - name: Confirm original model parity and guarded add eligibility
+        run: uv run --no-project --with pandas python -m unittest discover -s artifacts/trendscanner -p test_rsi2_long_trend_guard.py -v
+      - name: Compare the unchanged original to SMA200 guarded add
+        run: |
+          set -o pipefail
+          uv run --no-project --with pandas python artifacts/trendscanner/rsi2_long_trend_guard.py | tee rsi2-long-guarded-results.json
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: rsi2-long-guard-results
+          path: rsi2-long-guarded-results.json
+          retention-days: 30
