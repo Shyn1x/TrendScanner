@@ -165,3 +165,64 @@ def replay(data,mode,start,end,cost,lev=1,funding_daily=0):
        "days":n,"cost_bps_per_side":round(cost*1e4)
     }
 
+
+
+def prepare(frames):
+    data,times=loader.daily_with_volumes(frames)
+    data["_regime"]=reference.calc_btc_regime(data)
+    for symbol in base.SYMBOLS:
+        vals=frames[symbol]["low"].astype(float).tolist()
+        data[symbol]["low"]=[min(vals[i:i+6]) for i in range(0,len(vals),6)]
+    return data,times
+
+def evaluate(frames):
+    data,times=prepare(frames)
+    cut=int(len(times)*.6)
+    windows={"train":(base.WARMUP+1,cut),"later":(cut+20,len(times))}
+    out={}
+    for fee in (.0008,.0016):
+        key=str(int(fee*10000))
+        out[key]={}
+        for fund in (0,.0001):
+            label="no_funding" if fund==0 else "hypothetical_1bp_daily_funding"
+            out[key][label]={}
+            for period,(start,end) in windows.items():
+                per={}
+                for lev in (1,5,10):
+                    stat=replay(data,"volume_btc_high_vol",start,end,fee,lev,fund)
+                    if lev==1 and fund==0:
+                        old=reference.replay(data,"volume_btc_high_vol",start,end,fee)
+                        for metric in ("net_return_pct","annualized_return_pct","max_dd_pct",
+                                       "closed_trades","completed_additions","new_entries"):
+                            if abs(old[metric]-stat[metric])>.012:
+                                raise AssertionError("UNLEVERAGED_PARITY_FAILED:"+period+":"+metric)
+                    liq=stat["liquidation_idx"]
+                    stat["liquidation_date"]=(datetime.fromtimestamp(times[liq]/1000,timezone.utc).date().isoformat()
+                                              if liq is not None else None)
+                    per[str(lev)+"x"]={k:v for k,v in stat.items() if not k.startswith("daily_equity")}
+                out[key][label][period]=per
+    return {"model":"LONG RSI2 high-vol BTC volume filter with 1x,5x,10x scaled position notional",
+            "capital":"10000 USDT for comparability, percentages apply equally to 300 USDT if perfect fractional fills; small-cap order mins may differ",
+            "assumed_risk":"Initially 20% x leverage equity notional per symbol; 3 slots; gross initial cap 60% x leverage, one 10% x leverage addition after a 5% dip",
+            "liquidation_model":"Synthetic conservative all daily lows at once; gross 0.5% maintenance, complete equity wiped upon trigger. Not authentic Bybit risk engine or mark-price simulation.",
+            "funding":"No actual funding history; 1bp/day of held gross is separate hypothetical stress",
+            "results":out,"parity":"PASS",
+            "data_end":datetime.fromtimestamp(times[-1]/1000,timezone.utc).date().isoformat(),
+            "limitations":"Repeated researched historical splits, no blind forward test; no slippage beyond 8/16bps per side, no actual tiered isolated liquidation, no partial deleveraging or Bybit instrument minimum order sizes."}
+
+def main():
+    import os
+    if os.environ.get("TREND_SCANNER_MARKET_SOURCE")!="bybit_linear":
+        raise SystemExit("BYBIT_SOURCE_REQUIRED")
+    boundary=int(time.time()*1000)//base.DAY*base.DAY
+    frames={}
+    for s in base.SYMBOLS:
+        for attempt in range(5):
+            try:
+                frames[s]=get_bybit_data_before(s,"4h",boundary,total_limit=base.BARS)
+                break
+            except ValueError as e:
+                if str(e)!="BYBIT_PUBLIC_API_ERROR:10016" or attempt==4:raise
+                time.sleep(5*(attempt+1))
+    print(json.dumps(evaluate(frames),sort_keys=True))
+if __name__=="__main__":main()
