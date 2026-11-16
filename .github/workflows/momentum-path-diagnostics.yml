@@ -1,0 +1,45 @@
+name: Momentum Trade Path Diagnostics
+on:
+  push:
+    branches: [research/momentum-exit-path-audit]
+    paths:
+      - artifacts/trendscanner/momentum_path_diagnostics.py
+      - artifacts/trendscanner/test_momentum_path_diagnostics.py
+      - .github/workflows/momentum-path-diagnostics.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  research-only:
+    runs-on: [self-hosted, linux, x64, bybit-demo]
+    timeout-minutes: 25
+    env:
+      TREND_SCANNER_MARKET_SOURCE: bybit_linear
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: astral-sh/setup-uv@v6
+      - name: Test paths, timestamps, and no-order invariant
+        run: uv run --no-project --with pytest --with pandas pytest -q artifacts/trendscanner/test_momentum_path_diagnostics.py artifacts/trendscanner/test_momentum_loss_audit.py
+      - name: Analyze all frozen trades using Bybit public OHLC
+        run: |
+          set -o pipefail
+          uv run --no-project --with pandas python artifacts/trendscanner/momentum_path_diagnostics.py > momentum-path-report.json
+          python - <<'PY'
+          import json
+          d=json.load(open("momentum-path-report.json"))
+          print(json.dumps({
+            "version":d["version"],"method":d["method"],
+            "results":{period:{model:{"portfolio":v["portfolio"],"paths":v["path_diagnostics"]}
+                     for model,v in models.items()}
+                       for period,models in d["results"].items()}
+          },sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: momentum-trade-path-full-report
+          path: momentum-path-report.json
+          retention-days: 30
