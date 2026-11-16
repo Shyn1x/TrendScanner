@@ -1,0 +1,47 @@
+name: Demo Fee and Fill Snapshot (Read Only)
+on:
+  push:
+    branches: [audit/demo-fee-fill-snapshot]
+    paths:
+      - artifacts/trendscanner/summarize_demo_fees.py
+      - artifacts/trendscanner/test_summarize_demo_fees.py
+      - .github/workflows/demo-fee-fill-snapshot.yml
+permissions:
+  contents: read
+jobs:
+  aggregate-only:
+    runs-on: [self-hosted, linux, x64, bybit-demo]
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check aggregate redaction tests
+        run: python3 -m unittest discover -s artifacts/trendscanner -p test_summarize_demo_fees.py -v
+      - name: Read the existing Demo audit and emit aggregates ONLY
+        run: |
+          python3 - <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+          root=Path.home() / 'trendscanner-runtime'
+          workspace=(root / 'current/lower').resolve(strict=True)
+          config=json.loads((root/'credentials.json').read_text())
+          sys.path.insert(0,str(Path('ops/vps').resolve()))
+          from runtime import run_command
+          args=[str(workspace/'.venv/bin/python'),
+                str(Path('ops/vps/audit_demo.py').resolve()),
+                '--detail-limit','5','--detail-offset','0']
+          code,output=run_command(args,workspace,'demo',config)
+          # NEVER emit any full per-trade report or transport exception.
+          try:
+              report=json.loads(next(line for line in output.splitlines()
+                                      if line.startswith('{') and '"read_only"' in line))
+              from artifacts.trendscanner.summarize_demo_fees import summarize
+              public=summarize(report)
+              print(json.dumps(public,sort_keys=True))
+          except Exception as exc:
+              print(json.dumps({'status':'AUDIT_FAILED_OR_REDACTED',
+                                'error_type':type(exc).__name__}))
+              raise SystemExit(1)
+          if code:
+              print('READ_ONLY_AUDIT_PARTIAL')
+          PY
