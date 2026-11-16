@@ -1,4 +1,4 @@
-"""Read-only 1x 5x 10x notional leverage stress of RSI2 LONG, no orders. Daily low all assets simultaneous conservative synthetic 0.5% maintenance proxy; equity zero on breach. Not Bybit liquidations. No funding history: 1bp/day notional funding sensitivity only; historical reused, not blind."""
+"""Read-only 1x 2x 3x 5x 10x notional leverage stress of RSI2 LONG, no orders. Daily low all assets simultaneous conservative synthetic 0.5% maintenance proxy; equity zero on breach. Not Bybit liquidations. No funding history: 1bp/day notional funding sensitivity only; historical reused, not blind."""
 import json,sys,time,math,statistics
 from collections import Counter
 from datetime import datetime,timezone
@@ -188,7 +188,7 @@ def evaluate(frames):
             out[key][label]={}
             for period,(start,end) in windows.items():
                 per={}
-                for lev in (1,5,10):
+                for lev in (1,2,3,5,10):
                     stat=replay(data,"volume_btc_high_vol",start,end,fee,lev,fund)
                     if lev==1 and fund==0:
                         old=reference.replay(data,"volume_btc_high_vol",start,end,fee)
@@ -201,7 +201,7 @@ def evaluate(frames):
                                               if liq is not None else None)
                     per[str(lev)+"x"]={k:v for k,v in stat.items() if not k.startswith("daily_equity")}
                 out[key][label][period]=per
-    return {"model":"LONG RSI2 high-vol BTC volume filter with 1x,5x,10x scaled position notional",
+    return {"model":"LONG RSI2 high-vol BTC volume filter with 1x,2x,3x,5x,10x scaled position notional",
             "capital":"10000 USDT for comparability, percentages apply equally to 300 USDT if perfect fractional fills; small-cap order mins may differ",
             "assumed_risk":"Initially 20% x leverage equity notional per symbol; 3 slots; gross initial cap 60% x leverage, one 10% x leverage addition after a 5% dip",
             "liquidation_model":"Synthetic conservative all daily lows at once; gross 0.5% maintenance, complete equity wiped upon trigger. Not authentic Bybit risk engine or mark-price simulation.",
