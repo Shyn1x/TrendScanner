@@ -17,7 +17,7 @@ def synthetic():
           "high":[101.]*n,"low":[99.]*n,"close":[100.]*n,
           "upper20":[101.]*n,"lower20":[99.]*n,
           "upper10":[101.]*n,"lower10":[99.]*n,
-          "atr":[1.]*n}
+          "atr":[5.]*n}
     return {s:{k:v[:] for k,v in base.items()} for s in m.SYMBOLS}
 
 
