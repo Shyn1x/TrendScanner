@@ -20,7 +20,7 @@ sys.path.insert(0, str(HERE))
 from prospective_market_data import get_bybit_data_before
 
 TF = 14_400_000
-BARS = 3600
+BARS = 4800
 SYMBOLS = ("BTC/USDT","ETH/USDT","BNB/USDT","SOL/USDT",
            "XRP/USDT","DOGE/USDT","ADA/USDT","LINK/USDT",
            "LTC/USDT","BCH/USDT","AVAX/USDT","DOT/USDT")
@@ -214,7 +214,7 @@ def evaluate(frames):
             "train_end_utc":pd.to_datetime(arrays[SYMBOLS[0]]["time"][cut-1],unit="ms",utc=True).isoformat(),
             "market_regime_bars":{r:regime.count(r) for r in ("BULL","BEAR","MIXED")},
             "results":results,"verdict":decision(results["holdout"]),
-            "limitations":["12 older assets instead of the prospective 25",
+            "limitations":["12 established assets instead of the prospective 25",
                            "fixed survivor universe and no delisted assets",
                            "funding/borrow omitted: performance optimistic",
                            "OHLC stop intrabar only, gap conservative; no orderbook/slippage stress",
