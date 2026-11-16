@@ -19,17 +19,18 @@ def test_liquidity_sweep_requires_reclaim():
     a["close"][i]=97.
     assert m.signal(a,i,"sweep")==0
 
-def test_ob_uses_prior_opposite_color_only():
+def test_ob_needs_prior_confirmed_displacement():
     a=series();i=251
     a["open"][i]=99.;a["low"][i]=96.;a["close"][i]=100.
-    a["open"][i-1]=100.;a["close"][i-1]=99.;a["low"][i-1]=97.
+    # Candidate bearish candle j=i-2, then decisive upside close before sweep.
+    j=i-2
+    a["open"][j]=100.;a["close"][j]=99.;a["high"][j]=101.;a["low"][j]=97.
+    a["close"][i-1]=103.
     assert m.signal(a,i,"sweep_ob")==1
-    a["low"][i]=96. # sweep unchanged
-    a["low"][i-1]=95.
-    a["open"][i-1]=95.5
-    a["close"][i-1]=95.
-    # first bearish OB [95,95.5] is not touched by sweep low 96
+    # No strong displacement means not a qualified OB.
+    a["close"][i-1]=101.
     assert m.signal(a,i,"sweep_ob")==0
+
 
 def test_baseline_and_side():
     a=series();i=251
