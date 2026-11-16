@@ -25,6 +25,18 @@ ROOT=Path(__file__).resolve().parent
 sys.path.insert(0,str(ROOT))
 from prospective_market_data import get_bybit_data_before
 
+
+def fetch_public_with_transient_retry(symbol,boundary):
+    """Retry only temporary Bybit retCode 10016; never mask data integrity errors."""
+    for attempt in range(5):
+        try:
+            return get_bybit_data_before(symbol,"4h",boundary,total_limit=BARS)
+        except ValueError as error:
+            if str(error)!="BYBIT_PUBLIC_API_ERROR:10016" or attempt==4:
+                raise
+            time.sleep(5*(attempt+1))
+    raise AssertionError("UNREACHABLE")
+
 TF=14_400_000
 BARS=9000
 SYMBOLS=("BTC/USDT","ETH/USDT","BNB/USDT","SOL/USDT","XRP/USDT",
@@ -158,7 +170,7 @@ def main():
     if os.environ.get("TREND_SCANNER_MARKET_SOURCE")!="bybit_linear":
         raise SystemExit("BYBIT_SOURCE_REQUIRED")
     boundary=int(time.time()*1000)//(TF*6)*(TF*6)
-    frames={s:get_bybit_data_before(s,"4h",boundary,total_limit=BARS) for s in SYMBOLS}
+    frames={s:fetch_public_with_transient_retry(s,boundary) for s in SYMBOLS}
     print(json.dumps(evaluate(frames),sort_keys=True))
 
 if __name__=="__main__":main()
