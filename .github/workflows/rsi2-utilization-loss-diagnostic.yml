@@ -1,0 +1,30 @@
+name: RSI2 Utilization and Loss Diagnosis
+on:
+  push:
+    branches: [research/rsi2-long-leverage-5x-10x]
+    paths:
+      - artifacts/trendscanner/rsi2_utilization_loss_diagnostic.py
+      - .github/workflows/rsi2-utilization-loss-diagnostic.yml
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    runs-on: [self-hosted, linux, x64, bybit-demo]
+    timeout-minutes: 30
+    env:
+      TREND_SCANNER_MARKET_SOURCE: bybit_linear
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - name: Check diagnostics syntax
+        run: python3 -m py_compile artifacts/trendscanner/rsi2_utilization_loss_diagnostic.py
+      - name: Replay RSI2 utilization, loss reasons and entry gates
+        run: |
+          set -o pipefail
+          uv run --no-project --with pandas python artifacts/trendscanner/rsi2_utilization_loss_diagnostic.py | tee rsi2-utilization-loss-results.json
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: rsi2-utilization-loss-results
+          path: rsi2-utilization-loss-results.json
+          retention-days: 30
