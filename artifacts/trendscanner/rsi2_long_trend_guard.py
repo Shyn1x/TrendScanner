@@ -21,6 +21,7 @@ ADD_DROP=baseline.ADD_DROP
 ADD_SIZE=baseline.ADD_SIZE
 PER_SYMBOL_CAP=baseline.PER_SYMBOL_CAP
 GROSS_CAP=baseline.GROSS_CAP
+entry_candidates=baseline.entry_candidates
 
 def replay(data,mode,start,end,cost):
     if mode not in ("add20","guarded_add20") or start<=base.WARMUP or not 0<=cost<.1:
