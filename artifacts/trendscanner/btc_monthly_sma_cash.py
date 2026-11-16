@@ -126,6 +126,12 @@ def main():
     if os.environ.get("TREND_SCANNER_MARKET_SOURCE")!="bybit_linear":
         raise SystemExit("BYBIT_SOURCE_REQUIRED")
     boundary=int(time.time()*1000)//DAY*DAY
-    frame=get_bybit_data_before("BTC/USDT","4h",boundary,total_limit=BARS)
+    for attempt in range(5):
+        try:
+            frame=get_bybit_data_before("BTC/USDT","4h",boundary,total_limit=BARS)
+            break
+        except ValueError as exc:
+            if str(exc)!="BYBIT_PUBLIC_API_ERROR:10016" or attempt==4:raise
+            time.sleep(5*(attempt+1))
     print(json.dumps(evaluate(frame),sort_keys=True))
 if __name__=="__main__":main()
