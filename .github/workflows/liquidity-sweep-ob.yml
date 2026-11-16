@@ -1,0 +1,35 @@
+name: Liquidity Sweep OB Historical Research
+on:
+  push:
+    branches: [research/liquidity-sweep-ob-backtest]
+    paths:
+      - artifacts/trendscanner/liquidity_sweep_ob_backtest.py
+      - artifacts/trendscanner/test_liquidity_sweep_ob_backtest.py
+      - .github/workflows/liquidity-sweep-ob.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  historical-replay:
+    runs-on: [self-hosted, linux, x64, bybit-demo]
+    timeout-minutes: 25
+    env:
+      TREND_SCANNER_MARKET_SOURCE: bybit_linear
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: astral-sh/setup-uv@v6
+      - name: Frozen signal tests
+        run: uv run --no-project --with pytest --with pandas pytest -q artifacts/trendscanner/test_liquidity_sweep_ob_backtest.py
+      - name: Public Bybit historical replay only - no orders
+        run: |
+          set -o pipefail
+          uv run --no-project --with pandas python artifacts/trendscanner/liquidity_sweep_ob_backtest.py | tee liquidity-sweep-ob-report.json
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: liquidity-sweep-ob-frozen-report
+          path: liquidity-sweep-ob-report.json
+          retention-days: 30
