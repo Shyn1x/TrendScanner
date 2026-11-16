@@ -1,0 +1,48 @@
+name: Bybit Demo LONG Entry Delay and Price Drift (Read Only)
+on:
+  push:
+    branches: [audit/demo-entry-delay-drift]
+    paths:
+      - artifacts/trendscanner/demo_entry_drift_summary.py
+      - artifacts/trendscanner/test_demo_entry_drift_summary.py
+      - .github/workflows/demo-entry-delay-drift.yml
+permissions:
+  contents: read
+jobs:
+  sample-drift:
+    runs-on: [self-hosted, linux, x64, bybit-demo]
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test aggregate-only formatting
+        run: python3 -m unittest discover -s artifacts/trendscanner -p test_demo_entry_drift_summary.py -v
+      - name: Read-only sample 20 recent trades, log aggregate only
+        run: |
+          python3 - <<'PY'
+          import json,sys
+          from pathlib import Path
+          root=Path.home()/'trendscanner-runtime'
+          workspace=(root/'current/lower').resolve(strict=True)
+          config=json.loads((root/'credentials.json').read_text())
+          sys.path.insert(0,str(Path('ops/vps').resolve()))
+          from runtime import run_command
+          reports=[]
+          for offset in (0,10):
+              args=[str(workspace/'.venv/bin/python'),
+                    str(Path('ops/vps/audit_demo.py').resolve()),
+                    '--detail-limit','10','--detail-offset',str(offset)]
+              code,output=run_command(args,workspace,'demo',config)
+              # Raw reports and any transport exception are not printed or uploaded.
+              try:
+                  report=json.loads(next(line for line in output.splitlines()
+                                  if line.startswith('{') and '"read_only"' in line))
+              except Exception as e:
+                  print(json.dumps({"status":"AUDIT_FAILED","offset":offset,
+                                    "exception_type":type(e).__name__}))
+                  raise SystemExit(1)
+              reports.append(report)
+              if code:
+                  print(json.dumps({"status":"AUDIT_PARTIAL","offset":offset}))
+          from artifacts.trendscanner.demo_entry_drift_summary import summarise
+          print(json.dumps(summarise(reports),sort_keys=True))
+          PY
