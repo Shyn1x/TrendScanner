@@ -32,7 +32,7 @@ def test_signal_enter_next_open_only_and_max_three_correlated():
     r=m.replay(arrays,regimes,250,256,"regime_donchian")
     assert r["trades"]==3
     assert r["entry_time_cohorts"]==1
-    assert r["capacity_rejections"]>=9
+    assert r["capacity_rejections"]["correlation_capacity"]>=9
     # entry cannot occur until the candle after the close breakout.
     # Positions exit by next-open 10-bar opposing channel.
     assert r["stop_exits"]==0
