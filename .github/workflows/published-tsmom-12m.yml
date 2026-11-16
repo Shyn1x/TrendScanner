@@ -1,0 +1,35 @@
+name: Published TSMOM 12-month Research
+on:
+  push:
+    branches: [research/published-tsmom-baseline]
+    paths:
+      - artifacts/trendscanner/published_tsmom_12m.py
+      - artifacts/trendscanner/test_published_tsmom_12m.py
+      - .github/workflows/published-tsmom-12m.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  research-only:
+    runs-on: [self-hosted, linux, x64, bybit-demo]
+    timeout-minutes: 30
+    env:
+      TREND_SCANNER_MARKET_SOURCE: bybit_linear
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: astral-sh/setup-uv@v6
+      - name: Verify timing and portfolio accounting
+        run: uv run --no-project --with pandas python -m unittest discover -s artifacts/trendscanner -p test_published_tsmom_12m.py -v
+      - name: Reproduce paper-inspired monthly 12m TSMOM and controls
+        run: |
+          set -o pipefail
+          uv run --no-project --with pandas python artifacts/trendscanner/published_tsmom_12m.py | tee published-tsmom-research.json
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: published-tsmom-12m-research
+          path: published-tsmom-research.json
+          retention-days: 30
