@@ -1,0 +1,35 @@
+name: Momentum Confirmation A B Test
+on:
+  push:
+    branches: [research/momentum-confirmation-entry]
+    paths:
+      - artifacts/trendscanner/momentum_confirmation_test.py
+      - artifacts/trendscanner/test_momentum_confirmation.py
+      - .github/workflows/momentum-confirmation.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  research-only:
+    runs-on: [self-hosted, linux, x64, bybit-demo]
+    timeout-minutes: 25
+    env:
+      TREND_SCANNER_MARKET_SOURCE: bybit_linear
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: astral-sh/setup-uv@v6
+      - name: Unit tests and no-lookahead gating
+        run: uv run --no-project --with pytest --with pandas pytest -q artifacts/trendscanner/test_momentum_confirmation.py
+      - name: Replay immediate, delay-control, and confirmation
+        run: |
+          set -o pipefail
+          uv run --no-project --with pandas python artifacts/trendscanner/momentum_confirmation_test.py | tee momentum-confirmation-results.json
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: momentum-confirmation-research-results
+          path: momentum-confirmation-results.json
+          retention-days: 30
