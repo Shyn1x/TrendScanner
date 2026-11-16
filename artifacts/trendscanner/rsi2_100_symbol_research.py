@@ -1,18 +1,39 @@
-"""Read-only RSI2 universe expansion. Current Bybit top-100 is survivor-biased; not historical point-in-time selection."""
-import json, time, traceback
-from datetime import datetime, timezone
+"""Read-only RSI2 100-crypto-perp comparison with listing-aware unequal histories.
+
+Current turnover universe is survivorship-biased: exploratory, not independent OOS.
+Missing history is NaN, NEVER backfilled with price. Only historical closed bars.
+"""
+import json,time,math
+from datetime import datetime,timezone
+import pandas as pd
 import connors_rsi2_research as base
 import prospective_market_data as market
 import rsi2_utilization_loss_diagnostic as study
 
 UNIVERSE=100
-POOL=300
+POOL=400
+MIN_BARS=1800
 ORIGINAL_12=tuple(base.SYMBOLS)
+# Exclude tokenized equity/index/commodity contracts, not cryptocurrency perps.
+NONCRYPTO={
+"SOXL","NVDA","XAU","XAG","SNDK","SPCX","SOXS","QQQ","MU","SKHYNIX",
+"CL","SNXX","SKHY","MSTR","XAUT","NBIS","SPY","INTC","BZ","DRAM","GOOGL",
+"TSLA","AAPL","CRCL","TQQQ","MSFT","AMDSTOCK","XLF","SAMSUNG","EWY",
+"MRVL","AXP","HOOD","LMT","AXIS","UNITREE","QNT","CBRS","MXL","KORU",
+"XPL","MUU","DGAI","QQQM","SPX","NDX","DOW","GOLD","SILVER","OIL",
+}
+NONCRYPTO_SUFFIX=("STOCK","ETF","INDEX")
+def is_crypto_contract(symbol):
+    if not symbol.endswith("USDT"):return False
+    base_symbol=symbol[:-4]
+    return bool(base_symbol and base_symbol.isalnum() and base_symbol.isupper()
+                and base_symbol not in NONCRYPTO
+                and not any(base_symbol.endswith(x) for x in NONCRYPTO_SUFFIX))
+
 def candidates():
-    # Public Bybit linear perpetuals, live instruments with USDT quote/settle.
     instruments=[]
     cursor=None
-    for page in range(20):
+    for _ in range(20):
         params={"category":"linear","limit":1000}
         if cursor:params["cursor"]=cursor
         result=market._get("/v5/market/instruments-info",params)
@@ -21,7 +42,7 @@ def candidates():
             and row.get("contractType")=="LinearPerpetual"
             and row.get("quoteCoin")=="USDT"
             and row.get("settleCoin")=="USDT"
-            and row.get("symbol","").endswith("USDT"))
+            and is_crypto_contract(row.get("symbol","")))
         next_cursor=result.get("nextPageCursor")
         if not next_cursor or next_cursor==cursor:break
         cursor=next_cursor
@@ -31,58 +52,71 @@ def candidates():
         symbol=row.get("symbol")
         try:turnover[symbol]=float(row.get("turnover24h") or 0)
         except (ValueError,TypeError):pass
-    ranked=sorted(set(instruments),key=lambda symbol:(-turnover.get(symbol,0),symbol))
-    return [s[:-4]+"/USDT" for s in ranked if s in turnover and s[:-4].isalnum() and s[:-4].isupper()][:POOL]
+    ranked=sorted(set(instruments),key=lambda x:(-turnover.get(x,0),x))
+    return [s[:-4]+"/USDT" for s in ranked if s in turnover][:POOL]
+
+def fetch_partial(symbol,boundary):
+    # First check 300d availability, then request longest successful past-only window.
+    small=market.get_bybit_data_before(symbol,"4h",boundary,total_limit=MIN_BARS)
+    for length in (base.BARS,6000,4200,3000):
+        try:return market.get_bybit_data_before(symbol,"4h",boundary,total_limit=length)
+        except ValueError as e:
+            if str(e).startswith("INSUFFICIENT_BYBIT_HISTORY:"):continue
+            raise
+    return small
+
+def pad(frame,boundary):
+    target=pd.DataFrame({"time":list(range(boundary-base.BARS*base.TF,boundary,base.TF))})
+    out=target.merge(frame,on="time",how="left",validate="one_to_one",sort=True)
+    assert len(out)==base.BARS
+    assert out["close"].notna().sum()>=MIN_BARS
+    assert out["close"].dropna().index[-1]==base.BARS-1
+    assert out["close"].dropna().index.to_series().diff().dropna().eq(1).all()
+    return out
 
 def load():
     boundary=int(time.time()*1000)//base.DAY*base.DAY
-    order=list(dict.fromkeys((*ORIGINAL_12,*candidates())))
+    rank=candidates()
+    order=list(dict.fromkeys((*ORIGINAL_12,*rank)))
     frames={}
     excluded=[]
-    for symbol in order:
+    successful_lengths={}
+    for s in order:
+        if s not in ORIGINAL_12 and len(frames)>=UNIVERSE:break
         try:
-            frames[symbol]=market.get_bybit_data_before(symbol,"4h",boundary,total_limit=base.BARS)
+            raw=fetch_partial(s,boundary)
+            frames[s]=pad(raw,boundary)
+            successful_lengths[s]=len(raw)
         except Exception as exc:
-            excluded.append({"symbol":symbol,"reason":type(exc).__name__+":"+str(exc)[:120]})
-        if len(frames)>=UNIVERSE+len(ORIGINAL_12):
-            break
-    return frames,excluded,boundary
-
-def select_100(frames):
-    # At least 100 including BTC; preserve candidate rank and require full history.
-    rank=candidates()
-    chosen=["BTC/USDT"]
-    chosen.extend(s for s in rank if s in frames and s!="BTC/USDT")
-    return tuple(chosen[:UNIVERSE])
+            excluded.append({"symbol":s,"reason":type(exc).__name__+":"+str(exc)[:120]})
+    return frames,rank,excluded,successful_lengths,boundary
 
 def main():
     if market.MARKET_SOURCE!="bybit_linear":raise SystemExit("BYBIT_SOURCE_REQUIRED")
-    frames,excluded,boundary=load()
-    picked=select_100(frames)
-    original_missing=[s for s in ORIGINAL_12 if s not in frames]
-    if original_missing or len(picked)<UNIVERSE:
-        print(json.dumps({"status":"INSUFFICIENT_HISTORY","requested":UNIVERSE,
-            "eligible":len(picked),"original_missing":original_missing,
-            "excluded":excluded[:90]}))
-        raise SystemExit("INSUFFICIENT_100_COMPLETE_HISTORY")
+    frames,rank,excluded,lengths,boundary=load()
+    missing=[s for s in ORIGINAL_12 if s not in frames]
+    picked=tuple(list(ORIGINAL_12)+[s for s in rank if s in frames and s not in ORIGINAL_12])[:UNIVERSE]
+    if missing or len(picked)<UNIVERSE:
+        print(json.dumps({"status":"INSUFFICIENT_100_ELIGIBLE","requested":UNIVERSE,
+            "eligible":len(picked),"original_missing":missing,"excluded":excluded[:100]},sort_keys=True))
+        raise SystemExit("INSUFFICIENT_100_ELIGIBLE")
     outcome={}
-    initial=base.SYMBOLS
+    old_symbols=base.SYMBOLS
     try:
-        for label,selected in (("reference_12",ORIGINAL_12),("top_100",picked)):
+        for label,selected in (("reference_12",ORIGINAL_12),("expanded_100",picked)):
             base.SYMBOLS=selected
             result=study.evaluate({s:frames[s] for s in selected})
-            # Reduce output: all losses retained, but omit scenarios unrelated to universe effects
             outcome[label]={k:result["results"][k] for k in
                 ("baseline_5pct_10x","no_volume_gate","rsi10_with_gate")}
-    finally:
-        base.SYMBOLS=initial
-    print(json.dumps({"status":"RESEARCH_ONLY","source":"Bybit public linear USDT perps",
-        "selection":"current 24h turnover; survivorship bias (NOT point-in-time historic universe)",
+    finally:base.SYMBOLS=old_symbols
+    print(json.dumps({"status":"RESEARCH_ONLY","source":"Bybit public linear USDT perpetual contracts",
+        "selection":"Current turnover-ranked, with 12 legacy symbols held fixed; survivor bias; NOT point-in-time historical selection",
+        "history":"Common 9000x4h UTC timestamps, missing prelisting prices as NaN, min 1800 contiguous 4h bars, 200d SMA warmup",
+        "requested_universe":100,"universe_size":len(picked),"symbols":picked,
+        "available_4h_bars":{k:lengths[k] for k in picked},
+        "excluded_count":len(excluded),"excluded":excluded[:100],
         "end_boundary_utc":datetime.fromtimestamp(boundary/1000,timezone.utc).isoformat(),
-        "requested_universe":UNIVERSE,"universe_size":len(picked),
-        "symbols":picked,"excluded_count":len(excluded),"excluded":excluded[:90],
-        "history":"9000 exact 4h bars per symbol; no missing-candle filling",
-        "costs":"16bps/side plus hypothetical 1bp/day funding, not actual funding",
-        "risk":"5pct initial margin, 10x, three positions, cross liquidation proxy not exchange replica",
-        "results":outcome},sort_keys=True))
+        "costs":"16bps/side + hypothetical 1bp/day funding, not real historical funding",
+        "risk":"5pct initial margin, 10x, three positions; synthetic low-based liquidation proxy",
+        "results":outcome},sort_keys=True,allow_nan=False))
 if __name__=="__main__":main()
