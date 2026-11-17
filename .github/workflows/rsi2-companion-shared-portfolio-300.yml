@@ -40,11 +40,32 @@ jobs:
           cat artifacts/trendscanner/reports/rsi2_shared_portfolio_latest.md >> "${GITHUB_STEP_SUMMARY}"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add artifacts/trendscanner/reports/rsi2_shared_portfolio_latest.json artifacts/trendscanner/reports/rsi2_shared_portfolio_latest.md
-          if ! git diff --cached --quiet; then
+          # A parallel research workflow may have advanced the branch during
+          # the 8-minute backtest. Save outputs and publish atop current origin.
+          cp artifacts/trendscanner/reports/rsi2_shared_portfolio_latest.json "${RUNNER_TEMP}/shared-portfolio-latest.json"
+          cp artifacts/trendscanner/reports/rsi2_shared_portfolio_latest.md "${RUNNER_TEMP}/shared-portfolio-latest.md"
+          for attempt in 1 2 3 4; do
+            git fetch origin "${GITHUB_REF_NAME}"
+            git reset --hard FETCH_HEAD
+            mkdir -p artifacts/trendscanner/reports
+            cp "${RUNNER_TEMP}/shared-portfolio-latest.json" artifacts/trendscanner/reports/rsi2_shared_portfolio_latest.json
+            cp "${RUNNER_TEMP}/shared-portfolio-latest.md" artifacts/trendscanner/reports/rsi2_shared_portfolio_latest.md
+            git add artifacts/trendscanner/reports/rsi2_shared_portfolio_latest.json artifacts/trendscanner/reports/rsi2_shared_portfolio_latest.md
+            if git diff --cached --quiet; then
+              echo "Report already published."
+              break
+            fi
             git commit -m "research: latest RSI2 plus 4H shared portfolio comparison [skip ci]"
-            git push origin "HEAD:${GITHUB_REF_NAME}"
-          fi
+            if git push origin "HEAD:${GITHUB_REF_NAME}"; then
+              echo "Published report successfully."
+              break
+            fi
+            if [ "$attempt" -eq 4 ]; then
+              echo "Failed to publish after four attempts." >&2
+              exit 1
+            fi
+            sleep 3
+          done
       - name: Preserve full per-position ledger
         if: always()
         uses: actions/upload-artifact@v4
