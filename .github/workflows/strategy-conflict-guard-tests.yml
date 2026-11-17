@@ -1,0 +1,22 @@
+name: Research Strategy Conflict Guard Tests
+on:
+  push:
+    branches: [research/rsi2-long-leverage-5x-10x]
+    paths:
+      - artifacts/trendscanner/strategy_conflict_guard.py
+      - artifacts/trendscanner/test_strategy_conflict_guard.py
+      - .github/workflows/strategy-conflict-guard-tests.yml
+permissions:
+  contents: read
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Verify collision safety and total-risk caps
+        run: |
+          python -m compileall -q artifacts/trendscanner/strategy_conflict_guard.py
+          python -m unittest discover -s artifacts/trendscanner -p test_strategy_conflict_guard.py -v
