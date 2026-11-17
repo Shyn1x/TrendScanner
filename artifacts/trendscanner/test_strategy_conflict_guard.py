@@ -35,6 +35,15 @@ class ConflictGuardTests(unittest.TestCase):
             Proposal("BTC/USDT","RSI2_1D","LONG",2,45)],300)
         self.assertEqual([p.owner for p in a],["RSI2_1D","COMPANION_4H"])
         self.assertFalse(b)
+    def test_signal_strength_precedes_alphabetical_symbol(self):
+        a,b=select_entries([],[
+            Proposal("AAA/USDT","RSI2_1D","LONG",2,40,2.9),
+            Proposal("ZZZ/USDT","RSI2_1D","LONG",2,40,0.4),
+            Proposal("BBB/USDT","RSI2_1D","LONG",2,40,1.3),
+            Proposal("CCC/USDT","RSI2_1D","LONG",2,40,2.0)],300)
+        self.assertEqual([x.symbol for x in a],
+                         ["ZZZ/USDT","BBB/USDT","CCC/USDT"])
+        self.assertEqual(b[0][1],"MAX_SYMBOL_SLOTS")
     def test_notional_limit(self):
         a,b=select_entries([Position("BTC/USDT","RSI2_1D",2,440)],
             [Proposal("ETH/USDT","COMPANION_4H","LONG",2,20)],300)
