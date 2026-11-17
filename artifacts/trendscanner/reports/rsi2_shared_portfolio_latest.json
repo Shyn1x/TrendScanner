@@ -1,0 +1,208 @@
+{
+  "limits": [
+    "No historical funding or real mark price liquidation",
+    "Historical data reused; survivor selection; no true OOS",
+    "Portfolio model uses simultaneous 4H OHLC stop-first execution"
+  ],
+  "periods": {
+    "later": {
+      "breakout_only": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": 58.445,
+            "trades": 302,
+            "wins": 130
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 0,
+            "trades": 0,
+            "wins": 0
+          }
+        },
+        "end_balance_usdt": 355.036,
+        "funding_usdt": 3.408,
+        "liquidated_proxy": false,
+        "max_dd_pct": 11.755,
+        "max_gross_equity_mult": 0.69,
+        "net_return_pct": 18.345,
+        "selection": {
+          "accepted_breakout": 302,
+          "accepted_rsi": 0,
+          "blocked_capacity": 1264,
+          "blocked_owned": 0,
+          "blocked_risk": 93,
+          "breakout_signals": 1831,
+          "rsi_signals": 0
+        },
+        "total_fees_usdt": 26.181,
+        "trades": 302
+      },
+      "combined": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": 4.882,
+            "trades": 190,
+            "wins": 79
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 16.055,
+            "trades": 39,
+            "wins": 18
+          }
+        },
+        "end_balance_usdt": 318.1,
+        "funding_usdt": 2.837,
+        "liquidated_proxy": false,
+        "max_dd_pct": 14.217,
+        "max_gross_equity_mult": 0.623,
+        "net_return_pct": 6.033,
+        "selection": {
+          "accepted_breakout": 190,
+          "accepted_rsi": 39,
+          "blocked_capacity": 1539,
+          "blocked_owned": 0,
+          "blocked_risk": 114,
+          "breakout_signals": 1870,
+          "rsi_signals": 248
+        },
+        "total_fees_usdt": 17.683,
+        "trades": 229
+      },
+      "rsi2_only": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": 0,
+            "trades": 0,
+            "wins": 0
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 36.391,
+            "trades": 53,
+            "wins": 25
+          }
+        },
+        "end_balance_usdt": 335.259,
+        "funding_usdt": 1.132,
+        "liquidated_proxy": false,
+        "max_dd_pct": 4.943,
+        "max_gross_equity_mult": 0.213,
+        "net_return_pct": 11.753,
+        "selection": {
+          "accepted_breakout": 0,
+          "accepted_rsi": 53,
+          "blocked_capacity": 41,
+          "blocked_owned": 0,
+          "blocked_risk": 20,
+          "breakout_signals": 0,
+          "rsi_signals": 242
+        },
+        "total_fees_usdt": 2.091,
+        "trades": 53
+      }
+    },
+    "train": {
+      "breakout_only": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": 48.273,
+            "trades": 305,
+            "wins": 138
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 0,
+            "trades": 0,
+            "wins": 0
+          }
+        },
+        "end_balance_usdt": 343.241,
+        "funding_usdt": 5.032,
+        "liquidated_proxy": false,
+        "max_dd_pct": 14.877,
+        "max_gross_equity_mult": 0.716,
+        "net_return_pct": 14.414,
+        "selection": {
+          "accepted_breakout": 305,
+          "accepted_rsi": 0,
+          "blocked_capacity": 1558,
+          "blocked_owned": 0,
+          "blocked_risk": 96,
+          "breakout_signals": 2113,
+          "rsi_signals": 0
+        },
+        "total_fees_usdt": 36.528,
+        "trades": 305
+      },
+      "combined": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": 1.977,
+            "trades": 209,
+            "wins": 96
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 13.3,
+            "trades": 44,
+            "wins": 21
+          }
+        },
+        "end_balance_usdt": 310.906,
+        "funding_usdt": 4.371,
+        "liquidated_proxy": false,
+        "max_dd_pct": 17.921,
+        "max_gross_equity_mult": 0.686,
+        "net_return_pct": 3.635,
+        "selection": {
+          "accepted_breakout": 209,
+          "accepted_rsi": 44,
+          "blocked_capacity": 1770,
+          "blocked_owned": 0,
+          "blocked_risk": 86,
+          "breakout_signals": 2110,
+          "rsi_signals": 178
+        },
+        "total_fees_usdt": 26.806,
+        "trades": 253
+      },
+      "rsi2_only": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": 0,
+            "trades": 0,
+            "wins": 0
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 19.098,
+            "trades": 59,
+            "wins": 24
+          }
+        },
+        "end_balance_usdt": 317.501,
+        "funding_usdt": 1.596,
+        "liquidated_proxy": false,
+        "max_dd_pct": 10.412,
+        "max_gross_equity_mult": 0.409,
+        "net_return_pct": 5.834,
+        "selection": {
+          "accepted_breakout": 0,
+          "accepted_rsi": 59,
+          "blocked_capacity": 44,
+          "blocked_owned": 0,
+          "blocked_risk": 14,
+          "breakout_signals": 0,
+          "rsi_signals": 162
+        },
+        "total_fees_usdt": 3.232,
+        "trades": 59
+      }
+    }
+  },
+  "risk": {
+    "gross_notional_equity_cap": 1.5,
+    "max_aggregate_stop_risk_pct": 3,
+    "max_positions": 3,
+    "per_position_pct": 1,
+    "priority": "RSI2_1D over COMPANION_4H; existing owner never replaced"
+  },
+  "run_url": "https://github.com/Shyn1x/TrendScanner/actions/runs/44146842297",
+  "study": "Shared-wallet RSI2 1D and breakout 4H portfolio; exact frozen 100 Bybit symbols and 2026-11-17 boundary"
+}
