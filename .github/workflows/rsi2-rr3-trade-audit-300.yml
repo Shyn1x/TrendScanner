@@ -1,0 +1,36 @@
+name: RSI2 Risk Reward 1 to 3 Trade Audit
+on:
+  push:
+    branches: [research/rsi2-long-leverage-5x-10x]
+    paths:
+      - artifacts/trendscanner/rsi2_rr3_trade_audit_300.py
+      - .github/workflows/rsi2-rr3-trade-audit-300.yml
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: [self-hosted, linux, x64, bybit-demo]
+    timeout-minutes: 90
+    env:
+      TREND_SCANNER_MARKET_SOURCE: bybit_linear
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - name: Validate script and stop-risk regression
+        shell: bash
+        run: |
+          python3 -m py_compile artifacts/trendscanner/rsi2_rr3_trade_audit_300.py
+          uv run --no-project --with pandas python -m unittest artifacts/trendscanner/test_rsi2_4h_vs_daily_300.py
+      - name: Audit realized R of every trade versus 3R take-profit
+        shell: bash
+        run: |
+          set -o pipefail
+          uv run --no-project --with pandas python artifacts/trendscanner/rsi2_rr3_trade_audit_300.py | tee rsi2-rr3-trade-audit-300.json
+      - name: Upload auditable results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rsi2-rr3-trade-audit-300
+          path: rsi2-rr3-trade-audit-300.json
+          if-no-files-found: warn
+          retention-days: 30
