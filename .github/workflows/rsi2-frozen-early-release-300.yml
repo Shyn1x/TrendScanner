@@ -1,0 +1,55 @@
+name: RSI2 Frozen Universe Early Release 300 Research
+on:
+  push:
+    branches: [research/rsi2-long-leverage-5x-10x]
+    paths:
+      - artifacts/trendscanner/rsi2_frozen_universe_20261117.json
+      - artifacts/trendscanner/rsi2_frozen_early_release_300.py
+      - artifacts/trendscanner/test_rsi2_frozen_early_release_300.py
+      - .github/workflows/rsi2-frozen-early-release-300.yml
+permissions:
+  contents: write
+jobs:
+  compare:
+    runs-on: [self-hosted, linux, x64, bybit-demo]
+    timeout-minutes: 90
+    env:
+      TREND_SCANNER_MARKET_SOURCE: bybit_linear
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - name: Preflight fixed universe and completed bar exit logic
+        shell: bash
+        run: |
+          python3 -m py_compile artifacts/trendscanner/rsi2_frozen_early_release_300.py
+          uv run --no-project --with pandas python -m unittest artifacts/trendscanner/test_rsi2_frozen_early_release_300.py
+          uv run --no-project --with pandas python -m unittest artifacts/trendscanner/test_rsi2_exit_risk_fee_capped_300.py
+      - name: Compare exits using identical frozen 100 symbols and historical boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          uv run --no-project --with pandas python artifacts/trendscanner/rsi2_frozen_early_release_300.py > rsi2-frozen-early-release-300.json
+      - name: Publish plain-language report in research branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 artifacts/trendscanner/publish_rsi2_report.py rsi2-frozen-early-release-300.json \
+            --json-out artifacts/trendscanner/reports/rsi2_frozen_early_release_latest.json \
+            --md-out artifacts/trendscanner/reports/rsi2_frozen_early_release_latest.md \
+            --run-url "https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          cat artifacts/trendscanner/reports/rsi2_frozen_early_release_latest.md >> "${GITHUB_STEP_SUMMARY}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add artifacts/trendscanner/reports/rsi2_frozen_early_release_latest.json artifacts/trendscanner/reports/rsi2_frozen_early_release_latest.md
+          if ! git diff --cached --quiet; then
+            git commit -m "research: latest frozen-universe RSI2 early exit comparison [skip ci]"
+            git push origin "HEAD:${GITHUB_REF_NAME}"
+          fi
+      - name: Keep full auditable trade ledger
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rsi2-frozen-early-release-300
+          path: rsi2-frozen-early-release-300.json
+          retention-days: 30
+          if-no-files-found: warn
