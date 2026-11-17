@@ -1,5 +1,8 @@
 """Fast synthetic regression: RSI2 2R/3R/partial exits and fixed add risk."""
 import unittest
+import sys
+from pathlib import Path
+sys.path.insert(0,str(Path(__file__).resolve().parent))
 from unittest.mock import patch
 import connors_rsi2_research as base
 import rsi2_exit_risk_300 as model
