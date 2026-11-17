@@ -1,0 +1,37 @@
+name: RSI2 Exit Risk $300 Research
+on:
+  push:
+    branches: [research/rsi2-long-leverage-5x-10x]
+    paths:
+      - artifacts/trendscanner/rsi2_exit_risk_300.py
+      - artifacts/trendscanner/test_rsi2_exit_risk_300.py
+      - .github/workflows/rsi2-exit-risk-300.yml
+permissions:
+  contents: read
+jobs:
+  compare:
+    runs-on: [self-hosted, linux, x64, bybit-demo]
+    timeout-minutes: 90
+    env:
+      TREND_SCANNER_MARKET_SOURCE: bybit_linear
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - name: Compile and verify synthetic trades before downloading history
+        shell: bash
+        run: |
+          python3 -m py_compile artifacts/trendscanner/rsi2_exit_risk_300.py artifacts/trendscanner/test_rsi2_exit_risk_300.py
+          uv run --no-project --with pandas python -m unittest artifacts/trendscanner/test_rsi2_exit_risk_300.py
+      - name: Compare SMA baseline, 2R, 3R and partial exits on 100 symbols
+        shell: bash
+        run: |
+          set -o pipefail
+          uv run --no-project --with pandas python artifacts/trendscanner/rsi2_exit_risk_300.py | tee rsi2-exit-risk-300-results.json
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rsi2-exit-risk-300-results
+          path: rsi2-exit-risk-300-results.json
+          if-no-files-found: warn
+          retention-days: 30
