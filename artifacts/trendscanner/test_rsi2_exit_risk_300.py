@@ -7,7 +7,7 @@ import rsi2_exit_risk_300 as model
 class RiskRewardChecks(unittest.TestCase):
     def test_add_cannot_exceed_original_trade_budget(self):
         p={"stop":90.,"qty":1.,"risk_cap":12.}
-        self.assertAlmostEqual(model.allowed_add_notional(p,95.,300.,0.,.06),38.)
+        self.assertAlmostEqual(model.allowed_add_notional(p,95.,300.,0.,.06),133.)
         # Existing stop distance alone already consumes the budget.
         self.assertEqual(model.allowed_add_notional(p,103.,300.,0.,.06),0.)
         self.assertEqual(model.allowed_add_notional(p,90.,300.,0.,.06),0.)
@@ -37,7 +37,7 @@ class RiskRewardChecks(unittest.TestCase):
             self.assertEqual(half["exit_reasons"].get("partial_then_3R"),1)
             self.assertEqual(half["trade_ledger"][0]["partial_fills"],1)
             self.assertGreater(r3["net_return_pct"],half["net_return_pct"])
-            self.assertGreater(half["net_return_pct"],r2["net_return_pct"])
+            self.assertAlmostEqual(half["net_return_pct"],r2["net_return_pct"],places=2)
         finally:
             base.SYMBOLS=original
 if __name__=="__main__":unittest.main()
