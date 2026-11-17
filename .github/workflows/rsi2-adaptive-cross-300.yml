@@ -1,0 +1,33 @@
+name: RSI2 Adaptive Cross $300 Research
+on:
+  push:
+    branches: [research/rsi2-long-leverage-5x-10x]
+    paths:
+      - artifacts/trendscanner/rsi2_adaptive_cross_300.py
+      - .github/workflows/rsi2-adaptive-cross-300.yml
+permissions:
+  contents: read
+jobs:
+  adaptive-replay:
+    runs-on: [self-hosted, linux, x64, bybit-demo]
+    timeout-minutes: 80
+    env:
+      TREND_SCANNER_MARKET_SOURCE: bybit_linear
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - name: Compile research code only
+        run: python3 -m py_compile artifacts/trendscanner/rsi2_adaptive_cross_300.py
+      - name: Run isolated RSI2 adaptive Cross simulations
+        shell: bash
+        run: |
+          set -o pipefail
+          uv run --no-project --with pandas python artifacts/trendscanner/rsi2_adaptive_cross_300.py | tee rsi2-adaptive-cross-300-results.json
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rsi2-adaptive-cross-300-results
+          path: rsi2-adaptive-cross-300-results.json
+          if-no-files-found: warn
+          retention-days: 30
