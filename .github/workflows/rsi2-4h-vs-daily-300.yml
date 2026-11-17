@@ -4,6 +4,7 @@ on:
     branches: [research/rsi2-long-leverage-5x-10x]
     paths:
       - artifacts/trendscanner/rsi2_4h_vs_daily_300.py
+      - artifacts/trendscanner/test_rsi2_4h_vs_daily_300.py
       - .github/workflows/rsi2-4h-vs-daily-300.yml
 permissions:
   contents: read
@@ -18,6 +19,8 @@ jobs:
       - uses: astral-sh/setup-uv@v6
       - name: Syntax check (no orders)
         run: python3 -m py_compile artifacts/trendscanner/rsi2_4h_vs_daily_300.py
+      - name: Test cross-risk indexing (bar 311 regression)
+        run: uv run --no-project --with pandas python -m unittest artifacts/trendscanner/test_rsi2_4h_vs_daily_300.py
       - name: Simulate 1D and 4H RSI2 on 100 crypto perps
         shell: bash
         run: |
