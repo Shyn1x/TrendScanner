@@ -1,0 +1,45 @@
+name: RSI2 Daily 3R Sensitivity $300 (research only)
+on:
+  push:
+    branches: [research/rsi2-long-leverage-5x-10x]
+    paths:
+      - artifacts/trendscanner/rsi2_daily_3r_sensitivity_300.py
+      - artifacts/trendscanner/test_rsi2_daily_3r_sensitivity_300.py
+      - .github/workflows/rsi2-daily-3r-sensitivity-300.yml
+permissions:
+  contents: read
+jobs:
+  sensitivity:
+    runs-on: [self-hosted, linux, x64, bybit-demo]
+    timeout-minutes: 90
+    env:
+      TREND_SCANNER_MARKET_SOURCE: bybit_linear
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - name: Check research scripts and fast historical replay guards
+        shell: bash
+        run: |
+          python3 -m py_compile artifacts/trendscanner/rsi2_daily_3r_sensitivity_300.py artifacts/trendscanner/test_rsi2_daily_3r_sensitivity_300.py
+          uv run --no-project --with pandas python -m unittest artifacts/trendscanner/test_rsi2_daily_3r_sensitivity_300.py
+      - name: Run 36 configurations on the same UTC historical windows
+        shell: bash
+        run: |
+          set -o pipefail
+          uv run --no-project --with pandas python artifacts/trendscanner/rsi2_daily_3r_sensitivity_300.py > rsi2-daily-3r-sensitivity-300-results.json
+      - name: Display full matrix in Actions summary and save compact report
+        shell: bash
+        run: |
+          python3 artifacts/trendscanner/publish_rsi2_report.py rsi2-daily-3r-sensitivity-300-results.json             --json-out rsi2-daily-3r-sensitivity-300-compact.json             --md-out rsi2-daily-3r-sensitivity-300-report.md             --run-url "https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          cat rsi2-daily-3r-sensitivity-300-report.md >> "${GITHUB_STEP_SUMMARY}"
+      - name: Upload full results and readable report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rsi2-daily-3r-sensitivity-300
+          path: |
+            rsi2-daily-3r-sensitivity-300-results.json
+            rsi2-daily-3r-sensitivity-300-compact.json
+            rsi2-daily-3r-sensitivity-300-report.md
+          if-no-files-found: warn
+          retention-days: 30
