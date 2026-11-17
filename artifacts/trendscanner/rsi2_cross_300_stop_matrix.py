@@ -54,7 +54,7 @@ def simulate(data,start,end,stop,allow_add,slots):
                            "entry":round(p["first"],8),"exit":round(price,8)})
         # Overnight stop gaps take priority. Real gaps can exceed modeled slippage.
         for s in sorted(list(positions)):
-            if data[s]["open"][i]<=positions[s]["first"]*(1-stop):
+            if stop is not None and data[s]["open"][i]<=positions[s]["first"]*(1-stop):
                 close(s,data[s]["open"][i],"gap_stop")
         for s in sorted(next_exit):
             if s in positions:close(s,data[s]["open"][i],"signal_exit")
@@ -89,7 +89,7 @@ def simulate(data,start,end,stop,allow_add,slots):
         # Low is pessimistic if stop and rebound occurred within same daily bar.
         for s in sorted(list(positions)):
             p=positions[s]
-            if data[s]["low"][i]<=p["first"]*(1-stop):
+            if stop is not None and data[s]["low"][i]<=p["first"]*(1-stop):
                 close(s,p["first"]*(1-stop),"intraday_stop",from_open=True)
         # Mark surviving positions to simultaneous low for a cross-margin danger flag.
         stressed=equity+sum(p["qty"]*(data[s]["low"][i]-data[s]["open"][i])
@@ -154,14 +154,14 @@ def main():
         grid={}
         for slots in (3,5):
             for add in (False,True):
-                for stop in (.03,.05,.08):
-                    label=f"slots{slots}_stop{round(stop*100)}_add{int(add)}"
+                for stop in (None,.03,.05,.08):
+                    label=f"slots{slots}_stop{round(stop*100) if stop is not None else 'none'}_add{int(add)}"
                     grid[label]={name:simulate(data,start,end,stop,add,slots)
                                 for name,(start,end) in windows.items()}
         print(json.dumps({"kind":"RSI2 historical stop matrix, research only",
             "account_usdt":300,"margin_mode":"cross proxy","per_entry_margin_pct":5,
             "per_add_margin_pct":2.5,"leverage":10,"max_open_positions":[3,5],
-            "stops_on_price_pct":[3,5,8],"fee_per_side_bps":16,
+            "stops_on_price_pct":[None,3,5,8],"fee_per_side_bps":16,
             "hypothetical_daily_funding_bps":1,"universe":selected,
             "data_end_utc":datetime.fromtimestamp(boundary/1000,timezone.utc).isoformat(),
             "warnings":["Stop is simulated from past daily OHLC low, not Bybit MarkPrice orderbook or exact sequence",
