@@ -41,9 +41,10 @@ def simulate(data,start,end,stop,allow_add,slots):
             equity+=p["qty"]*(data[s]["open"][i]-data[s]["close"][i-1])
         if equity<=0:
             liquidated=True;equity=0.;break
-        def close(s,price,reason):
+        def close(s,price,reason,from_open=False):
             nonlocal equity,total_fees
             p=positions.pop(s)
+            if from_open:equity+=p["qty"]*(price-data[s]["open"][i])
             fee=p["qty"]*price*FEE
             equity-=fee
             total_fees+=fee
@@ -63,8 +64,8 @@ def simulate(data,start,end,stop,allow_add,slots):
             p=positions[s];price=data[s]["open"][i]
             if p["added"] or price>p["first"]*.95:continue
             gross=sum(q["qty"]*data[k]["open"][i] for k,q in positions.items())
-            capacity=max(0,slots*MARGIN*LEVERAGE*equity-gross)
-            per_cap=max(0,.75*equity*LEVERAGE-p["qty"]*price)
+            capacity=max(0,slots*(MARGIN+ADD_MARGIN)*LEVERAGE*equity-gross)
+            per_cap=max(0,(MARGIN+ADD_MARGIN)*equity*LEVERAGE-p["qty"]*price)
             value=min(ADD_MARGIN*LEVERAGE*equity,capacity,per_cap)
             if value<=0:continue
             fee=value*FEE
@@ -76,7 +77,7 @@ def simulate(data,start,end,stop,allow_add,slots):
             price=data[s]["open"][i]
             if not math.isfinite(price) or price<=0:continue
             gross=sum(q["qty"]*data[k]["open"][i] for k,q in positions.items())
-            capacity=max(0,slots*MARGIN*LEVERAGE*equity-gross)
+            capacity=max(0,slots*(MARGIN+ADD_MARGIN)*LEVERAGE*equity-gross)
             value=min(MARGIN*LEVERAGE*equity,capacity)
             if value<=0:continue
             fee=value*FEE
@@ -89,7 +90,7 @@ def simulate(data,start,end,stop,allow_add,slots):
         for s in sorted(list(positions)):
             p=positions[s]
             if data[s]["low"][i]<=p["first"]*(1-stop):
-                close(s,p["first"]*(1-stop),"intraday_stop")
+                close(s,p["first"]*(1-stop),"intraday_stop",from_open=True)
         # Mark surviving positions to simultaneous low for a cross-margin danger flag.
         stressed=equity+sum(p["qty"]*(data[s]["low"][i]-data[s]["open"][i])
                             for s,p in positions.items())
