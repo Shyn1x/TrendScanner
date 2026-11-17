@@ -6,7 +6,7 @@ stop, 20-day maximum hold, 5-day stop cooldown and one 2.5% margin add.
 4h uses SMA30 exit (~5 days); 1d uses SMA5. This is NOT a Bybit execution
 replica or independent out-of-sample validation. No trading/database access.
 """
-import json,math,statistics
+import json,math,statistics,sys,time
 from datetime import datetime,timezone
 import pandas as pd
 import connors_rsi2_research as base
@@ -316,9 +316,40 @@ def simulate(prices,daily,start,end,mode,slots,risk_budget,add_enabled=False,exi
 def main():
     if universe.market.MARKET_SOURCE!="bybit_linear":raise SystemExit("BYBIT_SOURCE_REQUIRED")
     frames,rank,excluded,lengths,boundary=universe.load()
-    chosen=tuple(list(universe.ORIGINAL_12)+[s for s in rank if s in frames and s not in universe.ORIGINAL_12])[:100]
-    if len(chosen)!=100 or any(s not in frames for s in universe.ORIGINAL_12):
-        raise SystemExit("INSUFFICIENT_100_ELIGIBLE")
+    # The Bybit endpoint sometimes returns transient 10016/10006/5xx or
+    # incomplete pagination. Retry only symbols that failed, not all 100.
+    missing_original=[sym for sym in universe.ORIGINAL_12 if sym not in frames]
+    desired=list(dict.fromkeys((*missing_original,*rank)))
+    transient_markers=("10016","10006","HTTPError:5","TimeoutError:",
+                       "URLError:","RemoteDisconnected","ConnectionResetError")
+    eligible_failures={row["symbol"]:row["reason"] for row in excluded}
+    retry_candidates=[sym for sym in desired if sym not in frames
+                      and any(marker in eligible_failures.get(sym,"")
+                              for marker in transient_markers)]
+    for sym in retry_candidates[:100]:
+        try:
+            time.sleep(1.)
+            raw=universe.fetch_partial(sym,boundary)
+            frames[sym]=universe.pad(raw,boundary)
+            lengths[sym]=len(raw)
+        except Exception as exc:
+            eligible_failures[sym]=type(exc).__name__+":"+str(exc)[:160]
+        if len(frames)>=100 and all(x in frames for x in universe.ORIGINAL_12):
+            break
+    chosen=tuple(list(universe.ORIGINAL_12)+[s for s in rank
+                 if s in frames and s not in universe.ORIGINAL_12])[:100]
+    missing=[sym for sym in universe.ORIGINAL_12 if sym not in frames]
+    if len(chosen)!=100 or missing:
+        print(json.dumps({"status":"INSUFFICIENT_100_ELIGIBLE",
+            "eligible":len(chosen),"fetched_frames":len(frames),
+            "ranked_candidates":len(rank),"original_missing":missing,
+            "original_failure_reasons":{sym:eligible_failures.get(sym,"not_fetched")
+                                         for sym in missing},
+            "excluded_total":len(excluded),
+            "exclusion_examples":excluded[:30],
+            "retry_attempts":len(retry_candidates[:100])},
+            sort_keys=True),file=sys.stderr,flush=True)
+        raise SystemExit("INSUFFICIENT_100_ELIGIBLE:see_diagnostic_above")
     original=base.SYMBOLS
     try:
         base.SYMBOLS=chosen
