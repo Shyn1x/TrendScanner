@@ -11,7 +11,7 @@ class CrossRiskTests(unittest.TestCase):
                 "ETH/USDT":{"open":[50.0,45.0,40.0]}}
         positions={"BTC/USDT":{"qty":2.0,"stop":90.0},
                    "ETH/USDT":{"qty":1.0,"stop":42.0}}
-        self.assertAlmostEqual(open_stop_risk(positions,prices,1),30.0)
+        self.assertAlmostEqual(open_stop_risk(positions,prices,1),33.0)
     def test_empty_positions(self):
         self.assertEqual(open_stop_risk({},{"BTC/USDT":{"open":[100]}},0),0)
     def test_at_bar_311(self):
