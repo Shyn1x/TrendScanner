@@ -28,6 +28,7 @@ class Proposal:
     side: str
     risk_usdt: float
     notional_usdt: float
+    score: float = 0.0
 
 def select_entries(positions: Iterable[Position], proposals: Iterable[Proposal],
                    equity_usdt: float):
@@ -50,7 +51,7 @@ def select_entries(positions: Iterable[Position], proposals: Iterable[Proposal],
     accepted=[]
     rejected=[]
     seen=set()
-    ordered=sorted(proposals,key=lambda p:(PRIORITY.get(p.owner,999),p.symbol))
+    ordered=sorted(proposals,key=lambda p:(PRIORITY.get(p.owner,999),p.score,p.symbol))
     for p in ordered:
         if p.owner not in PRIORITY or p.side != "LONG":
             rejected.append((p,"UNSUPPORTED_STRATEGY_OR_SIDE"));continue
