@@ -1,0 +1,69 @@
+name: Multi Strategy 84 Case Stress ($300 Research Only)
+on:
+  push:
+    branches: [research/rsi2-long-leverage-5x-10x]
+    paths:
+      - artifacts/trendscanner/multi_strategy_stress_300.py
+      - artifacts/trendscanner/test_multi_strategy_stress_300.py
+      - artifacts/trendscanner/publish_multi_strategy_stress.py
+      - .github/workflows/multi-strategy-stress-300.yml
+permissions:
+  contents: write
+concurrency:
+  group: multi-strategy-stress-research
+  cancel-in-progress: false
+jobs:
+  stress:
+    runs-on: [self-hosted, linux, x64, bybit-demo]
+    timeout-minutes: 180
+    env:
+      TREND_SCANNER_MARKET_SOURCE: bybit_linear
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - name: Check no-lookahead signals, friction stress and ownership
+        shell: bash
+        run: |
+          python3 -m py_compile artifacts/trendscanner/multi_strategy_stress_300.py artifacts/trendscanner/publish_multi_strategy_stress.py
+          uv run --no-project --with pandas python -m unittest artifacts/trendscanner/test_multi_strategy_stress_300.py -v
+          uv run --no-project --with pandas python -m unittest artifacts/trendscanner/test_multi_strategy_batch_300.py -v
+          python3 -m unittest discover -s artifacts/trendscanner -p test_strategy_conflict_guard.py -v
+      - name: One historical download and 84 stress scenarios on shared account
+        shell: bash
+        run: |
+          set -euo pipefail
+          uv run --no-project --with pandas python artifacts/trendscanner/multi_strategy_stress_300.py > multi-strategy-stress-300-full.json
+      - name: Summarize and publish stress test results to research branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 artifacts/trendscanner/publish_multi_strategy_stress.py multi-strategy-stress-300-full.json \
+            --json-out artifacts/trendscanner/reports/multi_strategy_stress_latest.json \
+            --md-out artifacts/trendscanner/reports/multi_strategy_stress_latest.md \
+            --run-url "https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          cat artifacts/trendscanner/reports/multi_strategy_stress_latest.md >> "${GITHUB_STEP_SUMMARY}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          cp artifacts/trendscanner/reports/multi_strategy_stress_latest.md "${RUNNER_TEMP}/multi_strategy_stress_latest.md"
+          cp artifacts/trendscanner/reports/multi_strategy_stress_latest.json "${RUNNER_TEMP}/multi_strategy_stress_latest.json"
+          for attempt in 1 2 3 4; do
+            git fetch origin "${GITHUB_REF_NAME}"
+            git reset --hard FETCH_HEAD
+            mkdir -p artifacts/trendscanner/reports
+            cp "${RUNNER_TEMP}/multi_strategy_stress_latest.md" artifacts/trendscanner/reports/multi_strategy_stress_latest.md
+            cp "${RUNNER_TEMP}/multi_strategy_stress_latest.json" artifacts/trendscanner/reports/multi_strategy_stress_latest.json
+            git add artifacts/trendscanner/reports/multi_strategy_stress_latest.md artifacts/trendscanner/reports/multi_strategy_stress_latest.json
+            if git diff --cached --quiet; then break; fi
+            git commit -m "research: latest 84-case cost and universe stress [skip ci]"
+            if git push origin "HEAD:${GITHUB_REF_NAME}"; then break; fi
+            if [ "${attempt}" = 4 ]; then exit 1; fi
+            sleep 3
+          done
+      - name: Archive complete case matrix and trade ledgers
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: multi-strategy-stress-300
+          path: multi-strategy-stress-300-full.json
+          if-no-files-found: warn
+          retention-days: 30
