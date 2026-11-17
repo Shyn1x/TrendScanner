@@ -76,7 +76,7 @@ def run(prices,daily,signals4h,start,end,enable_rsi=True,enable_breakout=True):
         # signals are generated only after 4H UTC day closes (index mod6=5).
         # If simultaneous, rank owned RSI2 first; pre-existing position wins.
         candidates=[]
-        for owner,sym,stop_mult,target_r,hold_days in next_entries:
+        for owner,sym,stop_mult,target_r,hold_days,score in next_entries:
             if sym in positions:
                 counters["blocked_owned"]+=1;continue
             px=prices[sym]["open"][i]
@@ -92,10 +92,10 @@ def run(prices,daily,signals4h,start,end,enable_rsi=True,enable_breakout=True):
             gross_room=max(0.,MAX_GROSS_MULT*cash-existing_gross)
             size=min(.5*cash,gross_room,risk_room/per_notional if per_notional>0 else 0.)
             if size<=1e-8:continue
-            candidates.append((owner,sym,px,stop,size,per_notional,target_r,hold_days))
+            candidates.append((owner,sym,px,stop,size,per_notional,target_r,hold_days,score))
         next_entries=[]
-        proposals=[Proposal(sym,owner,"LONG",size*per_notional,size)
-                   for owner,sym,px,stop,size,unit,target,hold in candidates]
+        proposals=[Proposal(sym,owner,"LONG",size*per_notional,size,score)
+                   for owner,sym,px,stop,size,unit,target,hold,score in candidates]
         owned=[Position(sym,p["owner"],
                     max(0.,p["qty"]*(p["entry"]*(1+FEE)-p["stop"]*(1-FEE))),
                     p["qty"]*prices[sym]["open"][i])
@@ -107,7 +107,7 @@ def run(prices,daily,signals4h,start,end,enable_rsi=True,enable_breakout=True):
             else:counters["blocked_risk"]+=1
         # A proposal match is unique by (owner,symbol).
         mapping={(owner,sym): (px,stop,size,target_r,hold_days)
-                 for owner,sym,px,stop,size,unit,target_r,hold_days in candidates}
+                 for owner,sym,px,stop,size,unit,target_r,hold_days,score in candidates}
         for prop in accepted:
             px,stop,size,target,hold=mapping[(prop.owner,prop.symbol)]
             fee=size*FEE;fees+=fee;cash-=fee
@@ -163,7 +163,7 @@ def run(prices,daily,signals4h,start,end,enable_rsi=True,enable_breakout=True):
                 ranked.append((d["rsi"][day],sym))
             ranked.sort()
             counters["rsi_signals"]+=len(ranked)
-            next_entries.extend(("RSI2_1D",sym,3.,3.,20) for _,sym in ranked)
+            next_entries.extend(("RSI2_1D",sym,3.,3.,20,rank) for rank,sym in ranked)
 
         if enable_breakout:
             ranked=[]
@@ -177,7 +177,7 @@ def run(prices,daily,signals4h,start,end,enable_rsi=True,enable_breakout=True):
                 ranked.append((b["rsi"][i],sym))
             ranked.sort()
             counters["breakout_signals"]+=len(ranked)
-            next_entries.extend(("COMPANION_4H",sym,2.,2.,5) for _,sym in ranked)
+            next_entries.extend(("COMPANION_4H",sym,2.,2.,5,rank) for rank,sym in ranked)
 
     if not liquidated:
         for sym in sorted(list(positions)):
