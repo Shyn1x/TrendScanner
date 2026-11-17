@@ -51,6 +51,12 @@ def build_daily(data):
 def finite(*items):
     return all(isinstance(x,(float,int)) and math.isfinite(x) for x in items)
 
+def open_stop_risk(positions, prices, i):
+    """Total modeled stop loss for open positions at the specified bar open."""
+    return sum(max(0.,p["qty"]*(prices[s]["open"][i]-p["stop"]))
+               for s,p in positions.items())
+
+
 def simulate(prices,daily,start,end,mode,slots,risk_budget,add_enabled=True):
     units=6 if mode=="4h" else 1
     risk_total=MAX_RISK_TOTAL
@@ -78,9 +84,6 @@ def simulate(prices,daily,start,end,mode,slots,risk_budget,add_enabled=True):
     liquidation=False
     liquidated_at=None
 
-    def total_stop_risk(mark,i):
-        return sum(max(0.,p["qty"]*(mark[s]["open"][i]-p["stop"]))
-                   for s,p in positions.items())
 
     for i in range(start,end):
         # Previous close to current open, including gaps.
@@ -120,7 +123,7 @@ def simulate(prices,daily,start,end,mode,slots,risk_budget,add_enabled=True):
             used=sum(q["qty"]*prices[k]["open"][i] for k,q in positions.items())
             room=max(0.,slots*(ENTRY_MARGIN+ADD_MARGIN)*LEVERAGE*wallet-used)
             symbol_room=max(0.,(ENTRY_MARGIN+ADD_MARGIN)*LEVERAGE*wallet-p["qty"]*px)
-            risk_room=max(0.,risk_total*wallet-total_stop_risk(prices,i))
+            risk_room=max(0.,risk_total*wallet-open_stop_risk(positions,prices,i))
             qty_value=min(ADD_MARGIN*LEVERAGE*wallet,room,symbol_room,
                           risk_room*px/(px-p["stop"]))
             if qty_value<=0:continue
@@ -139,7 +142,7 @@ def simulate(prices,daily,start,end,mode,slots,risk_budget,add_enabled=True):
             # Stop distance may widen on 4h gap. Size from actual next-bar open.
             used=sum(q["qty"]*prices[k]["open"][i] for k,q in positions.items())
             room=max(0.,slots*(ENTRY_MARGIN+ADD_MARGIN)*LEVERAGE*wallet-used)
-            current_risk=total_stop_risk(prices,i)
+            current_risk=open_stop_risk(positions,prices,i)
             budget=min(risk_budget*wallet,risk_total*wallet-current_risk)
             if budget<=0:
                 rejected_risk+=1;continue
