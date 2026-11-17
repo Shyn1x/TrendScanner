@@ -79,7 +79,7 @@ def simulate(prices,daily,start,end,mode,slots,risk_budget,add_enabled=True):
     liquidated_at=None
 
     def total_stop_risk(mark,i):
-        return sum(max(0.,p["qty"]*(mark[s][i]-p["stop"]))
+        return sum(max(0.,p["qty"]*(mark[s]["open"][i]-p["stop"]))
                    for s,p in positions.items())
 
     for i in range(start,end):
