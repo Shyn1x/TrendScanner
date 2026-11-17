@@ -1,0 +1,6079 @@
+{
+  "cost_model": "cost bps/side is total fee plus assumed proportional slippage; not a full order-book execution simulation",
+  "ranked_candidates": [
+    "breakout30_slots1_risk0.5_tp3R",
+    "breakout60_slots1_risk1_tp3R",
+    "range_breakout_slots1_risk0.5_tp2R",
+    "pullback_reclaim_slots1_risk1_tp2R",
+    "ema_cross_slots1_risk1_tp2R",
+    "breakout30_slots1_risk1_tp2R",
+    "rsi2_only"
+  ],
+  "run_url": "https://github.com/Shyn1x/TrendScanner/actions/runs/44165509369",
+  "scenarios": {
+    "breakout30_slots1_risk0.5_tp3R__all100__cost16bps": {
+      "later": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": 11.724,
+            "trades": 92,
+            "wins": 37
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 30.969,
+            "trades": 47,
+            "wins": 23
+          }
+        },
+        "funding_usdt": 1.663,
+        "liquidated_proxy": false,
+        "max_dd_pct": 5.893,
+        "net_return_pct": 13.676,
+        "parameters": {
+          "all_in_cost_bps_side": 16,
+          "strategy": "breakout30_slots1_risk0.5_tp3R",
+          "universe": "all100",
+          "universe_size": 100
+        },
+        "selection": {
+          "accepted_breakout": 92,
+          "accepted_rsi": 47,
+          "blocked_capacity": 1704,
+          "blocked_owned": 0,
+          "blocked_risk": 38,
+          "breakout_signals": 1923,
+          "rsi_signals": 249
+        },
+        "total_fees_usdt": 6.666,
+        "trades": 139
+      },
+      "train": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": 12.76,
+            "trades": 111,
+            "wins": 51
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 24.908,
+            "trades": 53,
+            "wins": 24
+          }
+        },
+        "funding_usdt": 2.383,
+        "liquidated_proxy": false,
+        "max_dd_pct": 10.892,
+        "net_return_pct": 11.762,
+        "parameters": {
+          "all_in_cost_bps_side": 16,
+          "strategy": "breakout30_slots1_risk0.5_tp3R",
+          "universe": "all100",
+          "universe_size": 100
+        },
+        "selection": {
+          "accepted_breakout": 111,
+          "accepted_rsi": 53,
+          "blocked_capacity": 2144,
+          "blocked_owned": 0,
+          "blocked_risk": 52,
+          "breakout_signals": 2193,
+          "rsi_signals": 170
+        },
+        "total_fees_usdt": 10.197,
+        "trades": 164
+      }
+    },
+    "breakout30_slots1_risk0.5_tp3R__all100__cost32bps": {
+      "later": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": 7.492,
+            "trades": 90,
+            "wins": 35
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 28.421,
+            "trades": 47,
+            "wins": 21
+          }
+        },
+        "funding_usdt": 1.592,
+        "liquidated_proxy": false,
+        "max_dd_pct": 6.18,
+        "net_return_pct": 11.44,
+        "parameters": {
+          "all_in_cost_bps_side": 32,
+          "strategy": "breakout30_slots1_risk0.5_tp3R",
+          "universe": "all100",
+          "universe_size": 100
+        },
+        "selection": {
+          "accepted_breakout": 90,
+          "accepted_rsi": 47,
+          "blocked_capacity": 1702,
+          "blocked_owned": 0,
+          "blocked_risk": 35,
+          "breakout_signals": 1926,
+          "rsi_signals": 248
+        },
+        "total_fees_usdt": 12.567,
+        "trades": 137
+      },
+      "train": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": 5.685,
+            "trades": 111,
+            "wins": 49
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 22.974,
+            "trades": 52,
+            "wins": 24
+          }
+        },
+        "funding_usdt": 2.24,
+        "liquidated_proxy": false,
+        "max_dd_pct": 10.62,
+        "net_return_pct": 8.807,
+        "parameters": {
+          "all_in_cost_bps_side": 32,
+          "strategy": "breakout30_slots1_risk0.5_tp3R",
+          "universe": "all100",
+          "universe_size": 100
+        },
+        "selection": {
+          "accepted_breakout": 111,
+          "accepted_rsi": 52,
+          "blocked_capacity": 2146,
+          "blocked_owned": 0,
+          "blocked_risk": 47,
+          "breakout_signals": 2193,
+          "rsi_signals": 166
+        },
+        "total_fees_usdt": 18.682,
+        "trades": 163
+      }
+    },
+    "breakout30_slots1_risk0.5_tp3R__all100__cost48bps": {
+      "later": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": -1.989,
+            "trades": 90,
+            "wins": 32
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 28.028,
+            "trades": 47,
+            "wins": 21
+          }
+        },
+        "funding_usdt": 1.538,
+        "liquidated_proxy": false,
+        "max_dd_pct": 7.913,
+        "net_return_pct": 8.167,
+        "parameters": {
+          "all_in_cost_bps_side": 48,
+          "strategy": "breakout30_slots1_risk0.5_tp3R",
+          "universe": "all100",
+          "universe_size": 100
+        },
+        "selection": {
+          "accepted_breakout": 90,
+          "accepted_rsi": 47,
+          "blocked_capacity": 1702,
+          "blocked_owned": 0,
+          "blocked_risk": 35,
+          "breakout_signals": 1926,
+          "rsi_signals": 247
+        },
+        "total_fees_usdt": 17.984,
+        "trades": 137
+      },
+      "train": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": -0.608,
+            "trades": 111,
+            "wins": 47
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 27.554,
+            "trades": 53,
+            "wins": 23
+          }
+        },
+        "funding_usdt": 2.143,
+        "liquidated_proxy": false,
+        "max_dd_pct": 12.167,
+        "net_return_pct": 8.268,
+        "parameters": {
+          "all_in_cost_bps_side": 48,
+          "strategy": "breakout30_slots1_risk0.5_tp3R",
+          "universe": "all100",
+          "universe_size": 100
+        },
+        "selection": {
+          "accepted_breakout": 111,
+          "accepted_rsi": 53,
+          "blocked_capacity": 2144,
+          "blocked_owned": 0,
+          "blocked_risk": 42,
+          "breakout_signals": 2189,
+          "rsi_signals": 164
+        },
+        "total_fees_usdt": 26.692,
+        "trades": 164
+      }
+    },
+    "breakout30_slots1_risk0.5_tp3R__original12__cost16bps": {
+      "later": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": -3.788,
+            "trades": 43,
+            "wins": 19
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 0.51,
+            "trades": 12,
+            "wins": 5
+          }
+        },
+        "funding_usdt": 0.877,
+        "liquidated_proxy": false,
+        "max_dd_pct": 9.24,
+        "net_return_pct": -1.385,
+        "parameters": {
+          "all_in_cost_bps_side": 16,
+          "strategy": "breakout30_slots1_risk0.5_tp3R",
+          "universe": "original12",
+          "universe_size": 12
+        },
+        "selection": {
+          "accepted_breakout": 43,
+          "accepted_rsi": 12,
+          "blocked_capacity": 273,
+          "blocked_owned": 0,
+          "blocked_risk": 6,
+          "breakout_signals": 317,
+          "rsi_signals": 36
+        },
+        "total_fees_usdt": 3.288,
+        "trades": 55
+      },
+      "train": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": 21.217,
+            "trades": 80,
+            "wins": 41
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 25.307,
+            "trades": 32,
+            "wins": 14
+          }
+        },
+        "funding_usdt": 1.281,
+        "liquidated_proxy": false,
+        "max_dd_pct": 7.397,
+        "net_return_pct": 15.081,
+        "parameters": {
+          "all_in_cost_bps_side": 16,
+          "strategy": "breakout30_slots1_risk0.5_tp3R",
+          "universe": "original12",
+          "universe_size": 12
+        },
+        "selection": {
+          "accepted_breakout": 80,
+          "accepted_rsi": 32,
+          "blocked_capacity": 574,
+          "blocked_owned": 0,
+          "blocked_risk": 10,
+          "breakout_signals": 651,
+          "rsi_signals": 47
+        },
+        "total_fees_usdt": 5.425,
+        "trades": 112
+      }
+    },
+    "breakout30_slots1_risk0.5_tp3R__original12__cost32bps": {
+      "later": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": -6.125,
+            "trades": 43,
+            "wins": 18
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": -0.166,
+            "trades": 12,
+            "wins": 4
+          }
+        },
+        "funding_usdt": 0.847,
+        "liquidated_proxy": false,
+        "max_dd_pct": 9.528,
+        "net_return_pct": -2.379,
+        "parameters": {
+          "all_in_cost_bps_side": 32,
+          "strategy": "breakout30_slots1_risk0.5_tp3R",
+          "universe": "original12",
+          "universe_size": 12
+        },
+        "selection": {
+          "accepted_breakout": 43,
+          "accepted_rsi": 12,
+          "blocked_capacity": 273,
+          "blocked_owned": 0,
+          "blocked_risk": 6,
+          "breakout_signals": 317,
+          "rsi_signals": 36
+        },
+        "total_fees_usdt": 6.313,
+        "trades": 55
+      },
+      "train": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": 16.066,
+            "trades": 79,
+            "wins": 40
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 19.308,
+            "trades": 33,
+            "wins": 14
+          }
+        },
+        "funding_usdt": 1.233,
+        "liquidated_proxy": false,
+        "max_dd_pct": 7.766,
+        "net_return_pct": 11.38,
+        "parameters": {
+          "all_in_cost_bps_side": 32,
+          "strategy": "breakout30_slots1_risk0.5_tp3R",
+          "universe": "original12",
+          "universe_size": 12
+        },
+        "selection": {
+          "accepted_breakout": 79,
+          "accepted_rsi": 33,
+          "blocked_capacity": 584,
+          "blocked_owned": 0,
+          "blocked_risk": 6,
+          "breakout_signals": 658,
+          "rsi_signals": 46
+        },
+        "total_fees_usdt": 10.502,
+        "trades": 112
+      }
+    },
+    "breakout30_slots1_risk0.5_tp3R__original12__cost48bps": {
+      "later": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": -8.258,
+            "trades": 43,
+            "wins": 16
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": -0.811,
+            "trades": 12,
+            "wins": 4
+          }
+        },
+        "funding_usdt": 0.819,
+        "liquidated_proxy": false,
+        "max_dd_pct": 9.793,
+        "net_return_pct": -3.296,
+        "parameters": {
+          "all_in_cost_bps_side": 48,
+          "strategy": "breakout30_slots1_risk0.5_tp3R",
+          "universe": "original12",
+          "universe_size": 12
+        },
+        "selection": {
+          "accepted_breakout": 43,
+          "accepted_rsi": 12,
+          "blocked_capacity": 272,
+          "blocked_owned": 0,
+          "blocked_risk": 5,
+          "breakout_signals": 317,
+          "rsi_signals": 36
+        },
+        "total_fees_usdt": 9.107,
+        "trades": 55
+      },
+      "train": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": 12.952,
+            "trades": 80,
+            "wins": 39
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 21.867,
+            "trades": 32,
+            "wins": 13
+          }
+        },
+        "funding_usdt": 1.192,
+        "liquidated_proxy": false,
+        "max_dd_pct": 7.641,
+        "net_return_pct": 11.209,
+        "parameters": {
+          "all_in_cost_bps_side": 48,
+          "strategy": "breakout30_slots1_risk0.5_tp3R",
+          "universe": "original12",
+          "universe_size": 12
+        },
+        "selection": {
+          "accepted_breakout": 80,
+          "accepted_rsi": 32,
+          "blocked_capacity": 576,
+          "blocked_owned": 0,
+          "blocked_risk": 12,
+          "breakout_signals": 654,
+          "rsi_signals": 47
+        },
+        "total_fees_usdt": 15.312,
+        "trades": 112
+      }
+    },
+    "breakout30_slots1_risk0.5_tp3R__other_even__cost16bps": {
+      "later": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": 8.601,
+            "trades": 77,
+            "wins": 33
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 29.475,
+            "trades": 29,
+            "wins": 14
+          }
+        },
+        "funding_usdt": 1.534,
+        "liquidated_proxy": false,
+        "max_dd_pct": 3.845,
+        "net_return_pct": 12.181,
+        "parameters": {
+          "all_in_cost_bps_side": 16,
+          "strategy": "breakout30_slots1_risk0.5_tp3R",
+          "universe": "other_even",
+          "universe_size": 44
+        },
+        "selection": {
+          "accepted_breakout": 77,
+          "accepted_rsi": 29,
+          "blocked_capacity": 568,
+          "blocked_owned": 0,
+          "blocked_risk": 13,
+          "breakout_signals": 679,
+          "rsi_signals": 90
+        },
+        "total_fees_usdt": 6.908,
+        "trades": 106
+      },
+      "train": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": 1.948,
+            "trades": 90,
+            "wins": 36
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": -3.978,
+            "trades": 27,
+            "wins": 11
+          }
+        },
+        "funding_usdt": 1.627,
+        "liquidated_proxy": false,
+        "max_dd_pct": 9.809,
+        "net_return_pct": -1.219,
+        "parameters": {
+          "all_in_cost_bps_side": 16,
+          "strategy": "breakout30_slots1_risk0.5_tp3R",
+          "universe": "other_even",
+          "universe_size": 44
+        },
+        "selection": {
+          "accepted_breakout": 90,
+          "accepted_rsi": 27,
+          "blocked_capacity": 536,
+          "blocked_owned": 0,
+          "blocked_risk": 10,
+          "breakout_signals": 619,
+          "rsi_signals": 45
+        },
+        "total_fees_usdt": 8.266,
+        "trades": 117
+      }
+    },
+    "breakout30_slots1_risk0.5_tp3R__other_even__cost32bps": {
+      "later": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": 5.998,
+            "trades": 73,
+            "wins": 34
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 28.514,
+            "trades": 30,
+            "wins": 15
+          }
+        },
+        "funding_usdt": 1.389,
+        "liquidated_proxy": false,
+        "max_dd_pct": 4.036,
+        "net_return_pct": 11.041,
+        "parameters": {
+          "all_in_cost_bps_side": 32,
+          "strategy": "breakout30_slots1_risk0.5_tp3R",
+          "universe": "other_even",
+          "universe_size": 44
+        },
+        "selection": {
+          "accepted_breakout": 73,
+          "accepted_rsi": 30,
+          "blocked_capacity": 572,
+          "blocked_owned": 0,
+          "blocked_risk": 10,
+          "breakout_signals": 673,
+          "rsi_signals": 88
+        },
+        "total_fees_usdt": 11.685,
+        "trades": 103
+      },
+      "train": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": -4.116,
+            "trades": 90,
+            "wins": 34
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 0.921,
+            "trades": 28,
+            "wins": 12
+          }
+        },
+        "funding_usdt": 1.644,
+        "liquidated_proxy": false,
+        "max_dd_pct": 9.371,
+        "net_return_pct": -1.613,
+        "parameters": {
+          "all_in_cost_bps_side": 32,
+          "strategy": "breakout30_slots1_risk0.5_tp3R",
+          "universe": "other_even",
+          "universe_size": 44
+        },
+        "selection": {
+          "accepted_breakout": 90,
+          "accepted_rsi": 28,
+          "blocked_capacity": 528,
+          "blocked_owned": 0,
+          "blocked_risk": 13,
+          "breakout_signals": 612,
+          "rsi_signals": 48
+        },
+        "total_fees_usdt": 15.57,
+        "trades": 118
+      }
+    },
+    "breakout30_slots1_risk0.5_tp3R__other_even__cost48bps": {
+      "later": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": -5.196,
+            "trades": 76,
+            "wins": 31
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 29.867,
+            "trades": 29,
+            "wins": 15
+          }
+        },
+        "funding_usdt": 1.335,
+        "liquidated_proxy": false,
+        "max_dd_pct": 3.729,
+        "net_return_pct": 7.779,
+        "parameters": {
+          "all_in_cost_bps_side": 48,
+          "strategy": "breakout30_slots1_risk0.5_tp3R",
+          "universe": "other_even",
+          "universe_size": 44
+        },
+        "selection": {
+          "accepted_breakout": 76,
+          "accepted_rsi": 29,
+          "blocked_capacity": 573,
+          "blocked_owned": 0,
+          "blocked_risk": 9,
+          "breakout_signals": 673,
+          "rsi_signals": 86
+        },
+        "total_fees_usdt": 17.214,
+        "trades": 105
+      },
+      "train": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": -17.95,
+            "trades": 89,
+            "wins": 32
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": -9.826,
+            "trades": 26,
+            "wins": 10
+          }
+        },
+        "funding_usdt": 1.457,
+        "liquidated_proxy": false,
+        "max_dd_pct": 13.722,
+        "net_return_pct": -9.744,
+        "parameters": {
+          "all_in_cost_bps_side": 48,
+          "strategy": "breakout30_slots1_risk0.5_tp3R",
+          "universe": "other_even",
+          "universe_size": 44
+        },
+        "selection": {
+          "accepted_breakout": 89,
+          "accepted_rsi": 26,
+          "blocked_capacity": 544,
+          "blocked_owned": 0,
+          "blocked_risk": 13,
+          "breakout_signals": 625,
+          "rsi_signals": 48
+        },
+        "total_fees_usdt": 20.95,
+        "trades": 115
+      }
+    },
+    "breakout30_slots1_risk0.5_tp3R__other_odd__cost16bps": {
+      "later": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": -1.121,
+            "trades": 80,
+            "wins": 29
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": -1.278,
+            "trades": 38,
+            "wins": 15
+          }
+        },
+        "funding_usdt": 0.932,
+        "liquidated_proxy": false,
+        "max_dd_pct": 8.031,
+        "net_return_pct": -1.111,
+        "parameters": {
+          "all_in_cost_bps_side": 16,
+          "strategy": "breakout30_slots1_risk0.5_tp3R",
+          "universe": "other_odd",
+          "universe_size": 44
+        },
+        "selection": {
+          "accepted_breakout": 80,
+          "accepted_rsi": 38,
+          "blocked_capacity": 571,
+          "blocked_owned": 0,
+          "blocked_risk": 10,
+          "breakout_signals": 740,
+          "rsi_signals": 79
+        },
+        "total_fees_usdt": 3.608,
+        "trades": 118
+      },
+      "train": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": -14.636,
+            "trades": 82,
+            "wins": 22
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": -1.301,
+            "trades": 26,
+            "wins": 11
+          }
+        },
+        "funding_usdt": 0.892,
+        "liquidated_proxy": false,
+        "max_dd_pct": 8.253,
+        "net_return_pct": -5.61,
+        "parameters": {
+          "all_in_cost_bps_side": 16,
+          "strategy": "breakout30_slots1_risk0.5_tp3R",
+          "universe": "other_odd",
+          "universe_size": 44
+        },
+        "selection": {
+          "accepted_breakout": 82,
+          "accepted_rsi": 26,
+          "blocked_capacity": 622,
+          "blocked_owned": 0,
+          "blocked_risk": 13,
+          "breakout_signals": 696,
+          "rsi_signals": 57
+        },
+        "total_fees_usdt": 4.063,
+        "trades": 108
+      }
+    },
+    "breakout30_slots1_risk0.5_tp3R__other_odd__cost32bps": {
+      "later": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": -7.917,
+            "trades": 79,
+            "wins": 27
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": -6.308,
+            "trades": 38,
+            "wins": 14
+          }
+        },
+        "funding_usdt": 0.917,
+        "liquidated_proxy": false,
+        "max_dd_pct": 8.341,
+        "net_return_pct": -5.047,
+        "parameters": {
+          "all_in_cost_bps_side": 32,
+          "strategy": "breakout30_slots1_risk0.5_tp3R",
+          "universe": "other_odd",
+          "universe_size": 44
+        },
+        "selection": {
+          "accepted_breakout": 79,
+          "accepted_rsi": 38,
+          "blocked_capacity": 627,
+          "blocked_owned": 0,
+          "blocked_risk": 13,
+          "breakout_signals": 740,
+          "rsi_signals": 87
+        },
+        "total_fees_usdt": 6.957,
+        "trades": 117
+      },
+      "train": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": -15.468,
+            "trades": 79,
+            "wins": 21
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": -2.285,
+            "trades": 27,
+            "wins": 11
+          }
+        },
+        "funding_usdt": 0.897,
+        "liquidated_proxy": false,
+        "max_dd_pct": 8.108,
+        "net_return_pct": -6.217,
+        "parameters": {
+          "all_in_cost_bps_side": 32,
+          "strategy": "breakout30_slots1_risk0.5_tp3R",
+          "universe": "other_odd",
+          "universe_size": 44
+        },
+        "selection": {
+          "accepted_breakout": 79,
+          "accepted_rsi": 27,
+          "blocked_capacity": 625,
+          "blocked_owned": 0,
+          "blocked_risk": 8,
+          "breakout_signals": 696,
+          "rsi_signals": 55
+        },
+        "total_fees_usdt": 7.789,
+        "trades": 106
+      }
+    },
+    "breakout30_slots1_risk0.5_tp3R__other_odd__cost48bps": {
+      "later": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": -8.94,
+            "trades": 80,
+            "wins": 25
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": -11.253,
+            "trades": 37,
+            "wins": 13
+          }
+        },
+        "funding_usdt": 0.872,
+        "liquidated_proxy": false,
+        "max_dd_pct": 12.506,
+        "net_return_pct": -7.021,
+        "parameters": {
+          "all_in_cost_bps_side": 48,
+          "strategy": "breakout30_slots1_risk0.5_tp3R",
+          "universe": "other_odd",
+          "universe_size": 44
+        },
+        "selection": {
+          "accepted_breakout": 80,
+          "accepted_rsi": 37,
+          "blocked_capacity": 567,
+          "blocked_owned": 0,
+          "blocked_risk": 11,
+          "breakout_signals": 742,
+          "rsi_signals": 79
+        },
+        "total_fees_usdt": 10.014,
+        "trades": 117
+      },
+      "train": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": -17.672,
+            "trades": 79,
+            "wins": 19
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": -2.533,
+            "trades": 26,
+            "wins": 10
+          }
+        },
+        "funding_usdt": 0.862,
+        "liquidated_proxy": false,
+        "max_dd_pct": 8.411,
+        "net_return_pct": -7.022,
+        "parameters": {
+          "all_in_cost_bps_side": 48,
+          "strategy": "breakout30_slots1_risk0.5_tp3R",
+          "universe": "other_odd",
+          "universe_size": 44
+        },
+        "selection": {
+          "accepted_breakout": 79,
+          "accepted_rsi": 26,
+          "blocked_capacity": 629,
+          "blocked_owned": 0,
+          "blocked_risk": 8,
+          "breakout_signals": 697,
+          "rsi_signals": 56
+        },
+        "total_fees_usdt": 11.278,
+        "trades": 105
+      }
+    },
+    "breakout30_slots1_risk1_tp2R__all100__cost16bps": {
+      "later": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": 44.496,
+            "trades": 106,
+            "wins": 50
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 42.806,
+            "trades": 45,
+            "wins": 23
+          }
+        },
+        "funding_usdt": 2.285,
+        "liquidated_proxy": false,
+        "max_dd_pct": 7.716,
+        "net_return_pct": 28.339,
+        "parameters": {
+          "all_in_cost_bps_side": 16,
+          "strategy": "breakout30_slots1_risk1_tp2R",
+          "universe": "all100",
+          "universe_size": 100
+        },
+        "selection": {
+          "accepted_breakout": 106,
+          "accepted_rsi": 45,
+          "blocked_capacity": 1484,
+          "blocked_owned": 0,
+          "blocked_risk": 260,
+          "breakout_signals": 1917,
+          "rsi_signals": 257
+        },
+        "total_fees_usdt": 12.133,
+        "trades": 151
+      },
+      "train": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": 13.961,
+            "trades": 106,
+            "wins": 50
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 32.678,
+            "trades": 55,
+            "wins": 25
+          }
+        },
+        "funding_usdt": 3.325,
+        "liquidated_proxy": false,
+        "max_dd_pct": 12.59,
+        "net_return_pct": 14.438,
+        "parameters": {
+          "all_in_cost_bps_side": 16,
+          "strategy": "breakout30_slots1_risk1_tp2R",
+          "universe": "all100",
+          "universe_size": 100
+        },
+        "selection": {
+          "accepted_breakout": 106,
+          "accepted_rsi": 55,
+          "blocked_capacity": 1845,
+          "blocked_owned": 0,
+          "blocked_risk": 308,
+          "breakout_signals": 2191,
+          "rsi_signals": 164
+        },
+        "total_fees_usdt": 16.577,
+        "trades": 161
+      }
+    },
+    "breakout30_slots1_risk1_tp2R__all100__cost32bps": {
+      "later": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": 26.752,
+            "trades": 107,
+            "wins": 48
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 27.176,
+            "trades": 44,
+            "wins": 20
+          }
+        },
+        "funding_usdt": 2.279,
+        "liquidated_proxy": false,
+        "max_dd_pct": 7.235,
+        "net_return_pct": 17.216,
+        "parameters": {
+          "all_in_cost_bps_side": 32,
+          "strategy": "breakout30_slots1_risk1_tp2R",
+          "universe": "all100",
+          "universe_size": 100
+        },
+        "selection": {
+          "accepted_breakout": 107,
+          "accepted_rsi": 44,
+          "blocked_capacity": 1528,
+          "blocked_owned": 0,
+          "blocked_risk": 263,
+          "breakout_signals": 1934,
+          "rsi_signals": 252
+        },
+        "total_fees_usdt": 24.023,
+        "trades": 151
+      },
+      "train": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": 4.831,
+            "trades": 105,
+            "wins": 47
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 32.393,
+            "trades": 55,
+            "wins": 26
+          }
+        },
+        "funding_usdt": 3.163,
+        "liquidated_proxy": false,
+        "max_dd_pct": 13.498,
+        "net_return_pct": 11.354,
+        "parameters": {
+          "all_in_cost_bps_side": 32,
+          "strategy": "breakout30_slots1_risk1_tp2R",
+          "universe": "all100",
+          "universe_size": 100
+        },
+        "selection": {
+          "accepted_breakout": 105,
+          "accepted_rsi": 55,
+          "blocked_capacity": 1835,
+          "blocked_owned": 0,
+          "blocked_risk": 309,
+          "breakout_signals": 2183,
+          "rsi_signals": 164
+        },
+        "total_fees_usdt": 31.094,
+        "trades": 160
+      }
+    },
+    "breakout30_slots1_risk1_tp2R__all100__cost48bps": {
+      "later": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": 28.095,
+            "trades": 93,
+            "wins": 43
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 27.14,
+            "trades": 45,
+            "wins": 22
+          }
+        },
+        "funding_usdt": 2.129,
+        "liquidated_proxy": false,
+        "max_dd_pct": 8.287,
+        "net_return_pct": 17.702,
+        "parameters": {
+          "all_in_cost_bps_side": 48,
+          "strategy": "breakout30_slots1_risk1_tp2R",
+          "universe": "all100",
+          "universe_size": 100
+        },
+        "selection": {
+          "accepted_breakout": 93,
+          "accepted_rsi": 45,
+          "blocked_capacity": 1440,
+          "blocked_owned": 0,
+          "blocked_risk": 256,
+          "breakout_signals": 1928,
+          "rsi_signals": 250
+        },
+        "total_fees_usdt": 30.147,
+        "trades": 138
+      },
+      "train": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": -19.971,
+            "trades": 111,
+            "wins": 46
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 25.267,
+            "trades": 54,
+            "wins": 23
+          }
+        },
+        "funding_usdt": 2.964,
+        "liquidated_proxy": false,
+        "max_dd_pct": 13.392,
+        "net_return_pct": 0.777,
+        "parameters": {
+          "all_in_cost_bps_side": 48,
+          "strategy": "breakout30_slots1_risk1_tp2R",
+          "universe": "all100",
+          "universe_size": 100
+        },
+        "selection": {
+          "accepted_breakout": 111,
+          "accepted_rsi": 54,
+          "blocked_capacity": 1821,
+          "blocked_owned": 0,
+          "blocked_risk": 315,
+          "breakout_signals": 2196,
+          "rsi_signals": 164
+        },
+        "total_fees_usdt": 45.104,
+        "trades": 165
+      }
+    },
+    "breakout30_slots1_risk1_tp2R__original12__cost16bps": {
+      "later": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": -8.166,
+            "trades": 45,
+            "wins": 20
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 0.683,
+            "trades": 12,
+            "wins": 5
+          }
+        },
+        "funding_usdt": 1.181,
+        "liquidated_proxy": false,
+        "max_dd_pct": 12.585,
+        "net_return_pct": -2.888,
+        "parameters": {
+          "all_in_cost_bps_side": 16,
+          "strategy": "breakout30_slots1_risk1_tp2R",
+          "universe": "original12",
+          "universe_size": 12
+        },
+        "selection": {
+          "accepted_breakout": 45,
+          "accepted_rsi": 12,
+          "blocked_capacity": 233,
+          "blocked_owned": 0,
+          "blocked_risk": 47,
+          "breakout_signals": 314,
+          "rsi_signals": 36
+        },
+        "total_fees_usdt": 5.895,
+        "trades": 57
+      },
+      "train": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": -4.351,
+            "trades": 83,
+            "wins": 38
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 18.521,
+            "trades": 32,
+            "wins": 13
+          }
+        },
+        "funding_usdt": 1.636,
+        "liquidated_proxy": false,
+        "max_dd_pct": 10.186,
+        "net_return_pct": 4.178,
+        "parameters": {
+          "all_in_cost_bps_side": 16,
+          "strategy": "breakout30_slots1_risk1_tp2R",
+          "universe": "original12",
+          "universe_size": 12
+        },
+        "selection": {
+          "accepted_breakout": 83,
+          "accepted_rsi": 32,
+          "blocked_capacity": 468,
+          "blocked_owned": 0,
+          "blocked_risk": 122,
+          "breakout_signals": 666,
+          "rsi_signals": 45
+        },
+        "total_fees_usdt": 8.885,
+        "trades": 115
+      }
+    },
+    "breakout30_slots1_risk1_tp2R__original12__cost32bps": {
+      "later": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": -9.176,
+            "trades": 44,
+            "wins": 20
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": -0.403,
+            "trades": 12,
+            "wins": 4
+          }
+        },
+        "funding_usdt": 1.138,
+        "liquidated_proxy": false,
+        "max_dd_pct": 13.562,
+        "net_return_pct": -3.572,
+        "parameters": {
+          "all_in_cost_bps_side": 32,
+          "strategy": "breakout30_slots1_risk1_tp2R",
+          "universe": "original12",
+          "universe_size": 12
+        },
+        "selection": {
+          "accepted_breakout": 44,
+          "accepted_rsi": 12,
+          "blocked_capacity": 236,
+          "blocked_owned": 0,
+          "blocked_risk": 45,
+          "breakout_signals": 319,
+          "rsi_signals": 37
+        },
+        "total_fees_usdt": 10.903,
+        "trades": 56
+      },
+      "train": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": -9.396,
+            "trades": 84,
+            "wins": 35
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 19.606,
+            "trades": 33,
+            "wins": 14
+          }
+        },
+        "funding_usdt": 1.613,
+        "liquidated_proxy": false,
+        "max_dd_pct": 10.635,
+        "net_return_pct": 2.866,
+        "parameters": {
+          "all_in_cost_bps_side": 32,
+          "strategy": "breakout30_slots1_risk1_tp2R",
+          "universe": "original12",
+          "universe_size": 12
+        },
+        "selection": {
+          "accepted_breakout": 84,
+          "accepted_rsi": 33,
+          "blocked_capacity": 463,
+          "blocked_owned": 0,
+          "blocked_risk": 120,
+          "breakout_signals": 660,
+          "rsi_signals": 46
+        },
+        "total_fees_usdt": 17.286,
+        "trades": 117
+      }
+    },
+    "breakout30_slots1_risk1_tp2R__original12__cost48bps": {
+      "later": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": 0.383,
+            "trades": 42,
+            "wins": 20
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": -0.213,
+            "trades": 12,
+            "wins": 4
+          }
+        },
+        "funding_usdt": 1.132,
+        "liquidated_proxy": false,
+        "max_dd_pct": 10.873,
+        "net_return_pct": -0.32,
+        "parameters": {
+          "all_in_cost_bps_side": 48,
+          "strategy": "breakout30_slots1_risk1_tp2R",
+          "universe": "original12",
+          "universe_size": 12
+        },
+        "selection": {
+          "accepted_breakout": 42,
+          "accepted_rsi": 12,
+          "blocked_capacity": 241,
+          "blocked_owned": 0,
+          "blocked_risk": 35,
+          "breakout_signals": 317,
+          "rsi_signals": 36
+        },
+        "total_fees_usdt": 15.751,
+        "trades": 54
+      },
+      "train": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": -14.558,
+            "trades": 82,
+            "wins": 38
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 16.268,
+            "trades": 30,
+            "wins": 11
+          }
+        },
+        "funding_usdt": 1.506,
+        "liquidated_proxy": false,
+        "max_dd_pct": 12.344,
+        "net_return_pct": 0.068,
+        "parameters": {
+          "all_in_cost_bps_side": 48,
+          "strategy": "breakout30_slots1_risk1_tp2R",
+          "universe": "original12",
+          "universe_size": 12
+        },
+        "selection": {
+          "accepted_breakout": 82,
+          "accepted_rsi": 30,
+          "blocked_capacity": 479,
+          "blocked_owned": 0,
+          "blocked_risk": 122,
+          "breakout_signals": 672,
+          "rsi_signals": 45
+        },
+        "total_fees_usdt": 24.456,
+        "trades": 112
+      }
+    },
+    "breakout30_slots1_risk1_tp2R__other_even__cost16bps": {
+      "later": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": 13.162,
+            "trades": 80,
+            "wins": 36
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 28.025,
+            "trades": 29,
+            "wins": 14
+          }
+        },
+        "funding_usdt": 2.247,
+        "liquidated_proxy": false,
+        "max_dd_pct": 5.769,
+        "net_return_pct": 12.98,
+        "parameters": {
+          "all_in_cost_bps_side": 16,
+          "strategy": "breakout30_slots1_risk1_tp2R",
+          "universe": "other_even",
+          "universe_size": 44
+        },
+        "selection": {
+          "accepted_breakout": 80,
+          "accepted_rsi": 29,
+          "blocked_capacity": 486,
+          "blocked_owned": 0,
+          "blocked_risk": 60,
+          "breakout_signals": 685,
+          "rsi_signals": 89
+        },
+        "total_fees_usdt": 12.506,
+        "trades": 109
+      },
+      "train": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": 8.179,
+            "trades": 88,
+            "wins": 38
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": -1.582,
+            "trades": 27,
+            "wins": 12
+          }
+        },
+        "funding_usdt": 2.59,
+        "liquidated_proxy": false,
+        "max_dd_pct": 10.286,
+        "net_return_pct": 1.336,
+        "parameters": {
+          "all_in_cost_bps_side": 16,
+          "strategy": "breakout30_slots1_risk1_tp2R",
+          "universe": "other_even",
+          "universe_size": 44
+        },
+        "selection": {
+          "accepted_breakout": 88,
+          "accepted_rsi": 27,
+          "blocked_capacity": 439,
+          "blocked_owned": 0,
+          "blocked_risk": 100,
+          "breakout_signals": 621,
+          "rsi_signals": 45
+        },
+        "total_fees_usdt": 14.21,
+        "trades": 115
+      }
+    },
+    "breakout30_slots1_risk1_tp2R__other_even__cost32bps": {
+      "later": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": -6.096,
+            "trades": 82,
+            "wins": 35
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 30.359,
+            "trades": 30,
+            "wins": 15
+          }
+        },
+        "funding_usdt": 2.111,
+        "liquidated_proxy": false,
+        "max_dd_pct": 5.584,
+        "net_return_pct": 7.384,
+        "parameters": {
+          "all_in_cost_bps_side": 32,
+          "strategy": "breakout30_slots1_risk1_tp2R",
+          "universe": "other_even",
+          "universe_size": 44
+        },
+        "selection": {
+          "accepted_breakout": 82,
+          "accepted_rsi": 30,
+          "blocked_capacity": 493,
+          "blocked_owned": 0,
+          "blocked_risk": 58,
+          "breakout_signals": 678,
+          "rsi_signals": 90
+        },
+        "total_fees_usdt": 23.465,
+        "trades": 112
+      },
+      "train": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": -11.623,
+            "trades": 88,
+            "wins": 36
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": -6.194,
+            "trades": 27,
+            "wins": 11
+          }
+        },
+        "funding_usdt": 2.376,
+        "liquidated_proxy": false,
+        "max_dd_pct": 12.259,
+        "net_return_pct": -6.731,
+        "parameters": {
+          "all_in_cost_bps_side": 32,
+          "strategy": "breakout30_slots1_risk1_tp2R",
+          "universe": "other_even",
+          "universe_size": 44
+        },
+        "selection": {
+          "accepted_breakout": 88,
+          "accepted_rsi": 27,
+          "blocked_capacity": 448,
+          "blocked_owned": 0,
+          "blocked_risk": 94,
+          "breakout_signals": 623,
+          "rsi_signals": 45
+        },
+        "total_fees_usdt": 26.009,
+        "trades": 115
+      }
+    },
+    "breakout30_slots1_risk1_tp2R__other_even__cost48bps": {
+      "later": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": -1.241,
+            "trades": 81,
+            "wins": 35
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 24.836,
+            "trades": 31,
+            "wins": 17
+          }
+        },
+        "funding_usdt": 1.979,
+        "liquidated_proxy": false,
+        "max_dd_pct": 6.251,
+        "net_return_pct": 7.205,
+        "parameters": {
+          "all_in_cost_bps_side": 48,
+          "strategy": "breakout30_slots1_risk1_tp2R",
+          "universe": "other_even",
+          "universe_size": 44
+        },
+        "selection": {
+          "accepted_breakout": 81,
+          "accepted_rsi": 31,
+          "blocked_capacity": 540,
+          "blocked_owned": 0,
+          "blocked_risk": 42,
+          "breakout_signals": 681,
+          "rsi_signals": 92
+        },
+        "total_fees_usdt": 31.949,
+        "trades": 112
+      },
+      "train": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": -14.949,
+            "trades": 88,
+            "wins": 36
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": -4.086,
+            "trades": 28,
+            "wins": 13
+          }
+        },
+        "funding_usdt": 2.164,
+        "liquidated_proxy": false,
+        "max_dd_pct": 12.195,
+        "net_return_pct": -7.066,
+        "parameters": {
+          "all_in_cost_bps_side": 48,
+          "strategy": "breakout30_slots1_risk1_tp2R",
+          "universe": "other_even",
+          "universe_size": 44
+        },
+        "selection": {
+          "accepted_breakout": 88,
+          "accepted_rsi": 28,
+          "blocked_capacity": 442,
+          "blocked_owned": 0,
+          "blocked_risk": 95,
+          "breakout_signals": 620,
+          "rsi_signals": 47
+        },
+        "total_fees_usdt": 35.842,
+        "trades": 116
+      }
+    },
+    "breakout30_slots1_risk1_tp2R__other_odd__cost16bps": {
+      "later": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": -9.611,
+            "trades": 82,
+            "wins": 31
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": -4.249,
+            "trades": 37,
+            "wins": 15
+          }
+        },
+        "funding_usdt": 1.185,
+        "liquidated_proxy": false,
+        "max_dd_pct": 13.142,
+        "net_return_pct": -5.015,
+        "parameters": {
+          "all_in_cost_bps_side": 16,
+          "strategy": "breakout30_slots1_risk1_tp2R",
+          "universe": "other_odd",
+          "universe_size": 44
+        },
+        "selection": {
+          "accepted_breakout": 82,
+          "accepted_rsi": 37,
+          "blocked_capacity": 517,
+          "blocked_owned": 0,
+          "blocked_risk": 91,
+          "breakout_signals": 735,
+          "rsi_signals": 87
+        },
+        "total_fees_usdt": 6.003,
+        "trades": 119
+      },
+      "train": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": -33.496,
+            "trades": 81,
+            "wins": 23
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": -1.834,
+            "trades": 27,
+            "wins": 10
+          }
+        },
+        "funding_usdt": 1.272,
+        "liquidated_proxy": false,
+        "max_dd_pct": 13.632,
+        "net_return_pct": -12.2,
+        "parameters": {
+          "all_in_cost_bps_side": 16,
+          "strategy": "breakout30_slots1_risk1_tp2R",
+          "universe": "other_odd",
+          "universe_size": 44
+        },
+        "selection": {
+          "accepted_breakout": 81,
+          "accepted_rsi": 27,
+          "blocked_capacity": 530,
+          "blocked_owned": 0,
+          "blocked_risk": 103,
+          "breakout_signals": 708,
+          "rsi_signals": 54
+        },
+        "total_fees_usdt": 6.76,
+        "trades": 108
+      }
+    },
+    "breakout30_slots1_risk1_tp2R__other_odd__cost32bps": {
+      "later": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": -26.232,
+            "trades": 84,
+            "wins": 30
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": -8.03,
+            "trades": 37,
+            "wins": 13
+          }
+        },
+        "funding_usdt": 1.12,
+        "liquidated_proxy": false,
+        "max_dd_pct": 15.468,
+        "net_return_pct": -11.794,
+        "parameters": {
+          "all_in_cost_bps_side": 32,
+          "strategy": "breakout30_slots1_risk1_tp2R",
+          "universe": "other_odd",
+          "universe_size": 44
+        },
+        "selection": {
+          "accepted_breakout": 84,
+          "accepted_rsi": 37,
+          "blocked_capacity": 507,
+          "blocked_owned": 0,
+          "blocked_risk": 96,
+          "breakout_signals": 738,
+          "rsi_signals": 87
+        },
+        "total_fees_usdt": 11.794,
+        "trades": 121
+      },
+      "train": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": -9.398,
+            "trades": 80,
+            "wins": 28
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": -2.421,
+            "trades": 26,
+            "wins": 10
+          }
+        },
+        "funding_usdt": 1.294,
+        "liquidated_proxy": false,
+        "max_dd_pct": 10.386,
+        "net_return_pct": -4.371,
+        "parameters": {
+          "all_in_cost_bps_side": 32,
+          "strategy": "breakout30_slots1_risk1_tp2R",
+          "universe": "other_odd",
+          "universe_size": 44
+        },
+        "selection": {
+          "accepted_breakout": 80,
+          "accepted_rsi": 26,
+          "blocked_capacity": 531,
+          "blocked_owned": 0,
+          "blocked_risk": 97,
+          "breakout_signals": 701,
+          "rsi_signals": 54
+        },
+        "total_fees_usdt": 14.076,
+        "trades": 106
+      }
+    },
+    "breakout30_slots1_risk1_tp2R__other_odd__cost48bps": {
+      "later": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": -28.806,
+            "trades": 85,
+            "wins": 28
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 3.225,
+            "trades": 37,
+            "wins": 15
+          }
+        },
+        "funding_usdt": 1.12,
+        "liquidated_proxy": false,
+        "max_dd_pct": 15.422,
+        "net_return_pct": -8.9,
+        "parameters": {
+          "all_in_cost_bps_side": 48,
+          "strategy": "breakout30_slots1_risk1_tp2R",
+          "universe": "other_odd",
+          "universe_size": 44
+        },
+        "selection": {
+          "accepted_breakout": 85,
+          "accepted_rsi": 37,
+          "blocked_capacity": 498,
+          "blocked_owned": 0,
+          "blocked_risk": 99,
+          "breakout_signals": 738,
+          "rsi_signals": 86
+        },
+        "total_fees_usdt": 17.529,
+        "trades": 122
+      },
+      "train": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": -14.961,
+            "trades": 79,
+            "wins": 26
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": -3.287,
+            "trades": 27,
+            "wins": 9
+          }
+        },
+        "funding_usdt": 1.283,
+        "liquidated_proxy": false,
+        "max_dd_pct": 12.073,
+        "net_return_pct": -6.51,
+        "parameters": {
+          "all_in_cost_bps_side": 48,
+          "strategy": "breakout30_slots1_risk1_tp2R",
+          "universe": "other_odd",
+          "universe_size": 44
+        },
+        "selection": {
+          "accepted_breakout": 79,
+          "accepted_rsi": 27,
+          "blocked_capacity": 538,
+          "blocked_owned": 0,
+          "blocked_risk": 92,
+          "breakout_signals": 702,
+          "rsi_signals": 55
+        },
+        "total_fees_usdt": 20.377,
+        "trades": 106
+      }
+    },
+    "breakout60_slots1_risk1_tp3R__all100__cost16bps": {
+      "later": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": 14.391,
+            "trades": 89,
+            "wins": 38
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 21.565,
+            "trades": 49,
+            "wins": 23
+          }
+        },
+        "funding_usdt": 2.46,
+        "liquidated_proxy": false,
+        "max_dd_pct": 7.621,
+        "net_return_pct": 11.165,
+        "parameters": {
+          "all_in_cost_bps_side": 16,
+          "strategy": "breakout60_slots1_risk1_tp3R",
+          "universe": "all100",
+          "universe_size": 100
+        },
+        "selection": {
+          "accepted_breakout": 89,
+          "accepted_rsi": 49,
+          "blocked_capacity": 1027,
+          "blocked_owned": 0,
+          "blocked_risk": 225,
+          "breakout_signals": 1394,
+          "rsi_signals": 251
+        },
+        "total_fees_usdt": 11.86,
+        "trades": 138
+      },
+      "train": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": 34.918,
+            "trades": 98,
+            "wins": 44
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 19.627,
+            "trades": 56,
+            "wins": 24
+          }
+        },
+        "funding_usdt": 3.167,
+        "liquidated_proxy": false,
+        "max_dd_pct": 13.519,
+        "net_return_pct": 17.126,
+        "parameters": {
+          "all_in_cost_bps_side": 16,
+          "strategy": "breakout60_slots1_risk1_tp3R",
+          "universe": "all100",
+          "universe_size": 100
+        },
+        "selection": {
+          "accepted_breakout": 98,
+          "accepted_rsi": 56,
+          "blocked_capacity": 1272,
+          "blocked_owned": 0,
+          "blocked_risk": 221,
+          "breakout_signals": 1538,
+          "rsi_signals": 163
+        },
+        "total_fees_usdt": 16.211,
+        "trades": 154
+      }
+    },
+    "breakout60_slots1_risk1_tp3R__all100__cost32bps": {
+      "later": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": 18.325,
+            "trades": 79,
+            "wins": 33
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 29.671,
+            "trades": 49,
+            "wins": 21
+          }
+        },
+        "funding_usdt": 2.249,
+        "liquidated_proxy": false,
+        "max_dd_pct": 7.627,
+        "net_return_pct": 15.249,
+        "parameters": {
+          "all_in_cost_bps_side": 32,
+          "strategy": "breakout60_slots1_risk1_tp3R",
+          "universe": "all100",
+          "universe_size": 100
+        },
+        "selection": {
+          "accepted_breakout": 79,
+          "accepted_rsi": 49,
+          "blocked_capacity": 1054,
+          "blocked_owned": 0,
+          "blocked_risk": 199,
+          "breakout_signals": 1405,
+          "rsi_signals": 250
+        },
+        "total_fees_usdt": 20.988,
+        "trades": 128
+      },
+      "train": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": 14.508,
+            "trades": 98,
+            "wins": 43
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 12.763,
+            "trades": 55,
+            "wins": 24
+          }
+        },
+        "funding_usdt": 3.0,
+        "liquidated_proxy": false,
+        "max_dd_pct": 13.355,
+        "net_return_pct": 8.09,
+        "parameters": {
+          "all_in_cost_bps_side": 32,
+          "strategy": "breakout60_slots1_risk1_tp3R",
+          "universe": "all100",
+          "universe_size": 100
+        },
+        "selection": {
+          "accepted_breakout": 98,
+          "accepted_rsi": 55,
+          "blocked_capacity": 1285,
+          "blocked_owned": 0,
+          "blocked_risk": 202,
+          "breakout_signals": 1535,
+          "rsi_signals": 167
+        },
+        "total_fees_usdt": 29.546,
+        "trades": 153
+      }
+    },
+    "breakout60_slots1_risk1_tp3R__all100__cost48bps": {
+      "later": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": -21.391,
+            "trades": 87,
+            "wins": 28
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 24.402,
+            "trades": 47,
+            "wins": 21
+          }
+        },
+        "funding_usdt": 1.988,
+        "liquidated_proxy": false,
+        "max_dd_pct": 13.241,
+        "net_return_pct": 0.341,
+        "parameters": {
+          "all_in_cost_bps_side": 48,
+          "strategy": "breakout60_slots1_risk1_tp3R",
+          "universe": "all100",
+          "universe_size": 100
+        },
+        "selection": {
+          "accepted_breakout": 87,
+          "accepted_rsi": 47,
+          "blocked_capacity": 1071,
+          "blocked_owned": 0,
+          "blocked_risk": 172,
+          "breakout_signals": 1423,
+          "rsi_signals": 242
+        },
+        "total_fees_usdt": 28.344,
+        "trades": 134
+      },
+      "train": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": 11.948,
+            "trades": 105,
+            "wins": 41
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 11.673,
+            "trades": 53,
+            "wins": 23
+          }
+        },
+        "funding_usdt": 2.858,
+        "liquidated_proxy": false,
+        "max_dd_pct": 17.697,
+        "net_return_pct": 6.921,
+        "parameters": {
+          "all_in_cost_bps_side": 48,
+          "strategy": "breakout60_slots1_risk1_tp3R",
+          "universe": "all100",
+          "universe_size": 100
+        },
+        "selection": {
+          "accepted_breakout": 105,
+          "accepted_rsi": 53,
+          "blocked_capacity": 1230,
+          "blocked_owned": 0,
+          "blocked_risk": 241,
+          "breakout_signals": 1530,
+          "rsi_signals": 164
+        },
+        "total_fees_usdt": 43.099,
+        "trades": 158
+      }
+    },
+    "breakout60_slots1_risk1_tp3R__original12__cost16bps": {
+      "later": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": -1.9,
+            "trades": 31,
+            "wins": 14
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 0.772,
+            "trades": 12,
+            "wins": 5
+          }
+        },
+        "funding_usdt": 1.062,
+        "liquidated_proxy": false,
+        "max_dd_pct": 9.958,
+        "net_return_pct": -0.73,
+        "parameters": {
+          "all_in_cost_bps_side": 16,
+          "strategy": "breakout60_slots1_risk1_tp3R",
+          "universe": "original12",
+          "universe_size": 12
+        },
+        "selection": {
+          "accepted_breakout": 31,
+          "accepted_rsi": 12,
+          "blocked_capacity": 183,
+          "blocked_owned": 0,
+          "blocked_risk": 40,
+          "breakout_signals": 241,
+          "rsi_signals": 36
+        },
+        "total_fees_usdt": 4.6,
+        "trades": 43
+      },
+      "train": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": 39.12,
+            "trades": 68,
+            "wins": 36
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 20.095,
+            "trades": 34,
+            "wins": 15
+          }
+        },
+        "funding_usdt": 1.79,
+        "liquidated_proxy": false,
+        "max_dd_pct": 9.438,
+        "net_return_pct": 19.142,
+        "parameters": {
+          "all_in_cost_bps_side": 16,
+          "strategy": "breakout60_slots1_risk1_tp3R",
+          "universe": "original12",
+          "universe_size": 12
+        },
+        "selection": {
+          "accepted_breakout": 68,
+          "accepted_rsi": 34,
+          "blocked_capacity": 326,
+          "blocked_owned": 0,
+          "blocked_risk": 74,
+          "breakout_signals": 459,
+          "rsi_signals": 46
+        },
+        "total_fees_usdt": 8.792,
+        "trades": 102
+      }
+    },
+    "breakout60_slots1_risk1_tp3R__original12__cost32bps": {
+      "later": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": -6.341,
+            "trades": 35,
+            "wins": 14
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": -2.082,
+            "trades": 12,
+            "wins": 4
+          }
+        },
+        "funding_usdt": 1.066,
+        "liquidated_proxy": false,
+        "max_dd_pct": 11.591,
+        "net_return_pct": -3.163,
+        "parameters": {
+          "all_in_cost_bps_side": 32,
+          "strategy": "breakout60_slots1_risk1_tp3R",
+          "universe": "original12",
+          "universe_size": 12
+        },
+        "selection": {
+          "accepted_breakout": 35,
+          "accepted_rsi": 12,
+          "blocked_capacity": 188,
+          "blocked_owned": 0,
+          "blocked_risk": 25,
+          "breakout_signals": 238,
+          "rsi_signals": 37
+        },
+        "total_fees_usdt": 9.576,
+        "trades": 47
+      },
+      "train": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": 39.808,
+            "trades": 68,
+            "wins": 35
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 12.357,
+            "trades": 34,
+            "wins": 14
+          }
+        },
+        "funding_usdt": 1.692,
+        "liquidated_proxy": false,
+        "max_dd_pct": 9.465,
+        "net_return_pct": 16.824,
+        "parameters": {
+          "all_in_cost_bps_side": 32,
+          "strategy": "breakout60_slots1_risk1_tp3R",
+          "universe": "original12",
+          "universe_size": 12
+        },
+        "selection": {
+          "accepted_breakout": 68,
+          "accepted_rsi": 34,
+          "blocked_capacity": 313,
+          "blocked_owned": 0,
+          "blocked_risk": 78,
+          "breakout_signals": 451,
+          "rsi_signals": 45
+        },
+        "total_fees_usdt": 16.677,
+        "trades": 102
+      }
+    },
+    "breakout60_slots1_risk1_tp3R__original12__cost48bps": {
+      "later": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": -4.216,
+            "trades": 33,
+            "wins": 12
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": -0.939,
+            "trades": 12,
+            "wins": 4
+          }
+        },
+        "funding_usdt": 1.01,
+        "liquidated_proxy": false,
+        "max_dd_pct": 9.656,
+        "net_return_pct": -2.055,
+        "parameters": {
+          "all_in_cost_bps_side": 48,
+          "strategy": "breakout60_slots1_risk1_tp3R",
+          "universe": "original12",
+          "universe_size": 12
+        },
+        "selection": {
+          "accepted_breakout": 33,
+          "accepted_rsi": 12,
+          "blocked_capacity": 184,
+          "blocked_owned": 0,
+          "blocked_risk": 26,
+          "breakout_signals": 238,
+          "rsi_signals": 36
+        },
+        "total_fees_usdt": 13.142,
+        "trades": 45
+      },
+      "train": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": 30.178,
+            "trades": 67,
+            "wins": 31
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 12.9,
+            "trades": 32,
+            "wins": 12
+          }
+        },
+        "funding_usdt": 1.615,
+        "liquidated_proxy": false,
+        "max_dd_pct": 10.634,
+        "net_return_pct": 13.821,
+        "parameters": {
+          "all_in_cost_bps_side": 48,
+          "strategy": "breakout60_slots1_risk1_tp3R",
+          "universe": "original12",
+          "universe_size": 12
+        },
+        "selection": {
+          "accepted_breakout": 67,
+          "accepted_rsi": 32,
+          "blocked_capacity": 305,
+          "blocked_owned": 0,
+          "blocked_risk": 89,
+          "breakout_signals": 452,
+          "rsi_signals": 47
+        },
+        "total_fees_usdt": 23.631,
+        "trades": 99
+      }
+    },
+    "breakout60_slots1_risk1_tp3R__other_even__cost16bps": {
+      "later": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": 25.29,
+            "trades": 64,
+            "wins": 26
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 25.639,
+            "trades": 31,
+            "wins": 14
+          }
+        },
+        "funding_usdt": 1.949,
+        "liquidated_proxy": false,
+        "max_dd_pct": 5.091,
+        "net_return_pct": 16.326,
+        "parameters": {
+          "all_in_cost_bps_side": 16,
+          "strategy": "breakout60_slots1_risk1_tp3R",
+          "universe": "other_even",
+          "universe_size": 44
+        },
+        "selection": {
+          "accepted_breakout": 64,
+          "accepted_rsi": 31,
+          "blocked_capacity": 348,
+          "blocked_owned": 0,
+          "blocked_risk": 56,
+          "breakout_signals": 501,
+          "rsi_signals": 87
+        },
+        "total_fees_usdt": 9.703,
+        "trades": 95
+      },
+      "train": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": -15.624,
+            "trades": 83,
+            "wins": 32
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": -3.873,
+            "trades": 29,
+            "wins": 13
+          }
+        },
+        "funding_usdt": 2.582,
+        "liquidated_proxy": false,
+        "max_dd_pct": 12.995,
+        "net_return_pct": -7.359,
+        "parameters": {
+          "all_in_cost_bps_side": 16,
+          "strategy": "breakout60_slots1_risk1_tp3R",
+          "universe": "other_even",
+          "universe_size": 44
+        },
+        "selection": {
+          "accepted_breakout": 83,
+          "accepted_rsi": 29,
+          "blocked_capacity": 284,
+          "blocked_owned": 0,
+          "blocked_risk": 72,
+          "breakout_signals": 428,
+          "rsi_signals": 46
+        },
+        "total_fees_usdt": 14.127,
+        "trades": 112
+      }
+    },
+    "breakout60_slots1_risk1_tp3R__other_even__cost32bps": {
+      "later": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": 26.238,
+            "trades": 66,
+            "wins": 28
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 33.699,
+            "trades": 30,
+            "wins": 15
+          }
+        },
+        "funding_usdt": 2.045,
+        "liquidated_proxy": false,
+        "max_dd_pct": 4.883,
+        "net_return_pct": 19.297,
+        "parameters": {
+          "all_in_cost_bps_side": 32,
+          "strategy": "breakout60_slots1_risk1_tp3R",
+          "universe": "other_even",
+          "universe_size": 44
+        },
+        "selection": {
+          "accepted_breakout": 66,
+          "accepted_rsi": 30,
+          "blocked_capacity": 359,
+          "blocked_owned": 0,
+          "blocked_risk": 49,
+          "breakout_signals": 488,
+          "rsi_signals": 90
+        },
+        "total_fees_usdt": 19.721,
+        "trades": 96
+      },
+      "train": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": -18.751,
+            "trades": 84,
+            "wins": 32
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": -0.708,
+            "trades": 29,
+            "wins": 14
+          }
+        },
+        "funding_usdt": 2.508,
+        "liquidated_proxy": false,
+        "max_dd_pct": 12.404,
+        "net_return_pct": -7.322,
+        "parameters": {
+          "all_in_cost_bps_side": 32,
+          "strategy": "breakout60_slots1_risk1_tp3R",
+          "universe": "other_even",
+          "universe_size": 44
+        },
+        "selection": {
+          "accepted_breakout": 84,
+          "accepted_rsi": 29,
+          "blocked_capacity": 277,
+          "blocked_owned": 0,
+          "blocked_risk": 75,
+          "breakout_signals": 425,
+          "rsi_signals": 49
+        },
+        "total_fees_usdt": 27.704,
+        "trades": 113
+      }
+    },
+    "breakout60_slots1_risk1_tp3R__other_even__cost48bps": {
+      "later": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": -6.59,
+            "trades": 68,
+            "wins": 26
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 27.02,
+            "trades": 29,
+            "wins": 14
+          }
+        },
+        "funding_usdt": 1.777,
+        "liquidated_proxy": false,
+        "max_dd_pct": 6.055,
+        "net_return_pct": 6.218,
+        "parameters": {
+          "all_in_cost_bps_side": 48,
+          "strategy": "breakout60_slots1_risk1_tp3R",
+          "universe": "other_even",
+          "universe_size": 44
+        },
+        "selection": {
+          "accepted_breakout": 68,
+          "accepted_rsi": 29,
+          "blocked_capacity": 369,
+          "blocked_owned": 0,
+          "blocked_risk": 44,
+          "breakout_signals": 498,
+          "rsi_signals": 91
+        },
+        "total_fees_usdt": 27.293,
+        "trades": 97
+      },
+      "train": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": -23.724,
+            "trades": 83,
+            "wins": 31
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": -4.27,
+            "trades": 29,
+            "wins": 13
+          }
+        },
+        "funding_usdt": 2.273,
+        "liquidated_proxy": false,
+        "max_dd_pct": 14.582,
+        "net_return_pct": -10.089,
+        "parameters": {
+          "all_in_cost_bps_side": 48,
+          "strategy": "breakout60_slots1_risk1_tp3R",
+          "universe": "other_even",
+          "universe_size": 44
+        },
+        "selection": {
+          "accepted_breakout": 83,
+          "accepted_rsi": 29,
+          "blocked_capacity": 284,
+          "blocked_owned": 0,
+          "blocked_risk": 66,
+          "breakout_signals": 425,
+          "rsi_signals": 47
+        },
+        "total_fees_usdt": 37.591,
+        "trades": 112
+      }
+    },
+    "breakout60_slots1_risk1_tp3R__other_odd__cost16bps": {
+      "later": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": 29.437,
+            "trades": 69,
+            "wins": 27
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 4.054,
+            "trades": 38,
+            "wins": 16
+          }
+        },
+        "funding_usdt": 1.213,
+        "liquidated_proxy": false,
+        "max_dd_pct": 8.261,
+        "net_return_pct": 10.759,
+        "parameters": {
+          "all_in_cost_bps_side": 16,
+          "strategy": "breakout60_slots1_risk1_tp3R",
+          "universe": "other_odd",
+          "universe_size": 44
+        },
+        "selection": {
+          "accepted_breakout": 69,
+          "accepted_rsi": 38,
+          "blocked_capacity": 360,
+          "blocked_owned": 0,
+          "blocked_risk": 80,
+          "breakout_signals": 545,
+          "rsi_signals": 86
+        },
+        "total_fees_usdt": 5.943,
+        "trades": 107
+      },
+      "train": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": 16.223,
+            "trades": 66,
+            "wins": 23
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": -6.211,
+            "trades": 26,
+            "wins": 10
+          }
+        },
+        "funding_usdt": 1.216,
+        "liquidated_proxy": false,
+        "max_dd_pct": 9.232,
+        "net_return_pct": 2.932,
+        "parameters": {
+          "all_in_cost_bps_side": 16,
+          "strategy": "breakout60_slots1_risk1_tp3R",
+          "universe": "other_odd",
+          "universe_size": 44
+        },
+        "selection": {
+          "accepted_breakout": 66,
+          "accepted_rsi": 26,
+          "blocked_capacity": 358,
+          "blocked_owned": 0,
+          "blocked_risk": 77,
+          "breakout_signals": 494,
+          "rsi_signals": 53
+        },
+        "total_fees_usdt": 6.159,
+        "trades": 92
+      }
+    },
+    "breakout60_slots1_risk1_tp3R__other_odd__cost32bps": {
+      "later": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": 19.043,
+            "trades": 74,
+            "wins": 26
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 2.761,
+            "trades": 37,
+            "wins": 15
+          }
+        },
+        "funding_usdt": 1.186,
+        "liquidated_proxy": false,
+        "max_dd_pct": 8.292,
+        "net_return_pct": 6.873,
+        "parameters": {
+          "all_in_cost_bps_side": 32,
+          "strategy": "breakout60_slots1_risk1_tp3R",
+          "universe": "other_odd",
+          "universe_size": 44
+        },
+        "selection": {
+          "accepted_breakout": 74,
+          "accepted_rsi": 37,
+          "blocked_capacity": 347,
+          "blocked_owned": 0,
+          "blocked_risk": 81,
+          "breakout_signals": 546,
+          "rsi_signals": 80
+        },
+        "total_fees_usdt": 12.024,
+        "trades": 111
+      },
+      "train": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": 11.064,
+            "trades": 66,
+            "wins": 21
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": -10.122,
+            "trades": 27,
+            "wins": 10
+          }
+        },
+        "funding_usdt": 1.215,
+        "liquidated_proxy": false,
+        "max_dd_pct": 8.918,
+        "net_return_pct": -0.091,
+        "parameters": {
+          "all_in_cost_bps_side": 32,
+          "strategy": "breakout60_slots1_risk1_tp3R",
+          "universe": "other_odd",
+          "universe_size": 44
+        },
+        "selection": {
+          "accepted_breakout": 66,
+          "accepted_rsi": 27,
+          "blocked_capacity": 373,
+          "blocked_owned": 0,
+          "blocked_risk": 65,
+          "breakout_signals": 498,
+          "rsi_signals": 53
+        },
+        "total_fees_usdt": 12.078,
+        "trades": 93
+      }
+    },
+    "breakout60_slots1_risk1_tp3R__other_odd__cost48bps": {
+      "later": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": 6.153,
+            "trades": 69,
+            "wins": 23
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 1.128,
+            "trades": 39,
+            "wins": 15
+          }
+        },
+        "funding_usdt": 1.151,
+        "liquidated_proxy": false,
+        "max_dd_pct": 10.613,
+        "net_return_pct": 2.043,
+        "parameters": {
+          "all_in_cost_bps_side": 48,
+          "strategy": "breakout60_slots1_risk1_tp3R",
+          "universe": "other_odd",
+          "universe_size": 44
+        },
+        "selection": {
+          "accepted_breakout": 69,
+          "accepted_rsi": 39,
+          "blocked_capacity": 358,
+          "blocked_owned": 0,
+          "blocked_risk": 80,
+          "breakout_signals": 549,
+          "rsi_signals": 87
+        },
+        "total_fees_usdt": 16.179,
+        "trades": 108
+      },
+      "train": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": 9.895,
+            "trades": 66,
+            "wins": 21
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": -8.735,
+            "trades": 27,
+            "wins": 9
+          }
+        },
+        "funding_usdt": 1.213,
+        "liquidated_proxy": false,
+        "max_dd_pct": 9.585,
+        "net_return_pct": -0.018,
+        "parameters": {
+          "all_in_cost_bps_side": 48,
+          "strategy": "breakout60_slots1_risk1_tp3R",
+          "universe": "other_odd",
+          "universe_size": 44
+        },
+        "selection": {
+          "accepted_breakout": 66,
+          "accepted_rsi": 27,
+          "blocked_capacity": 366,
+          "blocked_owned": 0,
+          "blocked_risk": 69,
+          "breakout_signals": 493,
+          "rsi_signals": 54
+        },
+        "total_fees_usdt": 17.671,
+        "trades": 93
+      }
+    },
+    "ema_cross_slots1_risk1_tp2R__all100__cost16bps": {
+      "later": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": 1.708,
+            "trades": 53,
+            "wins": 24
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 31.353,
+            "trades": 51,
+            "wins": 26
+          }
+        },
+        "funding_usdt": 1.76,
+        "liquidated_proxy": false,
+        "max_dd_pct": 7.309,
+        "net_return_pct": 10.434,
+        "parameters": {
+          "all_in_cost_bps_side": 16,
+          "strategy": "ema_cross_slots1_risk1_tp2R",
+          "universe": "all100",
+          "universe_size": 100
+        },
+        "selection": {
+          "accepted_breakout": 53,
+          "accepted_rsi": 51,
+          "blocked_capacity": 381,
+          "blocked_owned": 0,
+          "blocked_risk": 47,
+          "breakout_signals": 558,
+          "rsi_signals": 244
+        },
+        "total_fees_usdt": 6.395,
+        "trades": 104
+      },
+      "train": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": -10.969,
+            "trades": 75,
+            "wins": 34
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 35.537,
+            "trades": 55,
+            "wins": 24
+          }
+        },
+        "funding_usdt": 2.432,
+        "liquidated_proxy": false,
+        "max_dd_pct": 10.803,
+        "net_return_pct": 7.379,
+        "parameters": {
+          "all_in_cost_bps_side": 16,
+          "strategy": "ema_cross_slots1_risk1_tp2R",
+          "universe": "all100",
+          "universe_size": 100
+        },
+        "selection": {
+          "accepted_breakout": 75,
+          "accepted_rsi": 55,
+          "blocked_capacity": 539,
+          "blocked_owned": 0,
+          "blocked_risk": 69,
+          "breakout_signals": 647,
+          "rsi_signals": 162
+        },
+        "total_fees_usdt": 10.374,
+        "trades": 130
+      }
+    },
+    "ema_cross_slots1_risk1_tp2R__all100__cost32bps": {
+      "later": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": -4.959,
+            "trades": 55,
+            "wins": 23
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 18.54,
+            "trades": 53,
+            "wins": 24
+          }
+        },
+        "funding_usdt": 1.723,
+        "liquidated_proxy": false,
+        "max_dd_pct": 8.114,
+        "net_return_pct": 3.953,
+        "parameters": {
+          "all_in_cost_bps_side": 32,
+          "strategy": "ema_cross_slots1_risk1_tp2R",
+          "universe": "all100",
+          "universe_size": 100
+        },
+        "selection": {
+          "accepted_breakout": 55,
+          "accepted_rsi": 53,
+          "blocked_capacity": 396,
+          "blocked_owned": 0,
+          "blocked_risk": 49,
+          "breakout_signals": 559,
+          "rsi_signals": 243
+        },
+        "total_fees_usdt": 12.49,
+        "trades": 108
+      },
+      "train": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": -22.183,
+            "trades": 75,
+            "wins": 27
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 28.703,
+            "trades": 54,
+            "wins": 23
+          }
+        },
+        "funding_usdt": 2.366,
+        "liquidated_proxy": false,
+        "max_dd_pct": 11.507,
+        "net_return_pct": 1.385,
+        "parameters": {
+          "all_in_cost_bps_side": 32,
+          "strategy": "ema_cross_slots1_risk1_tp2R",
+          "universe": "all100",
+          "universe_size": 100
+        },
+        "selection": {
+          "accepted_breakout": 75,
+          "accepted_rsi": 54,
+          "blocked_capacity": 544,
+          "blocked_owned": 0,
+          "blocked_risk": 66,
+          "breakout_signals": 650,
+          "rsi_signals": 163
+        },
+        "total_fees_usdt": 20.813,
+        "trades": 129
+      }
+    },
+    "ema_cross_slots1_risk1_tp2R__all100__cost48bps": {
+      "later": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": -9.049,
+            "trades": 55,
+            "wins": 24
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 0.127,
+            "trades": 50,
+            "wins": 21
+          }
+        },
+        "funding_usdt": 1.656,
+        "liquidated_proxy": false,
+        "max_dd_pct": 12.138,
+        "net_return_pct": -3.526,
+        "parameters": {
+          "all_in_cost_bps_side": 48,
+          "strategy": "ema_cross_slots1_risk1_tp2R",
+          "universe": "all100",
+          "universe_size": 100
+        },
+        "selection": {
+          "accepted_breakout": 55,
+          "accepted_rsi": 50,
+          "blocked_capacity": 378,
+          "blocked_owned": 0,
+          "blocked_risk": 42,
+          "breakout_signals": 562,
+          "rsi_signals": 244
+        },
+        "total_fees_usdt": 18.469,
+        "trades": 105
+      },
+      "train": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": -20.229,
+            "trades": 75,
+            "wins": 30
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 24.97,
+            "trades": 54,
+            "wins": 22
+          }
+        },
+        "funding_usdt": 2.228,
+        "liquidated_proxy": false,
+        "max_dd_pct": 11.641,
+        "net_return_pct": 0.838,
+        "parameters": {
+          "all_in_cost_bps_side": 48,
+          "strategy": "ema_cross_slots1_risk1_tp2R",
+          "universe": "all100",
+          "universe_size": 100
+        },
+        "selection": {
+          "accepted_breakout": 75,
+          "accepted_rsi": 54,
+          "blocked_capacity": 547,
+          "blocked_owned": 0,
+          "blocked_risk": 61,
+          "breakout_signals": 647,
+          "rsi_signals": 165
+        },
+        "total_fees_usdt": 28.986,
+        "trades": 129
+      }
+    },
+    "ema_cross_slots1_risk1_tp2R__original12__cost16bps": {
+      "later": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": 3.2,
+            "trades": 27,
+            "wins": 16
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 1.327,
+            "trades": 12,
+            "wins": 5
+          }
+        },
+        "funding_usdt": 0.921,
+        "liquidated_proxy": false,
+        "max_dd_pct": 8.625,
+        "net_return_pct": 1.202,
+        "parameters": {
+          "all_in_cost_bps_side": 16,
+          "strategy": "ema_cross_slots1_risk1_tp2R",
+          "universe": "original12",
+          "universe_size": 12
+        },
+        "selection": {
+          "accepted_breakout": 27,
+          "accepted_rsi": 12,
+          "blocked_capacity": 69,
+          "blocked_owned": 0,
+          "blocked_risk": 9,
+          "breakout_signals": 100,
+          "rsi_signals": 35
+        },
+        "total_fees_usdt": 3.46,
+        "trades": 39
+      },
+      "train": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": -12.916,
+            "trades": 58,
+            "wins": 25
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 5.749,
+            "trades": 30,
+            "wins": 11
+          }
+        },
+        "funding_usdt": 1.429,
+        "liquidated_proxy": false,
+        "max_dd_pct": 14.098,
+        "net_return_pct": -2.865,
+        "parameters": {
+          "all_in_cost_bps_side": 16,
+          "strategy": "ema_cross_slots1_risk1_tp2R",
+          "universe": "original12",
+          "universe_size": 12
+        },
+        "selection": {
+          "accepted_breakout": 58,
+          "accepted_rsi": 30,
+          "blocked_capacity": 130,
+          "blocked_owned": 0,
+          "blocked_risk": 28,
+          "breakout_signals": 209,
+          "rsi_signals": 44
+        },
+        "total_fees_usdt": 6.968,
+        "trades": 88
+      }
+    },
+    "ema_cross_slots1_risk1_tp2R__original12__cost32bps": {
+      "later": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": 1.862,
+            "trades": 27,
+            "wins": 16
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 0.574,
+            "trades": 12,
+            "wins": 4
+          }
+        },
+        "funding_usdt": 0.897,
+        "liquidated_proxy": false,
+        "max_dd_pct": 8.406,
+        "net_return_pct": 0.513,
+        "parameters": {
+          "all_in_cost_bps_side": 32,
+          "strategy": "ema_cross_slots1_risk1_tp2R",
+          "universe": "original12",
+          "universe_size": 12
+        },
+        "selection": {
+          "accepted_breakout": 27,
+          "accepted_rsi": 12,
+          "blocked_capacity": 66,
+          "blocked_owned": 0,
+          "blocked_risk": 13,
+          "breakout_signals": 101,
+          "rsi_signals": 35
+        },
+        "total_fees_usdt": 6.755,
+        "trades": 39
+      },
+      "train": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": -21.012,
+            "trades": 58,
+            "wins": 21
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 9.215,
+            "trades": 30,
+            "wins": 11
+          }
+        },
+        "funding_usdt": 1.37,
+        "liquidated_proxy": false,
+        "max_dd_pct": 11.906,
+        "net_return_pct": -4.389,
+        "parameters": {
+          "all_in_cost_bps_side": 32,
+          "strategy": "ema_cross_slots1_risk1_tp2R",
+          "universe": "original12",
+          "universe_size": 12
+        },
+        "selection": {
+          "accepted_breakout": 58,
+          "accepted_rsi": 30,
+          "blocked_capacity": 135,
+          "blocked_owned": 0,
+          "blocked_risk": 27,
+          "breakout_signals": 215,
+          "rsi_signals": 43
+        },
+        "total_fees_usdt": 13.296,
+        "trades": 88
+      }
+    },
+    "ema_cross_slots1_risk1_tp2R__original12__cost48bps": {
+      "later": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": -2.997,
+            "trades": 27,
+            "wins": 15
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": -0.086,
+            "trades": 12,
+            "wins": 4
+          }
+        },
+        "funding_usdt": 0.874,
+        "liquidated_proxy": false,
+        "max_dd_pct": 9.628,
+        "net_return_pct": -1.319,
+        "parameters": {
+          "all_in_cost_bps_side": 48,
+          "strategy": "ema_cross_slots1_risk1_tp2R",
+          "universe": "original12",
+          "universe_size": 12
+        },
+        "selection": {
+          "accepted_breakout": 27,
+          "accepted_rsi": 12,
+          "blocked_capacity": 66,
+          "blocked_owned": 0,
+          "blocked_risk": 10,
+          "breakout_signals": 100,
+          "rsi_signals": 35
+        },
+        "total_fees_usdt": 9.889,
+        "trades": 39
+      },
+      "train": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": -21.956,
+            "trades": 59,
+            "wins": 20
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 11.157,
+            "trades": 31,
+            "wins": 11
+          }
+        },
+        "funding_usdt": 1.41,
+        "liquidated_proxy": false,
+        "max_dd_pct": 12.804,
+        "net_return_pct": -4.07,
+        "parameters": {
+          "all_in_cost_bps_side": 48,
+          "strategy": "ema_cross_slots1_risk1_tp2R",
+          "universe": "original12",
+          "universe_size": 12
+        },
+        "selection": {
+          "accepted_breakout": 59,
+          "accepted_rsi": 31,
+          "blocked_capacity": 132,
+          "blocked_owned": 0,
+          "blocked_risk": 24,
+          "breakout_signals": 211,
+          "rsi_signals": 43
+        },
+        "total_fees_usdt": 20.28,
+        "trades": 90
+      }
+    },
+    "ema_cross_slots1_risk1_tp2R__other_even__cost16bps": {
+      "later": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": 14.644,
+            "trades": 36,
+            "wins": 17
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 49.075,
+            "trades": 34,
+            "wins": 17
+          }
+        },
+        "funding_usdt": 1.262,
+        "liquidated_proxy": false,
+        "max_dd_pct": 5.485,
+        "net_return_pct": 20.819,
+        "parameters": {
+          "all_in_cost_bps_side": 16,
+          "strategy": "ema_cross_slots1_risk1_tp2R",
+          "universe": "other_even",
+          "universe_size": 44
+        },
+        "selection": {
+          "accepted_breakout": 36,
+          "accepted_rsi": 34,
+          "blocked_capacity": 172,
+          "blocked_owned": 0,
+          "blocked_risk": 16,
+          "breakout_signals": 224,
+          "rsi_signals": 83
+        },
+        "total_fees_usdt": 4.86,
+        "trades": 70
+      },
+      "train": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": -8.052,
+            "trades": 55,
+            "wins": 25
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": -4.244,
+            "trades": 26,
+            "wins": 11
+          }
+        },
+        "funding_usdt": 1.571,
+        "liquidated_proxy": false,
+        "max_dd_pct": 14.361,
+        "net_return_pct": -4.623,
+        "parameters": {
+          "all_in_cost_bps_side": 16,
+          "strategy": "ema_cross_slots1_risk1_tp2R",
+          "universe": "other_even",
+          "universe_size": 44
+        },
+        "selection": {
+          "accepted_breakout": 55,
+          "accepted_rsi": 26,
+          "blocked_capacity": 119,
+          "blocked_owned": 0,
+          "blocked_risk": 14,
+          "breakout_signals": 188,
+          "rsi_signals": 39
+        },
+        "total_fees_usdt": 8.018,
+        "trades": 81
+      }
+    },
+    "ema_cross_slots1_risk1_tp2R__other_even__cost32bps": {
+      "later": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": -16.273,
+            "trades": 40,
+            "wins": 16
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 31.356,
+            "trades": 33,
+            "wins": 18
+          }
+        },
+        "funding_usdt": 1.245,
+        "liquidated_proxy": false,
+        "max_dd_pct": 7.359,
+        "net_return_pct": 4.612,
+        "parameters": {
+          "all_in_cost_bps_side": 32,
+          "strategy": "ema_cross_slots1_risk1_tp2R",
+          "universe": "other_even",
+          "universe_size": 44
+        },
+        "selection": {
+          "accepted_breakout": 40,
+          "accepted_rsi": 33,
+          "blocked_capacity": 160,
+          "blocked_owned": 0,
+          "blocked_risk": 13,
+          "breakout_signals": 223,
+          "rsi_signals": 88
+        },
+        "total_fees_usdt": 9.523,
+        "trades": 73
+      },
+      "train": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": -13.883,
+            "trades": 55,
+            "wins": 23
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": -1.391,
+            "trades": 24,
+            "wins": 11
+          }
+        },
+        "funding_usdt": 1.429,
+        "liquidated_proxy": false,
+        "max_dd_pct": 14.379,
+        "net_return_pct": -5.567,
+        "parameters": {
+          "all_in_cost_bps_side": 32,
+          "strategy": "ema_cross_slots1_risk1_tp2R",
+          "universe": "other_even",
+          "universe_size": 44
+        },
+        "selection": {
+          "accepted_breakout": 55,
+          "accepted_rsi": 24,
+          "blocked_capacity": 120,
+          "blocked_owned": 0,
+          "blocked_risk": 16,
+          "breakout_signals": 190,
+          "rsi_signals": 39
+        },
+        "total_fees_usdt": 14.779,
+        "trades": 79
+      }
+    },
+    "ema_cross_slots1_risk1_tp2R__other_even__cost48bps": {
+      "later": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": -12.494,
+            "trades": 39,
+            "wins": 15
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 37.674,
+            "trades": 33,
+            "wins": 17
+          }
+        },
+        "funding_usdt": 1.184,
+        "liquidated_proxy": false,
+        "max_dd_pct": 7.994,
+        "net_return_pct": 7.999,
+        "parameters": {
+          "all_in_cost_bps_side": 48,
+          "strategy": "ema_cross_slots1_risk1_tp2R",
+          "universe": "other_even",
+          "universe_size": 44
+        },
+        "selection": {
+          "accepted_breakout": 39,
+          "accepted_rsi": 33,
+          "blocked_capacity": 170,
+          "blocked_owned": 0,
+          "blocked_risk": 18,
+          "breakout_signals": 223,
+          "rsi_signals": 84
+        },
+        "total_fees_usdt": 13.303,
+        "trades": 72
+      },
+      "train": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": -16.186,
+            "trades": 55,
+            "wins": 23
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": -7.964,
+            "trades": 26,
+            "wins": 9
+          }
+        },
+        "funding_usdt": 1.366,
+        "liquidated_proxy": false,
+        "max_dd_pct": 15.811,
+        "net_return_pct": -8.505,
+        "parameters": {
+          "all_in_cost_bps_side": 48,
+          "strategy": "ema_cross_slots1_risk1_tp2R",
+          "universe": "other_even",
+          "universe_size": 44
+        },
+        "selection": {
+          "accepted_breakout": 55,
+          "accepted_rsi": 26,
+          "blocked_capacity": 119,
+          "blocked_owned": 0,
+          "blocked_risk": 17,
+          "breakout_signals": 188,
+          "rsi_signals": 41
+        },
+        "total_fees_usdt": 20.563,
+        "trades": 81
+      }
+    },
+    "ema_cross_slots1_risk1_tp2R__other_odd__cost16bps": {
+      "later": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": 7.499,
+            "trades": 41,
+            "wins": 20
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 11.895,
+            "trades": 38,
+            "wins": 16
+          }
+        },
+        "funding_usdt": 1.015,
+        "liquidated_proxy": false,
+        "max_dd_pct": 5.025,
+        "net_return_pct": 6.126,
+        "parameters": {
+          "all_in_cost_bps_side": 16,
+          "strategy": "ema_cross_slots1_risk1_tp2R",
+          "universe": "other_odd",
+          "universe_size": 44
+        },
+        "selection": {
+          "accepted_breakout": 41,
+          "accepted_rsi": 38,
+          "blocked_capacity": 125,
+          "blocked_owned": 0,
+          "blocked_risk": 17,
+          "breakout_signals": 200,
+          "rsi_signals": 83
+        },
+        "total_fees_usdt": 3.671,
+        "trades": 79
+      },
+      "train": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": 10.975,
+            "trades": 55,
+            "wins": 27
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 2.807,
+            "trades": 25,
+            "wins": 10
+          }
+        },
+        "funding_usdt": 1.053,
+        "liquidated_proxy": false,
+        "max_dd_pct": 10.035,
+        "net_return_pct": 4.243,
+        "parameters": {
+          "all_in_cost_bps_side": 16,
+          "strategy": "ema_cross_slots1_risk1_tp2R",
+          "universe": "other_odd",
+          "universe_size": 44
+        },
+        "selection": {
+          "accepted_breakout": 55,
+          "accepted_rsi": 25,
+          "blocked_capacity": 138,
+          "blocked_owned": 0,
+          "blocked_risk": 18,
+          "breakout_signals": 205,
+          "rsi_signals": 53
+        },
+        "total_fees_usdt": 4.99,
+        "trades": 80
+      }
+    },
+    "ema_cross_slots1_risk1_tp2R__other_odd__cost32bps": {
+      "later": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": 1.61,
+            "trades": 47,
+            "wins": 21
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": -0.644,
+            "trades": 36,
+            "wins": 13
+          }
+        },
+        "funding_usdt": 1.021,
+        "liquidated_proxy": false,
+        "max_dd_pct": 7.343,
+        "net_return_pct": -0.018,
+        "parameters": {
+          "all_in_cost_bps_side": 32,
+          "strategy": "ema_cross_slots1_risk1_tp2R",
+          "universe": "other_odd",
+          "universe_size": 44
+        },
+        "selection": {
+          "accepted_breakout": 47,
+          "accepted_rsi": 36,
+          "blocked_capacity": 130,
+          "blocked_owned": 0,
+          "blocked_risk": 21,
+          "breakout_signals": 205,
+          "rsi_signals": 85
+        },
+        "total_fees_usdt": 7.982,
+        "trades": 83
+      },
+      "train": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": 1.302,
+            "trades": 56,
+            "wins": 24
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 2.3,
+            "trades": 26,
+            "wins": 10
+          }
+        },
+        "funding_usdt": 1.06,
+        "liquidated_proxy": false,
+        "max_dd_pct": 10.934,
+        "net_return_pct": 0.847,
+        "parameters": {
+          "all_in_cost_bps_side": 32,
+          "strategy": "ema_cross_slots1_risk1_tp2R",
+          "universe": "other_odd",
+          "universe_size": 44
+        },
+        "selection": {
+          "accepted_breakout": 56,
+          "accepted_rsi": 26,
+          "blocked_capacity": 146,
+          "blocked_owned": 0,
+          "blocked_risk": 17,
+          "breakout_signals": 206,
+          "rsi_signals": 55
+        },
+        "total_fees_usdt": 9.916,
+        "trades": 82
+      }
+    },
+    "ema_cross_slots1_risk1_tp2R__other_odd__cost48bps": {
+      "later": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": 5.987,
+            "trades": 42,
+            "wins": 19
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 7.078,
+            "trades": 37,
+            "wins": 14
+          }
+        },
+        "funding_usdt": 0.969,
+        "liquidated_proxy": false,
+        "max_dd_pct": 5.287,
+        "net_return_pct": 4.032,
+        "parameters": {
+          "all_in_cost_bps_side": 48,
+          "strategy": "ema_cross_slots1_risk1_tp2R",
+          "universe": "other_odd",
+          "universe_size": 44
+        },
+        "selection": {
+          "accepted_breakout": 42,
+          "accepted_rsi": 37,
+          "blocked_capacity": 124,
+          "blocked_owned": 0,
+          "blocked_risk": 22,
+          "breakout_signals": 203,
+          "rsi_signals": 84
+        },
+        "total_fees_usdt": 10.777,
+        "trades": 79
+      },
+      "train": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": 0.836,
+            "trades": 57,
+            "wins": 25
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 1.199,
+            "trades": 26,
+            "wins": 9
+          }
+        },
+        "funding_usdt": 1.056,
+        "liquidated_proxy": false,
+        "max_dd_pct": 9.871,
+        "net_return_pct": 0.326,
+        "parameters": {
+          "all_in_cost_bps_side": 48,
+          "strategy": "ema_cross_slots1_risk1_tp2R",
+          "universe": "other_odd",
+          "universe_size": 44
+        },
+        "selection": {
+          "accepted_breakout": 57,
+          "accepted_rsi": 26,
+          "blocked_capacity": 144,
+          "blocked_owned": 0,
+          "blocked_risk": 17,
+          "breakout_signals": 208,
+          "rsi_signals": 54
+        },
+        "total_fees_usdt": 14.76,
+        "trades": 83
+      }
+    },
+    "pullback_reclaim_slots1_risk1_tp2R__all100__cost16bps": {
+      "later": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": 2.391,
+            "trades": 84,
+            "wins": 36
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 47.641,
+            "trades": 46,
+            "wins": 25
+          }
+        },
+        "funding_usdt": 1.938,
+        "liquidated_proxy": false,
+        "max_dd_pct": 6.303,
+        "net_return_pct": 16.031,
+        "parameters": {
+          "all_in_cost_bps_side": 16,
+          "strategy": "pullback_reclaim_slots1_risk1_tp2R",
+          "universe": "all100",
+          "universe_size": 100
+        },
+        "selection": {
+          "accepted_breakout": 84,
+          "accepted_rsi": 46,
+          "blocked_capacity": 825,
+          "blocked_owned": 0,
+          "blocked_risk": 121,
+          "breakout_signals": 1092,
+          "rsi_signals": 238
+        },
+        "total_fees_usdt": 8.617,
+        "trades": 130
+      },
+      "train": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": 35.344,
+            "trades": 93,
+            "wins": 42
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": -5.673,
+            "trades": 52,
+            "wins": 21
+          }
+        },
+        "funding_usdt": 3.063,
+        "liquidated_proxy": false,
+        "max_dd_pct": 10.125,
+        "net_return_pct": 8.869,
+        "parameters": {
+          "all_in_cost_bps_side": 16,
+          "strategy": "pullback_reclaim_slots1_risk1_tp2R",
+          "universe": "all100",
+          "universe_size": 100
+        },
+        "selection": {
+          "accepted_breakout": 93,
+          "accepted_rsi": 52,
+          "blocked_capacity": 968,
+          "blocked_owned": 0,
+          "blocked_risk": 264,
+          "breakout_signals": 1302,
+          "rsi_signals": 161
+        },
+        "total_fees_usdt": 14.894,
+        "trades": 145
+      }
+    },
+    "pullback_reclaim_slots1_risk1_tp2R__all100__cost32bps": {
+      "later": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": -0.288,
+            "trades": 79,
+            "wins": 32
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 46.334,
+            "trades": 48,
+            "wins": 24
+          }
+        },
+        "funding_usdt": 1.853,
+        "liquidated_proxy": false,
+        "max_dd_pct": 6.447,
+        "net_return_pct": 14.731,
+        "parameters": {
+          "all_in_cost_bps_side": 32,
+          "strategy": "pullback_reclaim_slots1_risk1_tp2R",
+          "universe": "all100",
+          "universe_size": 100
+        },
+        "selection": {
+          "accepted_breakout": 79,
+          "accepted_rsi": 48,
+          "blocked_capacity": 813,
+          "blocked_owned": 0,
+          "blocked_risk": 114,
+          "breakout_signals": 1098,
+          "rsi_signals": 236
+        },
+        "total_fees_usdt": 16.289,
+        "trades": 127
+      },
+      "train": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": 15.95,
+            "trades": 96,
+            "wins": 41
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 12.024,
+            "trades": 51,
+            "wins": 22
+          }
+        },
+        "funding_usdt": 3.036,
+        "liquidated_proxy": false,
+        "max_dd_pct": 10.387,
+        "net_return_pct": 8.313,
+        "parameters": {
+          "all_in_cost_bps_side": 32,
+          "strategy": "pullback_reclaim_slots1_risk1_tp2R",
+          "universe": "all100",
+          "universe_size": 100
+        },
+        "selection": {
+          "accepted_breakout": 96,
+          "accepted_rsi": 51,
+          "blocked_capacity": 993,
+          "blocked_owned": 0,
+          "blocked_risk": 216,
+          "breakout_signals": 1285,
+          "rsi_signals": 160
+        },
+        "total_fees_usdt": 28.995,
+        "trades": 147
+      }
+    },
+    "pullback_reclaim_slots1_risk1_tp2R__all100__cost48bps": {
+      "later": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": -16.179,
+            "trades": 83,
+            "wins": 32
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 39.488,
+            "trades": 47,
+            "wins": 22
+          }
+        },
+        "funding_usdt": 1.778,
+        "liquidated_proxy": false,
+        "max_dd_pct": 10.029,
+        "net_return_pct": 7.177,
+        "parameters": {
+          "all_in_cost_bps_side": 48,
+          "strategy": "pullback_reclaim_slots1_risk1_tp2R",
+          "universe": "all100",
+          "universe_size": 100
+        },
+        "selection": {
+          "accepted_breakout": 83,
+          "accepted_rsi": 47,
+          "blocked_capacity": 830,
+          "blocked_owned": 0,
+          "blocked_risk": 122,
+          "breakout_signals": 1091,
+          "rsi_signals": 238
+        },
+        "total_fees_usdt": 23.582,
+        "trades": 130
+      },
+      "train": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": -0.219,
+            "trades": 97,
+            "wins": 38
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 15.463,
+            "trades": 53,
+            "wins": 23
+          }
+        },
+        "funding_usdt": 2.888,
+        "liquidated_proxy": false,
+        "max_dd_pct": 11.633,
+        "net_return_pct": 4.119,
+        "parameters": {
+          "all_in_cost_bps_side": 48,
+          "strategy": "pullback_reclaim_slots1_risk1_tp2R",
+          "universe": "all100",
+          "universe_size": 100
+        },
+        "selection": {
+          "accepted_breakout": 97,
+          "accepted_rsi": 53,
+          "blocked_capacity": 984,
+          "blocked_owned": 0,
+          "blocked_risk": 222,
+          "breakout_signals": 1285,
+          "rsi_signals": 162
+        },
+        "total_fees_usdt": 40.045,
+        "trades": 150
+      }
+    },
+    "pullback_reclaim_slots1_risk1_tp2R__original12__cost16bps": {
+      "later": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": -9.103,
+            "trades": 36,
+            "wins": 15
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": -3.596,
+            "trades": 11,
+            "wins": 3
+          }
+        },
+        "funding_usdt": 1.046,
+        "liquidated_proxy": false,
+        "max_dd_pct": 10.963,
+        "net_return_pct": -4.582,
+        "parameters": {
+          "all_in_cost_bps_side": 16,
+          "strategy": "pullback_reclaim_slots1_risk1_tp2R",
+          "universe": "original12",
+          "universe_size": 12
+        },
+        "selection": {
+          "accepted_breakout": 36,
+          "accepted_rsi": 11,
+          "blocked_capacity": 119,
+          "blocked_owned": 0,
+          "blocked_risk": 25,
+          "breakout_signals": 180,
+          "rsi_signals": 29
+        },
+        "total_fees_usdt": 4.722,
+        "trades": 47
+      },
+      "train": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": -15.853,
+            "trades": 70,
+            "wins": 26
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 8.104,
+            "trades": 30,
+            "wins": 11
+          }
+        },
+        "funding_usdt": 1.426,
+        "liquidated_proxy": false,
+        "max_dd_pct": 14.544,
+        "net_return_pct": -3.058,
+        "parameters": {
+          "all_in_cost_bps_side": 16,
+          "strategy": "pullback_reclaim_slots1_risk1_tp2R",
+          "universe": "original12",
+          "universe_size": 12
+        },
+        "selection": {
+          "accepted_breakout": 70,
+          "accepted_rsi": 30,
+          "blocked_capacity": 254,
+          "blocked_owned": 0,
+          "blocked_risk": 54,
+          "breakout_signals": 369,
+          "rsi_signals": 40
+        },
+        "total_fees_usdt": 7.527,
+        "trades": 100
+      }
+    },
+    "pullback_reclaim_slots1_risk1_tp2R__original12__cost32bps": {
+      "later": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": -14.404,
+            "trades": 36,
+            "wins": 14
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": -4.182,
+            "trades": 11,
+            "wins": 3
+          }
+        },
+        "funding_usdt": 0.935,
+        "liquidated_proxy": false,
+        "max_dd_pct": 11.535,
+        "net_return_pct": -6.507,
+        "parameters": {
+          "all_in_cost_bps_side": 32,
+          "strategy": "pullback_reclaim_slots1_risk1_tp2R",
+          "universe": "original12",
+          "universe_size": 12
+        },
+        "selection": {
+          "accepted_breakout": 36,
+          "accepted_rsi": 11,
+          "blocked_capacity": 127,
+          "blocked_owned": 0,
+          "blocked_risk": 20,
+          "breakout_signals": 179,
+          "rsi_signals": 31
+        },
+        "total_fees_usdt": 8.605,
+        "trades": 47
+      },
+      "train": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": -18.302,
+            "trades": 72,
+            "wins": 26
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 7.032,
+            "trades": 28,
+            "wins": 10
+          }
+        },
+        "funding_usdt": 1.324,
+        "liquidated_proxy": false,
+        "max_dd_pct": 14.74,
+        "net_return_pct": -4.198,
+        "parameters": {
+          "all_in_cost_bps_side": 32,
+          "strategy": "pullback_reclaim_slots1_risk1_tp2R",
+          "universe": "original12",
+          "universe_size": 12
+        },
+        "selection": {
+          "accepted_breakout": 72,
+          "accepted_rsi": 28,
+          "blocked_capacity": 253,
+          "blocked_owned": 0,
+          "blocked_risk": 68,
+          "breakout_signals": 379,
+          "rsi_signals": 43
+        },
+        "total_fees_usdt": 14.544,
+        "trades": 100
+      }
+    },
+    "pullback_reclaim_slots1_risk1_tp2R__original12__cost48bps": {
+      "later": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": -21.044,
+            "trades": 36,
+            "wins": 11
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": -4.472,
+            "trades": 11,
+            "wins": 3
+          }
+        },
+        "funding_usdt": 0.948,
+        "liquidated_proxy": false,
+        "max_dd_pct": 12.848,
+        "net_return_pct": -8.821,
+        "parameters": {
+          "all_in_cost_bps_side": 48,
+          "strategy": "pullback_reclaim_slots1_risk1_tp2R",
+          "universe": "original12",
+          "universe_size": 12
+        },
+        "selection": {
+          "accepted_breakout": 36,
+          "accepted_rsi": 11,
+          "blocked_capacity": 126,
+          "blocked_owned": 0,
+          "blocked_risk": 18,
+          "breakout_signals": 181,
+          "rsi_signals": 29
+        },
+        "total_fees_usdt": 12.717,
+        "trades": 47
+      },
+      "train": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": -27.521,
+            "trades": 71,
+            "wins": 22
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 4.529,
+            "trades": 28,
+            "wins": 10
+          }
+        },
+        "funding_usdt": 1.271,
+        "liquidated_proxy": false,
+        "max_dd_pct": 16.618,
+        "net_return_pct": -8.087,
+        "parameters": {
+          "all_in_cost_bps_side": 48,
+          "strategy": "pullback_reclaim_slots1_risk1_tp2R",
+          "universe": "original12",
+          "universe_size": 12
+        },
+        "selection": {
+          "accepted_breakout": 71,
+          "accepted_rsi": 28,
+          "blocked_capacity": 254,
+          "blocked_owned": 0,
+          "blocked_risk": 60,
+          "breakout_signals": 373,
+          "rsi_signals": 41
+        },
+        "total_fees_usdt": 20.876,
+        "trades": 99
+      }
+    },
+    "pullback_reclaim_slots1_risk1_tp2R__other_even__cost16bps": {
+      "later": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": -4.45,
+            "trades": 52,
+            "wins": 21
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 15.203,
+            "trades": 30,
+            "wins": 15
+          }
+        },
+        "funding_usdt": 1.437,
+        "liquidated_proxy": false,
+        "max_dd_pct": 7.102,
+        "net_return_pct": 3.105,
+        "parameters": {
+          "all_in_cost_bps_side": 16,
+          "strategy": "pullback_reclaim_slots1_risk1_tp2R",
+          "universe": "other_even",
+          "universe_size": 44
+        },
+        "selection": {
+          "accepted_breakout": 52,
+          "accepted_rsi": 30,
+          "blocked_capacity": 286,
+          "blocked_owned": 0,
+          "blocked_risk": 40,
+          "breakout_signals": 386,
+          "rsi_signals": 88
+        },
+        "total_fees_usdt": 6.384,
+        "trades": 82
+      },
+      "train": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": 7.359,
+            "trades": 70,
+            "wins": 29
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": -7.206,
+            "trades": 27,
+            "wins": 12
+          }
+        },
+        "funding_usdt": 2.469,
+        "liquidated_proxy": false,
+        "max_dd_pct": 8.082,
+        "net_return_pct": -0.772,
+        "parameters": {
+          "all_in_cost_bps_side": 16,
+          "strategy": "pullback_reclaim_slots1_risk1_tp2R",
+          "universe": "other_even",
+          "universe_size": 44
+        },
+        "selection": {
+          "accepted_breakout": 70,
+          "accepted_rsi": 27,
+          "blocked_capacity": 244,
+          "blocked_owned": 0,
+          "blocked_risk": 59,
+          "breakout_signals": 363,
+          "rsi_signals": 45
+        },
+        "total_fees_usdt": 12.805,
+        "trades": 97
+      }
+    },
+    "pullback_reclaim_slots1_risk1_tp2R__other_even__cost32bps": {
+      "later": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": 4.176,
+            "trades": 56,
+            "wins": 23
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 10.194,
+            "trades": 30,
+            "wins": 14
+          }
+        },
+        "funding_usdt": 1.422,
+        "liquidated_proxy": false,
+        "max_dd_pct": 8.016,
+        "net_return_pct": 4.316,
+        "parameters": {
+          "all_in_cost_bps_side": 32,
+          "strategy": "pullback_reclaim_slots1_risk1_tp2R",
+          "universe": "other_even",
+          "universe_size": 44
+        },
+        "selection": {
+          "accepted_breakout": 56,
+          "accepted_rsi": 30,
+          "blocked_capacity": 287,
+          "blocked_owned": 0,
+          "blocked_risk": 47,
+          "breakout_signals": 388,
+          "rsi_signals": 89
+        },
+        "total_fees_usdt": 12.781,
+        "trades": 86
+      },
+      "train": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": -5.455,
+            "trades": 69,
+            "wins": 26
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": -5.461,
+            "trades": 26,
+            "wins": 12
+          }
+        },
+        "funding_usdt": 2.117,
+        "liquidated_proxy": false,
+        "max_dd_pct": 8.566,
+        "net_return_pct": -4.344,
+        "parameters": {
+          "all_in_cost_bps_side": 32,
+          "strategy": "pullback_reclaim_slots1_risk1_tp2R",
+          "universe": "other_even",
+          "universe_size": 44
+        },
+        "selection": {
+          "accepted_breakout": 69,
+          "accepted_rsi": 26,
+          "blocked_capacity": 243,
+          "blocked_owned": 0,
+          "blocked_risk": 53,
+          "breakout_signals": 359,
+          "rsi_signals": 45
+        },
+        "total_fees_usdt": 21.501,
+        "trades": 95
+      }
+    },
+    "pullback_reclaim_slots1_risk1_tp2R__other_even__cost48bps": {
+      "later": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": 2.032,
+            "trades": 53,
+            "wins": 23
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 9.677,
+            "trades": 29,
+            "wins": 14
+          }
+        },
+        "funding_usdt": 1.331,
+        "liquidated_proxy": false,
+        "max_dd_pct": 8.855,
+        "net_return_pct": 3.459,
+        "parameters": {
+          "all_in_cost_bps_side": 48,
+          "strategy": "pullback_reclaim_slots1_risk1_tp2R",
+          "universe": "other_even",
+          "universe_size": 44
+        },
+        "selection": {
+          "accepted_breakout": 53,
+          "accepted_rsi": 29,
+          "blocked_capacity": 284,
+          "blocked_owned": 0,
+          "blocked_risk": 42,
+          "breakout_signals": 388,
+          "rsi_signals": 87
+        },
+        "total_fees_usdt": 17.49,
+        "trades": 82
+      },
+      "train": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": -13.356,
+            "trades": 70,
+            "wins": 26
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": -7.195,
+            "trades": 26,
+            "wins": 11
+          }
+        },
+        "funding_usdt": 1.98,
+        "liquidated_proxy": false,
+        "max_dd_pct": 10.559,
+        "net_return_pct": -7.51,
+        "parameters": {
+          "all_in_cost_bps_side": 48,
+          "strategy": "pullback_reclaim_slots1_risk1_tp2R",
+          "universe": "other_even",
+          "universe_size": 44
+        },
+        "selection": {
+          "accepted_breakout": 70,
+          "accepted_rsi": 26,
+          "blocked_capacity": 250,
+          "blocked_owned": 0,
+          "blocked_risk": 54,
+          "breakout_signals": 368,
+          "rsi_signals": 45
+        },
+        "total_fees_usdt": 29.974,
+        "trades": 96
+      }
+    },
+    "pullback_reclaim_slots1_risk1_tp2R__other_odd__cost16bps": {
+      "later": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": 0.836,
+            "trades": 70,
+            "wins": 33
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 13.172,
+            "trades": 36,
+            "wins": 16
+          }
+        },
+        "funding_usdt": 1.14,
+        "liquidated_proxy": false,
+        "max_dd_pct": 7.611,
+        "net_return_pct": 4.289,
+        "parameters": {
+          "all_in_cost_bps_side": 16,
+          "strategy": "pullback_reclaim_slots1_risk1_tp2R",
+          "universe": "other_odd",
+          "universe_size": 44
+        },
+        "selection": {
+          "accepted_breakout": 70,
+          "accepted_rsi": 36,
+          "blocked_capacity": 306,
+          "blocked_owned": 0,
+          "blocked_risk": 34,
+          "breakout_signals": 417,
+          "rsi_signals": 87
+        },
+        "total_fees_usdt": 5.015,
+        "trades": 106
+      },
+      "train": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": -20.889,
+            "trades": 68,
+            "wins": 28
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": -7.311,
+            "trades": 26,
+            "wins": 11
+          }
+        },
+        "funding_usdt": 1.105,
+        "liquidated_proxy": false,
+        "max_dd_pct": 11.214,
+        "net_return_pct": -9.768,
+        "parameters": {
+          "all_in_cost_bps_side": 16,
+          "strategy": "pullback_reclaim_slots1_risk1_tp2R",
+          "universe": "other_odd",
+          "universe_size": 44
+        },
+        "selection": {
+          "accepted_breakout": 68,
+          "accepted_rsi": 26,
+          "blocked_capacity": 291,
+          "blocked_owned": 0,
+          "blocked_risk": 83,
+          "breakout_signals": 428,
+          "rsi_signals": 54
+        },
+        "total_fees_usdt": 5.656,
+        "trades": 94
+      }
+    },
+    "pullback_reclaim_slots1_risk1_tp2R__other_odd__cost32bps": {
+      "later": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": -13.991,
+            "trades": 70,
+            "wins": 31
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 9.087,
+            "trades": 36,
+            "wins": 15
+          }
+        },
+        "funding_usdt": 1.084,
+        "liquidated_proxy": false,
+        "max_dd_pct": 11.29,
+        "net_return_pct": -1.996,
+        "parameters": {
+          "all_in_cost_bps_side": 32,
+          "strategy": "pullback_reclaim_slots1_risk1_tp2R",
+          "universe": "other_odd",
+          "universe_size": 44
+        },
+        "selection": {
+          "accepted_breakout": 70,
+          "accepted_rsi": 36,
+          "blocked_capacity": 305,
+          "blocked_owned": 0,
+          "blocked_risk": 34,
+          "breakout_signals": 418,
+          "rsi_signals": 85
+        },
+        "total_fees_usdt": 9.593,
+        "trades": 106
+      },
+      "train": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": -25.06,
+            "trades": 71,
+            "wins": 25
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": -2.028,
+            "trades": 23,
+            "wins": 11
+          }
+        },
+        "funding_usdt": 1.082,
+        "liquidated_proxy": false,
+        "max_dd_pct": 11.185,
+        "net_return_pct": -9.39,
+        "parameters": {
+          "all_in_cost_bps_side": 32,
+          "strategy": "pullback_reclaim_slots1_risk1_tp2R",
+          "universe": "other_odd",
+          "universe_size": 44
+        },
+        "selection": {
+          "accepted_breakout": 71,
+          "accepted_rsi": 23,
+          "blocked_capacity": 280,
+          "blocked_owned": 0,
+          "blocked_risk": 90,
+          "breakout_signals": 420,
+          "rsi_signals": 53
+        },
+        "total_fees_usdt": 11.641,
+        "trades": 94
+      }
+    },
+    "pullback_reclaim_slots1_risk1_tp2R__other_odd__cost48bps": {
+      "later": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": -10.804,
+            "trades": 69,
+            "wins": 29
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 8.131,
+            "trades": 36,
+            "wins": 15
+          }
+        },
+        "funding_usdt": 1.048,
+        "liquidated_proxy": false,
+        "max_dd_pct": 9.709,
+        "net_return_pct": -1.24,
+        "parameters": {
+          "all_in_cost_bps_side": 48,
+          "strategy": "pullback_reclaim_slots1_risk1_tp2R",
+          "universe": "other_odd",
+          "universe_size": 44
+        },
+        "selection": {
+          "accepted_breakout": 69,
+          "accepted_rsi": 36,
+          "blocked_capacity": 302,
+          "blocked_owned": 0,
+          "blocked_risk": 37,
+          "breakout_signals": 418,
+          "rsi_signals": 84
+        },
+        "total_fees_usdt": 13.78,
+        "trades": 105
+      },
+      "train": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": -33.625,
+            "trades": 67,
+            "wins": 22
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": -8.123,
+            "trades": 25,
+            "wins": 10
+          }
+        },
+        "funding_usdt": 1.006,
+        "liquidated_proxy": false,
+        "max_dd_pct": 15.712,
+        "net_return_pct": -14.251,
+        "parameters": {
+          "all_in_cost_bps_side": 48,
+          "strategy": "pullback_reclaim_slots1_risk1_tp2R",
+          "universe": "other_odd",
+          "universe_size": 44
+        },
+        "selection": {
+          "accepted_breakout": 67,
+          "accepted_rsi": 25,
+          "blocked_capacity": 292,
+          "blocked_owned": 0,
+          "blocked_risk": 85,
+          "breakout_signals": 429,
+          "rsi_signals": 53
+        },
+        "total_fees_usdt": 15.466,
+        "trades": 92
+      }
+    },
+    "range_breakout_slots1_risk0.5_tp2R__all100__cost16bps": {
+      "later": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": 7.641,
+            "trades": 77,
+            "wins": 36
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 19.431,
+            "trades": 47,
+            "wins": 22
+          }
+        },
+        "funding_usdt": 1.503,
+        "liquidated_proxy": false,
+        "max_dd_pct": 5.534,
+        "net_return_pct": 8.523,
+        "parameters": {
+          "all_in_cost_bps_side": 16,
+          "strategy": "range_breakout_slots1_risk0.5_tp2R",
+          "universe": "all100",
+          "universe_size": 100
+        },
+        "selection": {
+          "accepted_breakout": 77,
+          "accepted_rsi": 47,
+          "blocked_capacity": 929,
+          "blocked_owned": 0,
+          "blocked_risk": 35,
+          "breakout_signals": 1004,
+          "rsi_signals": 240
+        },
+        "total_fees_usdt": 6.002,
+        "trades": 124
+      },
+      "train": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": 3.765,
+            "trades": 89,
+            "wins": 41
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 35.389,
+            "trades": 58,
+            "wins": 26
+          }
+        },
+        "funding_usdt": 2.301,
+        "liquidated_proxy": false,
+        "max_dd_pct": 13.624,
+        "net_return_pct": 12.284,
+        "parameters": {
+          "all_in_cost_bps_side": 16,
+          "strategy": "range_breakout_slots1_risk0.5_tp2R",
+          "universe": "all100",
+          "universe_size": 100
+        },
+        "selection": {
+          "accepted_breakout": 89,
+          "accepted_rsi": 58,
+          "blocked_capacity": 1088,
+          "blocked_owned": 0,
+          "blocked_risk": 28,
+          "breakout_signals": 1127,
+          "rsi_signals": 162
+        },
+        "total_fees_usdt": 8.43,
+        "trades": 147
+      }
+    },
+    "range_breakout_slots1_risk0.5_tp2R__all100__cost32bps": {
+      "later": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": 4.809,
+            "trades": 76,
+            "wins": 34
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 17.686,
+            "trades": 47,
+            "wins": 19
+          }
+        },
+        "funding_usdt": 1.428,
+        "liquidated_proxy": false,
+        "max_dd_pct": 5.34,
+        "net_return_pct": 7.022,
+        "parameters": {
+          "all_in_cost_bps_side": 32,
+          "strategy": "range_breakout_slots1_risk0.5_tp2R",
+          "universe": "all100",
+          "universe_size": 100
+        },
+        "selection": {
+          "accepted_breakout": 76,
+          "accepted_rsi": 47,
+          "blocked_capacity": 922,
+          "blocked_owned": 0,
+          "blocked_risk": 34,
+          "breakout_signals": 1003,
+          "rsi_signals": 240
+        },
+        "total_fees_usdt": 11.021,
+        "trades": 123
+      },
+      "train": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": -0.212,
+            "trades": 90,
+            "wins": 41
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 22.27,
+            "trades": 56,
+            "wins": 24
+          }
+        },
+        "funding_usdt": 2.153,
+        "liquidated_proxy": false,
+        "max_dd_pct": 14.217,
+        "net_return_pct": 6.635,
+        "parameters": {
+          "all_in_cost_bps_side": 32,
+          "strategy": "range_breakout_slots1_risk0.5_tp2R",
+          "universe": "all100",
+          "universe_size": 100
+        },
+        "selection": {
+          "accepted_breakout": 90,
+          "accepted_rsi": 56,
+          "blocked_capacity": 1108,
+          "blocked_owned": 0,
+          "blocked_risk": 24,
+          "breakout_signals": 1124,
+          "rsi_signals": 163
+        },
+        "total_fees_usdt": 15.935,
+        "trades": 146
+      }
+    },
+    "range_breakout_slots1_risk0.5_tp2R__all100__cost48bps": {
+      "later": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": 0.992,
+            "trades": 76,
+            "wins": 33
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 15.61,
+            "trades": 47,
+            "wins": 19
+          }
+        },
+        "funding_usdt": 1.377,
+        "liquidated_proxy": false,
+        "max_dd_pct": 5.625,
+        "net_return_pct": 5.075,
+        "parameters": {
+          "all_in_cost_bps_side": 48,
+          "strategy": "range_breakout_slots1_risk0.5_tp2R",
+          "universe": "all100",
+          "universe_size": 100
+        },
+        "selection": {
+          "accepted_breakout": 76,
+          "accepted_rsi": 47,
+          "blocked_capacity": 922,
+          "blocked_owned": 0,
+          "blocked_risk": 33,
+          "breakout_signals": 1003,
+          "rsi_signals": 240
+        },
+        "total_fees_usdt": 15.726,
+        "trades": 123
+      },
+      "train": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": -5.233,
+            "trades": 89,
+            "wins": 41
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 23.683,
+            "trades": 57,
+            "wins": 23
+          }
+        },
+        "funding_usdt": 2.026,
+        "liquidated_proxy": false,
+        "max_dd_pct": 15.266,
+        "net_return_pct": 5.475,
+        "parameters": {
+          "all_in_cost_bps_side": 48,
+          "strategy": "range_breakout_slots1_risk0.5_tp2R",
+          "universe": "all100",
+          "universe_size": 100
+        },
+        "selection": {
+          "accepted_breakout": 89,
+          "accepted_rsi": 57,
+          "blocked_capacity": 1095,
+          "blocked_owned": 0,
+          "blocked_risk": 26,
+          "breakout_signals": 1132,
+          "rsi_signals": 161
+        },
+        "total_fees_usdt": 22.311,
+        "trades": 146
+      }
+    },
+    "range_breakout_slots1_risk0.5_tp2R__original12__cost16bps": {
+      "later": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": -1.976,
+            "trades": 36,
+            "wins": 15
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 1.149,
+            "trades": 12,
+            "wins": 5
+          }
+        },
+        "funding_usdt": 0.824,
+        "liquidated_proxy": false,
+        "max_dd_pct": 8.138,
+        "net_return_pct": -0.55,
+        "parameters": {
+          "all_in_cost_bps_side": 16,
+          "strategy": "range_breakout_slots1_risk0.5_tp2R",
+          "universe": "original12",
+          "universe_size": 12
+        },
+        "selection": {
+          "accepted_breakout": 36,
+          "accepted_rsi": 12,
+          "blocked_capacity": 135,
+          "blocked_owned": 0,
+          "blocked_risk": 2,
+          "breakout_signals": 175,
+          "rsi_signals": 37
+        },
+        "total_fees_usdt": 2.974,
+        "trades": 48
+      },
+      "train": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": 5.445,
+            "trades": 73,
+            "wins": 36
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 17.011,
+            "trades": 35,
+            "wins": 14
+          }
+        },
+        "funding_usdt": 1.27,
+        "liquidated_proxy": false,
+        "max_dd_pct": 8.171,
+        "net_return_pct": 7.062,
+        "parameters": {
+          "all_in_cost_bps_side": 16,
+          "strategy": "range_breakout_slots1_risk0.5_tp2R",
+          "universe": "original12",
+          "universe_size": 12
+        },
+        "selection": {
+          "accepted_breakout": 73,
+          "accepted_rsi": 35,
+          "blocked_capacity": 286,
+          "blocked_owned": 0,
+          "blocked_risk": 5,
+          "breakout_signals": 356,
+          "rsi_signals": 46
+        },
+        "total_fees_usdt": 5.373,
+        "trades": 108
+      }
+    },
+    "range_breakout_slots1_risk0.5_tp2R__original12__cost32bps": {
+      "later": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": -3.923,
+            "trades": 36,
+            "wins": 14
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 0.592,
+            "trades": 12,
+            "wins": 4
+          }
+        },
+        "funding_usdt": 0.798,
+        "liquidated_proxy": false,
+        "max_dd_pct": 8.286,
+        "net_return_pct": -1.376,
+        "parameters": {
+          "all_in_cost_bps_side": 32,
+          "strategy": "range_breakout_slots1_risk0.5_tp2R",
+          "universe": "original12",
+          "universe_size": 12
+        },
+        "selection": {
+          "accepted_breakout": 36,
+          "accepted_rsi": 12,
+          "blocked_capacity": 135,
+          "blocked_owned": 0,
+          "blocked_risk": 1,
+          "breakout_signals": 175,
+          "rsi_signals": 36
+        },
+        "total_fees_usdt": 5.717,
+        "trades": 48
+      },
+      "train": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": 2.024,
+            "trades": 73,
+            "wins": 35
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 18.372,
+            "trades": 34,
+            "wins": 14
+          }
+        },
+        "funding_usdt": 1.227,
+        "liquidated_proxy": false,
+        "max_dd_pct": 7.589,
+        "net_return_pct": 6.39,
+        "parameters": {
+          "all_in_cost_bps_side": 32,
+          "strategy": "range_breakout_slots1_risk0.5_tp2R",
+          "universe": "original12",
+          "universe_size": 12
+        },
+        "selection": {
+          "accepted_breakout": 73,
+          "accepted_rsi": 34,
+          "blocked_capacity": 285,
+          "blocked_owned": 0,
+          "blocked_risk": 8,
+          "breakout_signals": 356,
+          "rsi_signals": 47
+        },
+        "total_fees_usdt": 10.177,
+        "trades": 107
+      }
+    },
+    "range_breakout_slots1_risk0.5_tp2R__original12__cost48bps": {
+      "later": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": -5.704,
+            "trades": 36,
+            "wins": 11
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": -0.25,
+            "trades": 12,
+            "wins": 4
+          }
+        },
+        "funding_usdt": 0.772,
+        "liquidated_proxy": false,
+        "max_dd_pct": 8.515,
+        "net_return_pct": -2.242,
+        "parameters": {
+          "all_in_cost_bps_side": 48,
+          "strategy": "range_breakout_slots1_risk0.5_tp2R",
+          "universe": "original12",
+          "universe_size": 12
+        },
+        "selection": {
+          "accepted_breakout": 36,
+          "accepted_rsi": 12,
+          "blocked_capacity": 131,
+          "blocked_owned": 0,
+          "blocked_risk": 2,
+          "breakout_signals": 175,
+          "rsi_signals": 37
+        },
+        "total_fees_usdt": 8.244,
+        "trades": 48
+      },
+      "train": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": -1.135,
+            "trades": 73,
+            "wins": 35
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 15.249,
+            "trades": 33,
+            "wins": 12
+          }
+        },
+        "funding_usdt": 1.157,
+        "liquidated_proxy": false,
+        "max_dd_pct": 8.017,
+        "net_return_pct": 4.319,
+        "parameters": {
+          "all_in_cost_bps_side": 48,
+          "strategy": "range_breakout_slots1_risk0.5_tp2R",
+          "universe": "original12",
+          "universe_size": 12
+        },
+        "selection": {
+          "accepted_breakout": 73,
+          "accepted_rsi": 33,
+          "blocked_capacity": 288,
+          "blocked_owned": 0,
+          "blocked_risk": 8,
+          "breakout_signals": 358,
+          "rsi_signals": 47
+        },
+        "total_fees_usdt": 14.542,
+        "trades": 106
+      }
+    },
+    "range_breakout_slots1_risk0.5_tp2R__other_even__cost16bps": {
+      "later": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": -7.234,
+            "trades": 65,
+            "wins": 22
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 25.143,
+            "trades": 33,
+            "wins": 15
+          }
+        },
+        "funding_usdt": 1.201,
+        "liquidated_proxy": false,
+        "max_dd_pct": 4.106,
+        "net_return_pct": 5.569,
+        "parameters": {
+          "all_in_cost_bps_side": 16,
+          "strategy": "range_breakout_slots1_risk0.5_tp2R",
+          "universe": "other_even",
+          "universe_size": 44
+        },
+        "selection": {
+          "accepted_breakout": 65,
+          "accepted_rsi": 33,
+          "blocked_capacity": 309,
+          "blocked_owned": 0,
+          "blocked_risk": 4,
+          "breakout_signals": 396,
+          "rsi_signals": 87
+        },
+        "total_fees_usdt": 5.417,
+        "trades": 98
+      },
+      "train": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": 4.002,
+            "trades": 73,
+            "wins": 30
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": -5.073,
+            "trades": 26,
+            "wins": 12
+          }
+        },
+        "funding_usdt": 1.462,
+        "liquidated_proxy": false,
+        "max_dd_pct": 9.712,
+        "net_return_pct": -0.845,
+        "parameters": {
+          "all_in_cost_bps_side": 16,
+          "strategy": "range_breakout_slots1_risk0.5_tp2R",
+          "universe": "other_even",
+          "universe_size": 44
+        },
+        "selection": {
+          "accepted_breakout": 73,
+          "accepted_rsi": 26,
+          "blocked_capacity": 248,
+          "blocked_owned": 0,
+          "blocked_risk": 10,
+          "breakout_signals": 318,
+          "rsi_signals": 43
+        },
+        "total_fees_usdt": 6.658,
+        "trades": 99
+      }
+    },
+    "range_breakout_slots1_risk0.5_tp2R__other_even__cost32bps": {
+      "later": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": -10.969,
+            "trades": 65,
+            "wins": 21
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 24.385,
+            "trades": 34,
+            "wins": 16
+          }
+        },
+        "funding_usdt": 1.284,
+        "liquidated_proxy": false,
+        "max_dd_pct": 4.36,
+        "net_return_pct": 4.044,
+        "parameters": {
+          "all_in_cost_bps_side": 32,
+          "strategy": "range_breakout_slots1_risk0.5_tp2R",
+          "universe": "other_even",
+          "universe_size": 44
+        },
+        "selection": {
+          "accepted_breakout": 65,
+          "accepted_rsi": 34,
+          "blocked_capacity": 306,
+          "blocked_owned": 0,
+          "blocked_risk": 4,
+          "breakout_signals": 395,
+          "rsi_signals": 87
+        },
+        "total_fees_usdt": 10.65,
+        "trades": 99
+      },
+      "train": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": 0.23,
+            "trades": 72,
+            "wins": 29
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": -0.98,
+            "trades": 27,
+            "wins": 12
+          }
+        },
+        "funding_usdt": 1.369,
+        "liquidated_proxy": false,
+        "max_dd_pct": 9.555,
+        "net_return_pct": -0.707,
+        "parameters": {
+          "all_in_cost_bps_side": 32,
+          "strategy": "range_breakout_slots1_risk0.5_tp2R",
+          "universe": "other_even",
+          "universe_size": 44
+        },
+        "selection": {
+          "accepted_breakout": 72,
+          "accepted_rsi": 27,
+          "blocked_capacity": 247,
+          "blocked_owned": 0,
+          "blocked_risk": 10,
+          "breakout_signals": 316,
+          "rsi_signals": 44
+        },
+        "total_fees_usdt": 11.903,
+        "trades": 99
+      }
+    },
+    "range_breakout_slots1_risk0.5_tp2R__other_even__cost48bps": {
+      "later": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": -14.239,
+            "trades": 65,
+            "wins": 21
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 25.077,
+            "trades": 32,
+            "wins": 16
+          }
+        },
+        "funding_usdt": 1.208,
+        "liquidated_proxy": false,
+        "max_dd_pct": 4.309,
+        "net_return_pct": 3.21,
+        "parameters": {
+          "all_in_cost_bps_side": 48,
+          "strategy": "range_breakout_slots1_risk0.5_tp2R",
+          "universe": "other_even",
+          "universe_size": 44
+        },
+        "selection": {
+          "accepted_breakout": 65,
+          "accepted_rsi": 32,
+          "blocked_capacity": 306,
+          "blocked_owned": 0,
+          "blocked_risk": 6,
+          "breakout_signals": 395,
+          "rsi_signals": 87
+        },
+        "total_fees_usdt": 15.07,
+        "trades": 97
+      },
+      "train": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": -3.794,
+            "trades": 72,
+            "wins": 28
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": -3.091,
+            "trades": 27,
+            "wins": 12
+          }
+        },
+        "funding_usdt": 1.304,
+        "liquidated_proxy": false,
+        "max_dd_pct": 10.491,
+        "net_return_pct": -2.729,
+        "parameters": {
+          "all_in_cost_bps_side": 48,
+          "strategy": "range_breakout_slots1_risk0.5_tp2R",
+          "universe": "other_even",
+          "universe_size": 44
+        },
+        "selection": {
+          "accepted_breakout": 72,
+          "accepted_rsi": 27,
+          "blocked_capacity": 247,
+          "blocked_owned": 0,
+          "blocked_risk": 8,
+          "breakout_signals": 316,
+          "rsi_signals": 42
+        },
+        "total_fees_usdt": 17.13,
+        "trades": 99
+      }
+    },
+    "range_breakout_slots1_risk0.5_tp2R__other_odd__cost16bps": {
+      "later": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": 10.935,
+            "trades": 60,
+            "wins": 30
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 11.084,
+            "trades": 36,
+            "wins": 15
+          }
+        },
+        "funding_usdt": 0.859,
+        "liquidated_proxy": false,
+        "max_dd_pct": 5.574,
+        "net_return_pct": 7.053,
+        "parameters": {
+          "all_in_cost_bps_side": 16,
+          "strategy": "range_breakout_slots1_risk0.5_tp2R",
+          "universe": "other_odd",
+          "universe_size": 44
+        },
+        "selection": {
+          "accepted_breakout": 60,
+          "accepted_rsi": 36,
+          "blocked_capacity": 264,
+          "blocked_owned": 0,
+          "blocked_risk": 6,
+          "breakout_signals": 341,
+          "rsi_signals": 92
+        },
+        "total_fees_usdt": 2.915,
+        "trades": 96
+      },
+      "train": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": -9.642,
+            "trades": 60,
+            "wins": 26
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": -6.633,
+            "trades": 25,
+            "wins": 11
+          }
+        },
+        "funding_usdt": 0.773,
+        "liquidated_proxy": false,
+        "max_dd_pct": 6.989,
+        "net_return_pct": -5.683,
+        "parameters": {
+          "all_in_cost_bps_side": 16,
+          "strategy": "range_breakout_slots1_risk0.5_tp2R",
+          "universe": "other_odd",
+          "universe_size": 44
+        },
+        "selection": {
+          "accepted_breakout": 60,
+          "accepted_rsi": 25,
+          "blocked_capacity": 308,
+          "blocked_owned": 0,
+          "blocked_risk": 8,
+          "breakout_signals": 350,
+          "rsi_signals": 57
+        },
+        "total_fees_usdt": 3.193,
+        "trades": 85
+      }
+    },
+    "range_breakout_slots1_risk0.5_tp2R__other_odd__cost32bps": {
+      "later": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": 8.878,
+            "trades": 60,
+            "wins": 30
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 10.495,
+            "trades": 35,
+            "wins": 14
+          }
+        },
+        "funding_usdt": 0.824,
+        "liquidated_proxy": false,
+        "max_dd_pct": 5.756,
+        "net_return_pct": 6.183,
+        "parameters": {
+          "all_in_cost_bps_side": 32,
+          "strategy": "range_breakout_slots1_risk0.5_tp2R",
+          "universe": "other_odd",
+          "universe_size": 44
+        },
+        "selection": {
+          "accepted_breakout": 60,
+          "accepted_rsi": 35,
+          "blocked_capacity": 267,
+          "blocked_owned": 0,
+          "blocked_risk": 8,
+          "breakout_signals": 342,
+          "rsi_signals": 95
+        },
+        "total_fees_usdt": 5.637,
+        "trades": 95
+      },
+      "train": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": -7.695,
+            "trades": 60,
+            "wins": 25
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": -3.613,
+            "trades": 26,
+            "wins": 10
+          }
+        },
+        "funding_usdt": 0.788,
+        "liquidated_proxy": false,
+        "max_dd_pct": 7.054,
+        "net_return_pct": -4.032,
+        "parameters": {
+          "all_in_cost_bps_side": 32,
+          "strategy": "range_breakout_slots1_risk0.5_tp2R",
+          "universe": "other_odd",
+          "universe_size": 44
+        },
+        "selection": {
+          "accepted_breakout": 60,
+          "accepted_rsi": 26,
+          "blocked_capacity": 303,
+          "blocked_owned": 0,
+          "blocked_risk": 5,
+          "breakout_signals": 345,
+          "rsi_signals": 56
+        },
+        "total_fees_usdt": 6.327,
+        "trades": 86
+      }
+    },
+    "range_breakout_slots1_risk0.5_tp2R__other_odd__cost48bps": {
+      "later": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": 6.901,
+            "trades": 60,
+            "wins": 29
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 9.098,
+            "trades": 35,
+            "wins": 14
+          }
+        },
+        "funding_usdt": 0.821,
+        "liquidated_proxy": false,
+        "max_dd_pct": 5.931,
+        "net_return_pct": 5.06,
+        "parameters": {
+          "all_in_cost_bps_side": 48,
+          "strategy": "range_breakout_slots1_risk0.5_tp2R",
+          "universe": "other_odd",
+          "universe_size": 44
+        },
+        "selection": {
+          "accepted_breakout": 60,
+          "accepted_rsi": 35,
+          "blocked_capacity": 265,
+          "blocked_owned": 0,
+          "blocked_risk": 8,
+          "breakout_signals": 343,
+          "rsi_signals": 92
+        },
+        "total_fees_usdt": 8.338,
+        "trades": 95
+      },
+      "train": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": -9.641,
+            "trades": 60,
+            "wins": 21
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": -9.523,
+            "trades": 24,
+            "wins": 8
+          }
+        },
+        "funding_usdt": 0.745,
+        "liquidated_proxy": false,
+        "max_dd_pct": 7.559,
+        "net_return_pct": -6.636,
+        "parameters": {
+          "all_in_cost_bps_side": 48,
+          "strategy": "range_breakout_slots1_risk0.5_tp2R",
+          "universe": "other_odd",
+          "universe_size": 44
+        },
+        "selection": {
+          "accepted_breakout": 60,
+          "accepted_rsi": 24,
+          "blocked_capacity": 306,
+          "blocked_owned": 0,
+          "blocked_risk": 8,
+          "breakout_signals": 348,
+          "rsi_signals": 57
+        },
+        "total_fees_usdt": 8.927,
+        "trades": 84
+      }
+    },
+    "rsi2_only__all100__cost16bps": {
+      "later": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": 0,
+            "trades": 0,
+            "wins": 0
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 36.391,
+            "trades": 53,
+            "wins": 25
+          }
+        },
+        "funding_usdt": 1.132,
+        "liquidated_proxy": false,
+        "max_dd_pct": 4.943,
+        "net_return_pct": 11.753,
+        "parameters": {
+          "all_in_cost_bps_side": 16,
+          "strategy": "rsi2_only",
+          "universe": "all100",
+          "universe_size": 100
+        },
+        "selection": {
+          "accepted_breakout": 0,
+          "accepted_rsi": 53,
+          "blocked_capacity": 41,
+          "blocked_owned": 0,
+          "blocked_risk": 20,
+          "breakout_signals": 0,
+          "rsi_signals": 242
+        },
+        "total_fees_usdt": 2.091,
+        "trades": 53
+      },
+      "train": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": 0,
+            "trades": 0,
+            "wins": 0
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 19.098,
+            "trades": 59,
+            "wins": 24
+          }
+        },
+        "funding_usdt": 1.596,
+        "liquidated_proxy": false,
+        "max_dd_pct": 10.412,
+        "net_return_pct": 5.834,
+        "parameters": {
+          "all_in_cost_bps_side": 16,
+          "strategy": "rsi2_only",
+          "universe": "all100",
+          "universe_size": 100
+        },
+        "selection": {
+          "accepted_breakout": 0,
+          "accepted_rsi": 59,
+          "blocked_capacity": 44,
+          "blocked_owned": 0,
+          "blocked_risk": 14,
+          "breakout_signals": 0,
+          "rsi_signals": 162
+        },
+        "total_fees_usdt": 3.232,
+        "trades": 59
+      }
+    },
+    "rsi2_only__all100__cost32bps": {
+      "later": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": 0,
+            "trades": 0,
+            "wins": 0
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 34.64,
+            "trades": 52,
+            "wins": 23
+          }
+        },
+        "funding_usdt": 1.106,
+        "liquidated_proxy": false,
+        "max_dd_pct": 4.872,
+        "net_return_pct": 11.178,
+        "parameters": {
+          "all_in_cost_bps_side": 32,
+          "strategy": "rsi2_only",
+          "universe": "all100",
+          "universe_size": 100
+        },
+        "selection": {
+          "accepted_breakout": 0,
+          "accepted_rsi": 52,
+          "blocked_capacity": 40,
+          "blocked_owned": 0,
+          "blocked_risk": 21,
+          "breakout_signals": 0,
+          "rsi_signals": 242
+        },
+        "total_fees_usdt": 4.08,
+        "trades": 52
+      },
+      "train": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": 0,
+            "trades": 0,
+            "wins": 0
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 4.959,
+            "trades": 58,
+            "wins": 24
+          }
+        },
+        "funding_usdt": 1.516,
+        "liquidated_proxy": false,
+        "max_dd_pct": 11.634,
+        "net_return_pct": 1.148,
+        "parameters": {
+          "all_in_cost_bps_side": 32,
+          "strategy": "rsi2_only",
+          "universe": "all100",
+          "universe_size": 100
+        },
+        "selection": {
+          "accepted_breakout": 0,
+          "accepted_rsi": 58,
+          "blocked_capacity": 41,
+          "blocked_owned": 0,
+          "blocked_risk": 13,
+          "breakout_signals": 0,
+          "rsi_signals": 161
+        },
+        "total_fees_usdt": 6.119,
+        "trades": 58
+      }
+    },
+    "rsi2_only__all100__cost48bps": {
+      "later": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": 0,
+            "trades": 0,
+            "wins": 0
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 29.696,
+            "trades": 52,
+            "wins": 21
+          }
+        },
+        "funding_usdt": 1.074,
+        "liquidated_proxy": false,
+        "max_dd_pct": 5.199,
+        "net_return_pct": 9.541,
+        "parameters": {
+          "all_in_cost_bps_side": 48,
+          "strategy": "rsi2_only",
+          "universe": "all100",
+          "universe_size": 100
+        },
+        "selection": {
+          "accepted_breakout": 0,
+          "accepted_rsi": 52,
+          "blocked_capacity": 51,
+          "blocked_owned": 0,
+          "blocked_risk": 22,
+          "breakout_signals": 0,
+          "rsi_signals": 241
+        },
+        "total_fees_usdt": 5.952,
+        "trades": 52
+      },
+      "train": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": 0,
+            "trades": 0,
+            "wins": 0
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 2.785,
+            "trades": 58,
+            "wins": 22
+          }
+        },
+        "funding_usdt": 1.436,
+        "liquidated_proxy": false,
+        "max_dd_pct": 11.6,
+        "net_return_pct": 0.45,
+        "parameters": {
+          "all_in_cost_bps_side": 48,
+          "strategy": "rsi2_only",
+          "universe": "all100",
+          "universe_size": 100
+        },
+        "selection": {
+          "accepted_breakout": 0,
+          "accepted_rsi": 58,
+          "blocked_capacity": 41,
+          "blocked_owned": 0,
+          "blocked_risk": 13,
+          "breakout_signals": 0,
+          "rsi_signals": 161
+        },
+        "total_fees_usdt": 8.746,
+        "trades": 58
+      }
+    },
+    "rsi2_only__original12__cost16bps": {
+      "later": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": 0,
+            "trades": 0,
+            "wins": 0
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 1.431,
+            "trades": 12,
+            "wins": 5
+          }
+        },
+        "funding_usdt": 0.526,
+        "liquidated_proxy": false,
+        "max_dd_pct": 7.435,
+        "net_return_pct": 0.302,
+        "parameters": {
+          "all_in_cost_bps_side": 16,
+          "strategy": "rsi2_only",
+          "universe": "original12",
+          "universe_size": 12
+        },
+        "selection": {
+          "accepted_breakout": 0,
+          "accepted_rsi": 12,
+          "blocked_capacity": 9,
+          "blocked_owned": 0,
+          "blocked_risk": 1,
+          "breakout_signals": 0,
+          "rsi_signals": 36
+        },
+        "total_fees_usdt": 0.843,
+        "trades": 12
+      },
+      "train": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": 0,
+            "trades": 0,
+            "wins": 0
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 12.87,
+            "trades": 33,
+            "wins": 13
+          }
+        },
+        "funding_usdt": 0.693,
+        "liquidated_proxy": false,
+        "max_dd_pct": 8.573,
+        "net_return_pct": 4.059,
+        "parameters": {
+          "all_in_cost_bps_side": 16,
+          "strategy": "rsi2_only",
+          "universe": "original12",
+          "universe_size": 12
+        },
+        "selection": {
+          "accepted_breakout": 0,
+          "accepted_rsi": 33,
+          "blocked_capacity": 6,
+          "blocked_owned": 0,
+          "blocked_risk": 5,
+          "breakout_signals": 0,
+          "rsi_signals": 46
+        },
+        "total_fees_usdt": 1.7,
+        "trades": 33
+      }
+    },
+    "rsi2_only__original12__cost32bps": {
+      "later": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": 0,
+            "trades": 0,
+            "wins": 0
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 0.883,
+            "trades": 11,
+            "wins": 4
+          }
+        },
+        "funding_usdt": 0.481,
+        "liquidated_proxy": false,
+        "max_dd_pct": 7.279,
+        "net_return_pct": 0.134,
+        "parameters": {
+          "all_in_cost_bps_side": 32,
+          "strategy": "rsi2_only",
+          "universe": "original12",
+          "universe_size": 12
+        },
+        "selection": {
+          "accepted_breakout": 0,
+          "accepted_rsi": 11,
+          "blocked_capacity": 9,
+          "blocked_owned": 0,
+          "blocked_risk": 3,
+          "breakout_signals": 0,
+          "rsi_signals": 37
+        },
+        "total_fees_usdt": 1.541,
+        "trades": 11
+      },
+      "train": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": 0,
+            "trades": 0,
+            "wins": 0
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 11.426,
+            "trades": 35,
+            "wins": 14
+          }
+        },
+        "funding_usdt": 0.75,
+        "liquidated_proxy": false,
+        "max_dd_pct": 8.664,
+        "net_return_pct": 3.559,
+        "parameters": {
+          "all_in_cost_bps_side": 32,
+          "strategy": "rsi2_only",
+          "universe": "original12",
+          "universe_size": 12
+        },
+        "selection": {
+          "accepted_breakout": 0,
+          "accepted_rsi": 35,
+          "blocked_capacity": 5,
+          "blocked_owned": 0,
+          "blocked_risk": 4,
+          "breakout_signals": 0,
+          "rsi_signals": 46
+        },
+        "total_fees_usdt": 3.546,
+        "trades": 35
+      }
+    },
+    "rsi2_only__original12__cost48bps": {
+      "later": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": 0,
+            "trades": 0,
+            "wins": 0
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": -0.212,
+            "trades": 12,
+            "wins": 4
+          }
+        },
+        "funding_usdt": 0.5,
+        "liquidated_proxy": false,
+        "max_dd_pct": 7.327,
+        "net_return_pct": -0.237,
+        "parameters": {
+          "all_in_cost_bps_side": 48,
+          "strategy": "rsi2_only",
+          "universe": "original12",
+          "universe_size": 12
+        },
+        "selection": {
+          "accepted_breakout": 0,
+          "accepted_rsi": 12,
+          "blocked_capacity": 7,
+          "blocked_owned": 0,
+          "blocked_risk": 2,
+          "breakout_signals": 0,
+          "rsi_signals": 37
+        },
+        "total_fees_usdt": 2.406,
+        "trades": 12
+      },
+      "train": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": 0,
+            "trades": 0,
+            "wins": 0
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 11.996,
+            "trades": 32,
+            "wins": 12
+          }
+        },
+        "funding_usdt": 0.656,
+        "liquidated_proxy": false,
+        "max_dd_pct": 8.971,
+        "net_return_pct": 3.78,
+        "parameters": {
+          "all_in_cost_bps_side": 48,
+          "strategy": "rsi2_only",
+          "universe": "original12",
+          "universe_size": 12
+        },
+        "selection": {
+          "accepted_breakout": 0,
+          "accepted_rsi": 32,
+          "blocked_capacity": 5,
+          "blocked_owned": 0,
+          "blocked_risk": 8,
+          "breakout_signals": 0,
+          "rsi_signals": 47
+        },
+        "total_fees_usdt": 4.68,
+        "trades": 32
+      }
+    },
+    "rsi2_only__other_even__cost16bps": {
+      "later": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": 0,
+            "trades": 0,
+            "wins": 0
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 27.659,
+            "trades": 34,
+            "wins": 16
+          }
+        },
+        "funding_usdt": 0.83,
+        "liquidated_proxy": false,
+        "max_dd_pct": 5.767,
+        "net_return_pct": 8.943,
+        "parameters": {
+          "all_in_cost_bps_side": 16,
+          "strategy": "rsi2_only",
+          "universe": "other_even",
+          "universe_size": 44
+        },
+        "selection": {
+          "accepted_breakout": 0,
+          "accepted_rsi": 34,
+          "blocked_capacity": 11,
+          "blocked_owned": 0,
+          "blocked_risk": 4,
+          "breakout_signals": 0,
+          "rsi_signals": 89
+        },
+        "total_fees_usdt": 1.595,
+        "trades": 34
+      },
+      "train": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": 0,
+            "trades": 0,
+            "wins": 0
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": -3.252,
+            "trades": 30,
+            "wins": 13
+          }
+        },
+        "funding_usdt": 0.848,
+        "liquidated_proxy": false,
+        "max_dd_pct": 7.859,
+        "net_return_pct": -1.367,
+        "parameters": {
+          "all_in_cost_bps_side": 16,
+          "strategy": "rsi2_only",
+          "universe": "other_even",
+          "universe_size": 44
+        },
+        "selection": {
+          "accepted_breakout": 0,
+          "accepted_rsi": 30,
+          "blocked_capacity": 2,
+          "blocked_owned": 0,
+          "blocked_risk": 4,
+          "breakout_signals": 0,
+          "rsi_signals": 42
+        },
+        "total_fees_usdt": 1.767,
+        "trades": 30
+      }
+    },
+    "rsi2_only__other_even__cost32bps": {
+      "later": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": 0,
+            "trades": 0,
+            "wins": 0
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 22.133,
+            "trades": 34,
+            "wins": 15
+          }
+        },
+        "funding_usdt": 0.835,
+        "liquidated_proxy": false,
+        "max_dd_pct": 5.82,
+        "net_return_pct": 7.1,
+        "parameters": {
+          "all_in_cost_bps_side": 32,
+          "strategy": "rsi2_only",
+          "universe": "other_even",
+          "universe_size": 44
+        },
+        "selection": {
+          "accepted_breakout": 0,
+          "accepted_rsi": 34,
+          "blocked_capacity": 18,
+          "blocked_owned": 0,
+          "blocked_risk": 9,
+          "breakout_signals": 0,
+          "rsi_signals": 89
+        },
+        "total_fees_usdt": 3.161,
+        "trades": 34
+      },
+      "train": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": 0,
+            "trades": 0,
+            "wins": 0
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": -4.505,
+            "trades": 30,
+            "wins": 13
+          }
+        },
+        "funding_usdt": 0.808,
+        "liquidated_proxy": false,
+        "max_dd_pct": 7.786,
+        "net_return_pct": -1.771,
+        "parameters": {
+          "all_in_cost_bps_side": 32,
+          "strategy": "rsi2_only",
+          "universe": "other_even",
+          "universe_size": 44
+        },
+        "selection": {
+          "accepted_breakout": 0,
+          "accepted_rsi": 30,
+          "blocked_capacity": 2,
+          "blocked_owned": 0,
+          "blocked_risk": 5,
+          "breakout_signals": 0,
+          "rsi_signals": 43
+        },
+        "total_fees_usdt": 3.365,
+        "trades": 30
+      }
+    },
+    "rsi2_only__other_even__cost48bps": {
+      "later": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": 0,
+            "trades": 0,
+            "wins": 0
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 21.6,
+            "trades": 34,
+            "wins": 16
+          }
+        },
+        "funding_usdt": 0.822,
+        "liquidated_proxy": false,
+        "max_dd_pct": 5.872,
+        "net_return_pct": 6.926,
+        "parameters": {
+          "all_in_cost_bps_side": 48,
+          "strategy": "rsi2_only",
+          "universe": "other_even",
+          "universe_size": 44
+        },
+        "selection": {
+          "accepted_breakout": 0,
+          "accepted_rsi": 34,
+          "blocked_capacity": 18,
+          "blocked_owned": 0,
+          "blocked_risk": 3,
+          "breakout_signals": 0,
+          "rsi_signals": 88
+        },
+        "total_fees_usdt": 4.671,
+        "trades": 34
+      },
+      "train": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": 0,
+            "trades": 0,
+            "wins": 0
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": -6.686,
+            "trades": 30,
+            "wins": 12
+          }
+        },
+        "funding_usdt": 0.773,
+        "liquidated_proxy": false,
+        "max_dd_pct": 8.06,
+        "net_return_pct": -2.486,
+        "parameters": {
+          "all_in_cost_bps_side": 48,
+          "strategy": "rsi2_only",
+          "universe": "other_even",
+          "universe_size": 44
+        },
+        "selection": {
+          "accepted_breakout": 0,
+          "accepted_rsi": 30,
+          "blocked_capacity": 1,
+          "blocked_owned": 0,
+          "blocked_risk": 5,
+          "breakout_signals": 0,
+          "rsi_signals": 42
+        },
+        "total_fees_usdt": 4.825,
+        "trades": 30
+      }
+    },
+    "rsi2_only__other_odd__cost16bps": {
+      "later": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": 0,
+            "trades": 0,
+            "wins": 0
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 6.737,
+            "trades": 39,
+            "wins": 16
+          }
+        },
+        "funding_usdt": 0.665,
+        "liquidated_proxy": false,
+        "max_dd_pct": 3.839,
+        "net_return_pct": 2.024,
+        "parameters": {
+          "all_in_cost_bps_side": 16,
+          "strategy": "rsi2_only",
+          "universe": "other_odd",
+          "universe_size": 44
+        },
+        "selection": {
+          "accepted_breakout": 0,
+          "accepted_rsi": 39,
+          "blocked_capacity": 5,
+          "blocked_owned": 0,
+          "blocked_risk": 3,
+          "breakout_signals": 0,
+          "rsi_signals": 79
+        },
+        "total_fees_usdt": 1.151,
+        "trades": 39
+      },
+      "train": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": 0,
+            "trades": 0,
+            "wins": 0
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": -8.808,
+            "trades": 27,
+            "wins": 10
+          }
+        },
+        "funding_usdt": 0.511,
+        "liquidated_proxy": false,
+        "max_dd_pct": 6.387,
+        "net_return_pct": -3.106,
+        "parameters": {
+          "all_in_cost_bps_side": 16,
+          "strategy": "rsi2_only",
+          "universe": "other_odd",
+          "universe_size": 44
+        },
+        "selection": {
+          "accepted_breakout": 0,
+          "accepted_rsi": 27,
+          "blocked_capacity": 5,
+          "blocked_owned": 0,
+          "blocked_risk": 7,
+          "breakout_signals": 0,
+          "rsi_signals": 56
+        },
+        "total_fees_usdt": 0.965,
+        "trades": 27
+      }
+    },
+    "rsi2_only__other_odd__cost32bps": {
+      "later": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": 0,
+            "trades": 0,
+            "wins": 0
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": -2.001,
+            "trades": 40,
+            "wins": 14
+          }
+        },
+        "funding_usdt": 0.655,
+        "liquidated_proxy": false,
+        "max_dd_pct": 4.991,
+        "net_return_pct": -0.885,
+        "parameters": {
+          "all_in_cost_bps_side": 32,
+          "strategy": "rsi2_only",
+          "universe": "other_odd",
+          "universe_size": 44
+        },
+        "selection": {
+          "accepted_breakout": 0,
+          "accepted_rsi": 40,
+          "blocked_capacity": 2,
+          "blocked_owned": 0,
+          "blocked_risk": 4,
+          "breakout_signals": 0,
+          "rsi_signals": 79
+        },
+        "total_fees_usdt": 2.372,
+        "trades": 40
+      },
+      "train": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": 0,
+            "trades": 0,
+            "wins": 0
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": -6.419,
+            "trades": 26,
+            "wins": 10
+          }
+        },
+        "funding_usdt": 0.505,
+        "liquidated_proxy": false,
+        "max_dd_pct": 5.463,
+        "net_return_pct": -2.308,
+        "parameters": {
+          "all_in_cost_bps_side": 32,
+          "strategy": "rsi2_only",
+          "universe": "other_odd",
+          "universe_size": 44
+        },
+        "selection": {
+          "accepted_breakout": 0,
+          "accepted_rsi": 26,
+          "blocked_capacity": 5,
+          "blocked_owned": 0,
+          "blocked_risk": 6,
+          "breakout_signals": 0,
+          "rsi_signals": 54
+        },
+        "total_fees_usdt": 1.873,
+        "trades": 26
+      }
+    },
+    "rsi2_only__other_odd__cost48bps": {
+      "later": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": 0,
+            "trades": 0,
+            "wins": 0
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": 4.037,
+            "trades": 39,
+            "wins": 15
+          }
+        },
+        "funding_usdt": 0.653,
+        "liquidated_proxy": false,
+        "max_dd_pct": 3.971,
+        "net_return_pct": 1.128,
+        "parameters": {
+          "all_in_cost_bps_side": 48,
+          "strategy": "rsi2_only",
+          "universe": "other_odd",
+          "universe_size": 44
+        },
+        "selection": {
+          "accepted_breakout": 0,
+          "accepted_rsi": 39,
+          "blocked_capacity": 5,
+          "blocked_owned": 0,
+          "blocked_risk": 4,
+          "breakout_signals": 0,
+          "rsi_signals": 80
+        },
+        "total_fees_usdt": 3.394,
+        "trades": 39
+      },
+      "train": {
+        "by_strategy": {
+          "COMPANION_4H": {
+            "net_trade_pnl_usdt": 0,
+            "trades": 0,
+            "wins": 0
+          },
+          "RSI2_1D": {
+            "net_trade_pnl_usdt": -10.389,
+            "trades": 27,
+            "wins": 9
+          }
+        },
+        "funding_usdt": 0.49,
+        "liquidated_proxy": false,
+        "max_dd_pct": 6.422,
+        "net_return_pct": -3.626,
+        "parameters": {
+          "all_in_cost_bps_side": 48,
+          "strategy": "rsi2_only",
+          "universe": "other_odd",
+          "universe_size": 44
+        },
+        "selection": {
+          "accepted_breakout": 0,
+          "accepted_rsi": 27,
+          "blocked_capacity": 5,
+          "blocked_owned": 0,
+          "blocked_risk": 5,
+          "breakout_signals": 0,
+          "rsi_signals": 53
+        },
+        "total_fees_usdt": 2.841,
+        "trades": 27
+      }
+    }
+  },
+  "study": "84-scenario portfolio stress: 7 pretrained candidates x 4 frozen symbol sets x 3 all-in cost stress levels",
+  "subset_pair_positive_counts": {
+    "breakout30_slots1_risk0.5_tp3R": 0,
+    "breakout30_slots1_risk1_tp2R": 1,
+    "breakout60_slots1_risk1_tp3R": 1,
+    "ema_cross_slots1_risk1_tp2R": 2,
+    "pullback_reclaim_slots1_risk1_tp2R": 0,
+    "range_breakout_slots1_risk0.5_tp2R": 0,
+    "rsi2_only": 2
+  },
+  "symbol_groups": {
+    "all100": 100,
+    "original12": 12,
+    "other_even": 44,
+    "other_odd": 44
+  }
+}
