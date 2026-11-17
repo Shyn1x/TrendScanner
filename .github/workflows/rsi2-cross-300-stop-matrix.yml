@@ -1,0 +1,32 @@
+name: RSI2 $300 Cross Stop Matrix Research
+on:
+  push:
+    branches: [research/rsi2-long-leverage-5x-10x]
+    paths:
+      - artifacts/trendscanner/rsi2_cross_300_stop_matrix.py
+      - .github/workflows/rsi2-cross-300-stop-matrix.yml
+permissions:
+  contents: read
+jobs:
+  research:
+    runs-on: [self-hosted, linux, x64, bybit-demo]
+    timeout-minutes: 70
+    env:
+      TREND_SCANNER_MARKET_SOURCE: bybit_linear
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - name: Validate research syntax
+        run: python3 -m py_compile artifacts/trendscanner/rsi2_cross_300_stop_matrix.py
+      - name: Run RSI2 $300 Cross 3 and 5 slots stop/add matrix
+        run: |
+          set -o pipefail
+          uv run --no-project --with pandas python artifacts/trendscanner/rsi2_cross_300_stop_matrix.py | tee rsi2-cross-300-stop-matrix.json
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rsi2-cross-300-stop-matrix
+          path: rsi2-cross-300-stop-matrix.json
+          if-no-files-found: warn
+          retention-days: 30
