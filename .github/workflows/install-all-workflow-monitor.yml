@@ -1,0 +1,80 @@
+name: Install TrendScanner All-Workflow 2m Monitor
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/install-all-workflow-monitor.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  install-monitor:
+    runs-on: [self-hosted, linux, x64, bybit-demo]
+    timeout-minutes: 10
+    env:
+      MONITOR_TOKEN: ${{ secrets.TRENDSCANNER_MONITOR_TOKEN }}
+    steps:
+      - name: Ensure dedicated read/notify token exists
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${MONITOR_TOKEN:-}" ]; then
+            echo "::error::Repository secret TRENDSCANNER_MONITOR_TOKEN not configured. No changes were made."
+            exit 1
+          fi
+      - uses: actions/checkout@v4
+        with:
+          ref: research/rsi2-long-leverage-5x-10x
+      - name: Install independent monitoring script and safe environment
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          TARGET="$HOME/.local/share/trendscanner-actions-monitor"
+          mkdir -p "$TARGET" "$HOME/.local/state/trendscanner" "$HOME/.local/bin"
+          install -m 700 ops/vps/monitor_all_workflows.py "$TARGET/monitor_all_workflows.py"
+          printf 'GITHUB_MONITOR_TOKEN=%s\n' "$MONITOR_TOKEN" > "$TARGET/token.env"
+          chmod 600 "$TARGET/token.env"
+          cat > "$HOME/.local/bin/trendscanner-actions-monitor" <<'SCRIPT'
+          #!/usr/bin/env bash
+          set -euo pipefail
+          umask 077
+          source "$HOME/.local/share/trendscanner-actions-monitor/token.env"
+          export GITHUB_MONITOR_TOKEN
+          exec /usr/bin/python3 "$HOME/.local/share/trendscanner-actions-monitor/monitor_all_workflows.py" \
+            --state "$HOME/.local/state/trendscanner/all_workflow_monitor.json"
+          SCRIPT
+          chmod 700 "$HOME/.local/bin/trendscanner-actions-monitor"
+          # Validate API access; first run only records preexisting completions.
+          GITHUB_MONITOR_TOKEN="$MONITOR_TOKEN" /usr/bin/python3 "$TARGET/monitor_all_workflows.py" \
+            --state "$HOME/.local/state/trendscanner/all_workflow_monitor.json" --bootstrap
+      - name: Append one existing-crontab-safe two-minute schedule
+        shell: bash
+        run: |
+          set -euo pipefail
+          command -v crontab >/dev/null || { echo "::error::crontab unavailable; monitor not scheduled"; exit 1; }
+          START='# BEGIN TRENDSCANNER_ACTIONS_MONITOR'
+          END='# END TRENDSCANNER_ACTIONS_MONITOR'
+          CURRENT="$(mktemp)"
+          CLEAN="$(mktemp)"
+          (crontab -l || true) > "$CURRENT" 2>/dev/null
+          awk -v start="$START" -v end="$END" '
+            $0==start {skip=1;next}
+            $0==end {skip=0;next}
+            !skip {print}
+          ' "$CURRENT" > "$CLEAN"
+          {
+            cat "$CLEAN"
+            echo "$START"
+            echo '*/2 * * * * /usr/bin/flock -n "$HOME/.local/state/trendscanner/all_workflow_monitor.lock" "$HOME/.local/bin/trendscanner-actions-monitor" >> "$HOME/.local/state/trendscanner/all_workflow_monitor.log" 2>&1'
+            echo "$END"
+          } | crontab -
+          rm -f "$CURRENT" "$CLEAN"
+          echo "Installed isolated 2-minute monitor into runner user's crontab."
+      - name: Verify one live read-only check (notification permissions checked on first new finished run)
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$HOME/.local/bin/trendscanner-actions-monitor"
+          crontab -l | grep -F 'BEGIN TRENDSCANNER_ACTIONS_MONITOR'
+          echo "Monitor installed. Notification medium: GitHub Issues (not ChatGPT)."
