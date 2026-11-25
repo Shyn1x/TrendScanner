@@ -26,7 +26,7 @@ if MARKET_SOURCE not in {"kucoin_futures", "bybit_linear"}:
 LOWER_TF_VERSION = BYBIT_LOWER_TF_VERSION if MARKET_SOURCE == "bybit_linear" else KUCOIN_LOWER_TF_VERSION
 FOUR_H_VERSION = BYBIT_4H_VERSION if MARKET_SOURCE == "bybit_linear" else KUCOIN_4H_VERSION
 PUBLIC_BASE_URL = "https://api.bybit.com"
-INTERVALS = {"15m": ("15", 900_000), "1h": ("60", 3_600_000), "4h": ("240", 14_400_000)}
+INTERVALS = {"1m": ("1", 60_000), "5m": ("5", 300_000), "15m": ("15", 900_000), "1h": ("60", 3_600_000), "4h": ("240", 14_400_000)}
 COLUMNS = ["time", "open", "high", "low", "close", "volume"]
 _last_request_at = 0.0
 
