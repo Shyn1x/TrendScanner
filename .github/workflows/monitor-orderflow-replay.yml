@@ -1,80 +1,13 @@
-name: Monitor Orderflow Replay Every 2 Minutes
+# Superseded by ops/vps/monitor_all_workflows.py.
+# Kept only for historical manual inspection. No scheduled/automatic job.
+name: Deprecated Orderflow-Only Monitor
 on:
-  push:
-    branches: [research/rsi2-long-leverage-5x-10x]
-    paths:
-      - .github/workflows/monitor-orderflow-replay.yml
   workflow_dispatch:
 permissions:
   contents: read
-  actions: read
-  issues: write
-concurrency:
-  group: orderflow-replay-monitor
-  cancel-in-progress: false
 jobs:
-  monitor:
-    runs-on: [self-hosted, linux, x64, bybit-demo]
-    timeout-minutes: 130
+  deprecated:
+    runs-on: ubuntu-latest
     steps:
-      - name: Check replay workflow every 120 seconds, notify once
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-        run: |
-          set -euo pipefail
-          python3 - <<'PY'
-          import json, os, time, urllib.error, urllib.parse, urllib.request
-          repo=os.environ["GH_REPO"]
-          token=os.environ["GH_TOKEN"]
-          branch="research/rsi2-long-leverage-5x-10x"
-          endpoint=f"https://api.github.com/repos/{repo}"
-          headers={"Authorization":"Bearer "+token,"Accept":"application/vnd.github+json",
-                   "X-GitHub-Api-Version":"2022-11-28","User-Agent":"Orderflow-Research-Monitor"}
-          def call(path,method="GET",body=None):
-              payload=json.dumps(body).encode() if body is not None else None
-              req=urllib.request.Request(endpoint+path,data=payload,method=method,headers=headers)
-              with urllib.request.urlopen(req,timeout=30) as response:
-                  return json.load(response)
-          issue_title="TrendScanner: результат теста скальпинга по стакану Bybit"
-          for n in range(60):
-              # Follow the latest replay run (not this monitoring job).
-              path="/actions/workflows/bybit-orderflow-replay.yml/runs?"+urllib.parse.urlencode({
-                  "branch":branch,"per_page":3})
-              try:
-                  runs=call(path).get("workflow_runs",[])
-              except Exception as e:
-                  print(f"poll {n+1}: API unavailable: {type(e).__name__}: {e}",flush=True)
-                  time.sleep(120)
-                  continue
-              if runs:
-                  run=runs[0]
-                  rid=run["id"]
-                  conclusion=run.get("conclusion")
-                  status=run.get("status")
-                  print(f"poll {n+1}: replay run={rid} status={status} conclusion={conclusion}",flush=True)
-                  if status=="completed":
-                      if conclusion=="success":
-                          contents=(f"@Shyn1x Тест стакана Bybit завершился успешно. "
-                                    f"Отчёт находится в исследовательской ветке GitHub.\n\n"
-                                    f"Запуск: {run['html_url']}\n"
-                                    f"Отчёт: https://github.com/{repo}/blob/{branch}/artifacts/trendscanner/reports/bybit_orderflow_diagnostic_latest.md\n\n"
-                                    "Результаты следует считать предварительными: выборка 15 минут.")
-                      else:
-                          contents=(f"@Shyn1x Тест стакана Bybit завершился с ошибкой ({conclusion}). "
-                                    f"Проверить логи и исправить.\n\nЗапуск: {run['html_url']}")
-                      existing=call("/issues?state=all&per_page=100").get("__missing__",None) if False else call("/issues?state=all&per_page=100")
-                      matched=[x for x in existing if x.get("title")==issue_title and "pull_request" not in x]
-                      if matched:
-                          call(f"/issues/{matched[0]['number']}/comments",method="POST",body={"body":contents})
-                      else:
-                          call("/issues",method="POST",body={"title":issue_title,"body":contents})
-                      print("GitHub issue notification recorded",flush=True)
-                      break
-              else:
-                  print(f"poll {n+1}: no replay run returned",flush=True)
-              time.sleep(120)
-          else:
-              print("Monitoring timed out after 2 hours; no claim of successful completion",flush=True)
-          PY
+      - name: Deprecated
+        run: echo 'Use generic ops/vps/monitor_all_workflows.py instead. No monitoring started.'
