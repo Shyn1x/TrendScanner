@@ -12,7 +12,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   native-backtest:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, x64, bybit-demo]
     timeout-minutes: 240
     steps:
       - uses: actions/checkout@v4
@@ -40,8 +40,13 @@ jobs:
             echo "Window: 2026-01-04 to 2026-11-17, historical warmup downloaded from 2025-04-01"
             echo "This test DOES NOT duplicate author's unpublished exchange configuration or paper-trade ledger."
           } | tee native-test/results/provenance.txt
-      - name: Fetch official Freqtrade Docker image
-        run: docker pull freqtradeorg/freqtrade:stable
+      - name: Verify VPS dependencies and Bybit access
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker info > /dev/null
+          docker pull freqtradeorg/freqtrade:stable
+          echo 'Running on self-hosted VPS runner (avoids GitHub-hosted regional Bybit 403)'
       - name: Check Freqtrade configuration and source strategy
         run: |
           docker run --rm -v "${PWD}/native-test:/freqtrade/user_data" freqtradeorg/freqtrade:stable \
