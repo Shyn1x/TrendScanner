@@ -4,10 +4,11 @@ on:
     branches: [research/rsi2-long-leverage-5x-10x]
     paths:
       - artifacts/trendscanner/bybit_orderflow_replay.py
+      - artifacts/trendscanner/test_bybit_orderflow_replay.py
       - .github/workflows/bybit-orderflow-replay.yml
   workflow_dispatch:
 permissions:
-  contents: read
+  contents: write
   actions: read
 concurrency:
   group: bybit-orderflow-replay
@@ -18,6 +19,11 @@ jobs:
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
+      - name: Preflight offline orderflow reconstruction, timing and fees
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s artifacts/trendscanner -p test_bybit_orderflow_replay.py -v
       - name: Download immutable 15-minute Bybit capture via GitHub artifact action
         uses: actions/download-artifact@v4
         with:
@@ -48,6 +54,26 @@ jobs:
             --json-out artifacts/trendscanner/reports/bybit_orderflow_diagnostic_latest.json \
             --md-out artifacts/trendscanner/reports/bybit_orderflow_diagnostic_latest.md
           cat artifacts/trendscanner/reports/bybit_orderflow_diagnostic_latest.md >> "${GITHUB_STEP_SUMMARY}"
+      - name: Publish inspectable result to research branch for phone-free follow-up
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "${RUNNER_TEMP}/orderflow-reports"
+          cp artifacts/trendscanner/reports/bybit_orderflow_diagnostic_latest.* "${RUNNER_TEMP}/orderflow-reports/"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          for attempt in 1 2 3; do
+            git fetch origin "${GITHUB_REF_NAME}"
+            git reset --hard FETCH_HEAD
+            mkdir -p artifacts/trendscanner/reports
+            cp "${RUNNER_TEMP}/orderflow-reports/"* artifacts/trendscanner/reports/
+            git add artifacts/trendscanner/reports/bybit_orderflow_diagnostic_latest.*
+            if git diff --cached --quiet; then break; fi
+            git commit -m "research: bybit 15-minute orderflow replay diagnostics [skip ci]"
+            if git push origin "HEAD:${GITHUB_REF_NAME}"; then break; fi
+            if [ "${attempt}" = 3 ]; then exit 1; fi
+            sleep 3
+          done
       - name: Archive analysis, even on failure
         if: always()
         uses: actions/upload-artifact@v4
