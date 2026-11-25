@@ -35,40 +35,46 @@ jobs:
             echo "Original informative candles: 4h / 1d / BTC 1h"
             echo "USDT perpetuals: Bybit, original published 13-symbol whitelist"
             echo "Research portfolio: 300 USDT (differs from developer's public 500 USDT)"
-            echo "Config constructed for independent test; original config.json absent in public checkout"
+            echo "Config constructed for independent test; original config.json absent in public checkout"\n            echo "Runtime: Freqtrade 2026.2 installed with uv Python 3.12; no Docker on runner"
             echo "Selection: no parameter optimization; Freqtrade default strategy parameters"
             echo "Window: 2026-01-04 to 2026-11-17, historical warmup downloaded from 2025-04-01"
             echo "This test DOES NOT duplicate author's unpublished exchange configuration or paper-trade ledger."
           } | tee native-test/results/provenance.txt
-      - name: Verify VPS dependencies and Bybit access
+      - uses: astral-sh/setup-uv@v6
+      - name: Prepare reproducible Freqtrade 2026 environment without Docker
         shell: bash
         run: |
           set -euo pipefail
-          docker info > /dev/null
-          docker pull freqtradeorg/freqtrade:stable
-          echo 'Running on self-hosted VPS runner (avoids GitHub-hosted regional Bybit 403)'
-      - name: Check Freqtrade configuration and source strategy
-        run: |
-          docker run --rm -v "${PWD}/native-test:/freqtrade/user_data" freqtradeorg/freqtrade:stable \
-            list-strategies --strategy-path /freqtrade/user_data/strategies --config /freqtrade/user_data/config.json
-      - name: Download Bybit futures data (1h, 4h, 1d and funding/mark)
+          uv python install 3.12
+          mkdir -p native-test/data native-test/results
+          uv run --no-project --python 3.12 --with "freqtrade==2026.2" freqtrade --version
+      - name: Check native strategy and configuration
+        shell: bash
         run: |
           set -euo pipefail
-          docker run --rm -v "${PWD}/native-test:/freqtrade/user_data" freqtradeorg/freqtrade:stable \
-            download-data --config /freqtrade/user_data/config.json --trading-mode futures \
-            --timeframes 1h 4h 1d --timerange 20250401-20261118 \
+          uv run --no-project --python 3.12 --with "freqtrade==2026.2" freqtrade list-strategies \
+            --userdir "${PWD}/native-test" --strategy-path "${PWD}/native-test/strategies" \
+            --config "${PWD}/native-test/config.json"
+      - name: Download Bybit futures data (1h, 4h, 1d)
+        shell: bash
+        run: |
+          set -euo pipefail
+          uv run --no-project --python 3.12 --with "freqtrade==2026.2" freqtrade download-data \
+            --userdir "${PWD}/native-test" --config "${PWD}/native-test/config.json" \
+            --trading-mode futures --timeframes 1h 4h 1d --timerange 20250401-20261118 \
             --pairs BTC/USDT:USDT ETH/USDT:USDT SOL/USDT:USDT DOGE/USDT:USDT \
               XRP/USDT:USDT ADA/USDT:USDT AVAX/USDT:USDT DOT/USDT:USDT \
               POL/USDT:USDT NEAR/USDT:USDT ATOM/USDT:USDT SUI/USDT:USDT OP/USDT:USDT
-      - name: Native backtest, unchanged author strategy, 1x leverage
+      - name: Native backtest - unchanged author's original entry and exit, 1x leverage
+        shell: bash
         run: |
           set -euo pipefail
-          docker run --rm -v "${PWD}/native-test:/freqtrade/user_data" freqtradeorg/freqtrade:stable \
-            backtesting --config /freqtrade/user_data/config.json \
+          uv run --no-project --python 3.12 --with "freqtrade==2026.2" freqtrade backtesting \
+            --userdir "${PWD}/native-test" --config "${PWD}/native-test/config.json" \
             --strategy TrendRiderStrategyPublic \
-            --strategy-path /freqtrade/user_data/strategies \
+            --strategy-path "${PWD}/native-test/strategies" \
             --timerange 20260104-20261117 --fee 0.0006 \
-            --export trades --export-filename /freqtrade/user_data/results/trendrider_original_1h.json \
+            --export trades --export-filename "${PWD}/native-test/results/trendrider_original_1h.json" \
             2>&1 | tee native-test/results/native_backtest.log
       - name: Always archive data and diagnostics
         if: always()
