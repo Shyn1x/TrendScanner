@@ -1,0 +1,45 @@
+name: Bybit Orderflow Capture - 15 Minute Research
+on:
+  push:
+    branches: [research/rsi2-long-leverage-5x-10x]
+    paths:
+      - artifacts/trendscanner/bybit_orderflow_capture.py
+      - .github/workflows/bybit-orderflow-research.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: bybit-orderflow-capture
+  cancel-in-progress: false
+jobs:
+  sample:
+    name: Record BTC ETH SOL public orderflow
+    runs-on: [self-hosted, linux, x64, bybit-demo]
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - name: Validate standalone collector
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m py_compile artifacts/trendscanner/bybit_orderflow_capture.py
+      - name: Record Bybit level-50 order books and public trade streams for 15 minutes
+        shell: bash
+        run: |
+          set -euo pipefail
+          uv run --no-project --with "websockets>=13,<17" python \
+            artifacts/trendscanner/bybit_orderflow_capture.py \
+            --seconds 900 \
+            --output orderflow-data/bybit_raw_orderflow.jsonl.gz \
+            | tee orderflow-data-status.txt
+      - name: Archive actual raw market data and topic counts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bybit-orderflow-btc-eth-sol-15min
+          path: |
+            orderflow-data/*.jsonl.gz
+            orderflow-data-status.txt
+          if-no-files-found: warn
+          retention-days: 30
