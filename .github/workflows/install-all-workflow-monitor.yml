@@ -36,7 +36,7 @@ jobs:
           python3 - <<'PY'
           import os, pathlib, shlex
           destination=pathlib.Path.home()/".local/share/trendscanner-actions-monitor/token.env"
-          destination.write_text("GITHUB_MONITOR_TOKEN="+shlex.quote(os.environ["MONITOR_TOKEN"])+"\\n",encoding="utf-8")
+          destination.write_text("GITHUB_MONITOR_TOKEN="+shlex.quote(os.environ["MONITOR_TOKEN"])+"\n",encoding="utf-8")
           destination.chmod(0o600)
           PY
           cat > "$HOME/.local/bin/trendscanner-actions-monitor" <<'SCRIPT'
