@@ -18,17 +18,19 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: research/rsi2-long-leverage-5x-10x
-      - name: Checkout public TrendRider at exact source commit and retain provenance
+      - name: Prepare vendored public TrendRider and record source provenance
         shell: bash
         run: |
           set -euo pipefail
-          git clone --depth=1 https://github.com/darkvolg/Trading.git /tmp/trendrider-upstream
           mkdir -p native-test/strategies native-test/results
-          cp /tmp/trendrider-upstream/FreqtradeBot/user_data/strategies/TrendRiderStrategy_public.py native-test/strategies/
+          cp artifacts/trendscanner/vendor/TrendRiderStrategy_public.py native-test/strategies/
+          echo "Vendored strategy SHA256: $(sha256sum native-test/strategies/TrendRiderStrategy_public.py)"
+          echo "Source: darkvolg/Trading FreqtradeBot/user_data/strategies/TrendRiderStrategy_public.py"
+          echo "Original Git blob SHA: b7d013a802b45d2dd1cb0b91d4083fb247efac75"
           cp artifacts/trendscanner/trendrider_original_freqtrade_config.json native-test/config.json
           {
             echo "Original upstream repository: https://github.com/darkvolg/Trading"
-            echo "Upstream commit: $(git -C /tmp/trendrider-upstream rev-parse HEAD)"
+            echo "Upstream pinned blob SHA: b7d013a802b45d2dd1cb0b91d4083fb247efac75"
             echo "Upstream strategy blob SHA256: $(sha256sum native-test/strategies/TrendRiderStrategy_public.py)"
             echo "Exact Python original: TrendRiderStrategyPublic, no entry/exit alterations"
             echo "Original base candle: 1h (strategy-controlled)"
