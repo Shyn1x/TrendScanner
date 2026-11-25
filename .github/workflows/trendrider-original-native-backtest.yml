@@ -22,13 +22,13 @@ jobs:
         run: |
           set -euo pipefail
           git clone --depth=1 https://github.com/darkvolg/Trading.git /tmp/trendrider-upstream
-          mkdir -p native-test/user_data/strategies native-test/results
-          cp /tmp/trendrider-upstream/FreqtradeBot/user_data/strategies/TrendRiderStrategy_public.py native-test/user_data/strategies/
+          mkdir -p native-test/strategies native-test/results
+          cp /tmp/trendrider-upstream/FreqtradeBot/user_data/strategies/TrendRiderStrategy_public.py native-test/strategies/
           cp artifacts/trendscanner/trendrider_original_freqtrade_config.json native-test/config.json
           {
             echo "Original upstream repository: https://github.com/darkvolg/Trading"
             echo "Upstream commit: $(git -C /tmp/trendrider-upstream rev-parse HEAD)"
-            echo "Upstream strategy blob SHA256: $(sha256sum native-test/user_data/strategies/TrendRiderStrategy_public.py)"
+            echo "Upstream strategy blob SHA256: $(sha256sum native-test/strategies/TrendRiderStrategy_public.py)"
             echo "Exact Python original: TrendRiderStrategyPublic, no entry/exit alterations"
             echo "Original base candle: 1h (strategy-controlled)"
             echo "Original informative candles: 4h / 1d / BTC 1h"
@@ -71,7 +71,7 @@ jobs:
           name: trendrider-original-native-backtest
           path: |
             native-test/results/
-            native-test/user_data/strategies/TrendRiderStrategy_public.py
+            native-test/strategies/TrendRiderStrategy_public.py
             native-test/config.json
           if-no-files-found: warn
           retention-days: 30
