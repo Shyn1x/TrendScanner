@@ -1,0 +1,78 @@
+name: TrendRider Original Author Rules (Freqtrade Native)
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/trendrider-original-native-backtest.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: trendrider-original-native-research
+  cancel-in-progress: false
+jobs:
+  native-backtest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: research/rsi2-long-leverage-5x-10x
+      - name: Checkout public TrendRider at exact source commit and retain provenance
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone --depth=1 https://github.com/darkvolg/Trading.git /tmp/trendrider-upstream
+          mkdir -p native-test/strategies native-test/results
+          cp /tmp/trendrider-upstream/FreqtradeBot/user_data/strategies/TrendRiderStrategy_public.py native-test/strategies/
+          cp artifacts/trendscanner/trendrider_original_freqtrade_config.json native-test/config.json
+          {
+            echo "Original upstream repository: https://github.com/darkvolg/Trading"
+            echo "Upstream commit: $(git -C /tmp/trendrider-upstream rev-parse HEAD)"
+            echo "Upstream strategy blob SHA256: $(sha256sum native-test/strategies/TrendRiderStrategy_public.py)"
+            echo "Exact Python original: TrendRiderStrategyPublic, no entry/exit alterations"
+            echo "Original base candle: 1h (strategy-controlled)"
+            echo "Original informative candles: 4h / 1d / BTC 1h"
+            echo "USDT perpetuals: Bybit, original published 13-symbol whitelist"
+            echo "Research portfolio: 300 USDT (differs from developer's public 500 USDT)"
+            echo "Config constructed for independent test; original config.json absent in public checkout"
+            echo "Selection: no parameter optimization; Freqtrade default strategy parameters"
+            echo "Window: 2026-01-04 to 2026-11-17, historical warmup downloaded from 2025-04-01"
+            echo "This test DOES NOT duplicate author's unpublished exchange configuration or paper-trade ledger."
+          } | tee native-test/results/provenance.txt
+      - name: Fetch official Freqtrade Docker image
+        run: docker pull freqtradeorg/freqtrade:stable
+      - name: Check Freqtrade configuration and source strategy
+        run: |
+          docker run --rm -v "${PWD}/native-test:/freqtrade/user_data" freqtradeorg/freqtrade:stable \
+            list-strategies --strategy-path /freqtrade/user_data/strategies --config /freqtrade/user_data/config.json
+      - name: Download Bybit futures data (1h, 4h, 1d and funding/mark)
+        run: |
+          set -euo pipefail
+          docker run --rm -v "${PWD}/native-test:/freqtrade/user_data" freqtradeorg/freqtrade:stable \
+            download-data --config /freqtrade/user_data/config.json --trading-mode futures \
+            --timeframes 1h 4h 1d --timerange 20250401-20261118 \
+            --pairs BTC/USDT:USDT ETH/USDT:USDT SOL/USDT:USDT DOGE/USDT:USDT \
+              XRP/USDT:USDT ADA/USDT:USDT AVAX/USDT:USDT DOT/USDT:USDT \
+              POL/USDT:USDT NEAR/USDT:USDT ATOM/USDT:USDT SUI/USDT:USDT OP/USDT:USDT
+      - name: Native backtest, unchanged author strategy, 1x leverage
+        run: |
+          set -euo pipefail
+          docker run --rm -v "${PWD}/native-test:/freqtrade/user_data" freqtradeorg/freqtrade:stable \
+            backtesting --config /freqtrade/user_data/config.json \
+            --strategy TrendRiderStrategyPublic \
+            --strategy-path /freqtrade/user_data/strategies \
+            --timerange 20260104-20261117 --fee 0.0006 \
+            --export trades --export-filename /freqtrade/user_data/results/trendrider_original_1h.json \
+            2>&1 | tee native-test/results/native_backtest.log
+      - name: Always archive data and diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: trendrider-original-native-backtest
+          path: |
+            native-test/results/
+            native-test/strategies/TrendRiderStrategy_public.py
+            native-test/config.json
+          if-no-files-found: warn
+          retention-days: 30
