@@ -92,6 +92,9 @@ def load(path):
                 stats["connections"]+=1
                 continue
             if event=="connection_end":
+                # Preserve the final observed second before invalidating the stream.
+                if last is not None:
+                    flush_second(last)
                 for book in books.values():book.ready=False
                 continue
             if event!="market":
