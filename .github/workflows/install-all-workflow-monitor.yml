@@ -33,8 +33,12 @@ jobs:
           TARGET="$HOME/.local/share/trendscanner-actions-monitor"
           mkdir -p "$TARGET" "$HOME/.local/state/trendscanner" "$HOME/.local/bin"
           install -m 700 ops/vps/monitor_all_workflows.py "$TARGET/monitor_all_workflows.py"
-          printf 'GITHUB_MONITOR_TOKEN=%s\n' "$MONITOR_TOKEN" > "$TARGET/token.env"
-          chmod 600 "$TARGET/token.env"
+          python3 - <<'PY'
+          import os, pathlib, shlex
+          destination=pathlib.Path.home()/".local/share/trendscanner-actions-monitor/token.env"
+          destination.write_text("GITHUB_MONITOR_TOKEN="+shlex.quote(os.environ["MONITOR_TOKEN"])+"\\n",encoding="utf-8")
+          destination.chmod(0o600)
+          PY
           cat > "$HOME/.local/bin/trendscanner-actions-monitor" <<'SCRIPT'
           #!/usr/bin/env bash
           set -euo pipefail
