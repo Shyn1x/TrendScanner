@@ -1,0 +1,69 @@
+name: GitHub Source-Inspired 123 Strategy Batch ($300 Research)
+on:
+  push:
+    branches: [research/rsi2-long-leverage-5x-10x]
+    paths:
+      - artifacts/trendscanner/github_strategy_adaptations_batch_300.py
+      - artifacts/trendscanner/test_github_strategy_adaptations_batch.py
+      - artifacts/trendscanner/publish_github_strategy_batch.py
+      - .github/workflows/github-strategy-adaptations-batch-300.yml
+permissions:
+  contents: write
+concurrency:
+  group: github-strategy-adaptations-research
+  cancel-in-progress: false
+jobs:
+  research:
+    runs-on: [self-hosted, linux, x64, bybit-demo]
+    timeout-minutes: 180
+    env:
+      TREND_SCANNER_MARKET_SOURCE: bybit_linear
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - name: Validate ten adapted source concepts and shared-book conflict guard
+        shell: bash
+        run: |
+          python3 -m py_compile artifacts/trendscanner/github_strategy_adaptations_batch_300.py artifacts/trendscanner/publish_github_strategy_batch.py
+          uv run --no-project --with pandas python -m unittest artifacts/trendscanner/test_github_strategy_adaptations_batch.py -v
+          uv run --no-project --with pandas python -m unittest artifacts/trendscanner/test_multi_strategy_batch_300.py -v
+          python3 -m unittest discover -s artifacts/trendscanner -p test_strategy_conflict_guard.py -v
+      - name: Reuse one frozen Bybit history for all 123 source-inspired strategy cases
+        shell: bash
+        run: |
+          set -euo pipefail
+          uv run --no-project --with pandas python artifacts/trendscanner/github_strategy_adaptations_batch_300.py > github-strategy-adaptations-300-full.json
+      - name: Publish ranked results to research branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 artifacts/trendscanner/publish_github_strategy_batch.py github-strategy-adaptations-300-full.json \
+            --json-out artifacts/trendscanner/reports/github_strategy_adaptations_latest.json \
+            --md-out artifacts/trendscanner/reports/github_strategy_adaptations_latest.md \
+            --run-url "https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          cat artifacts/trendscanner/reports/github_strategy_adaptations_latest.md >> "${GITHUB_STEP_SUMMARY}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          cp artifacts/trendscanner/reports/github_strategy_adaptations_latest.json "${RUNNER_TEMP}/github_strategy_adaptations_latest.json"
+          cp artifacts/trendscanner/reports/github_strategy_adaptations_latest.md "${RUNNER_TEMP}/github_strategy_adaptations_latest.md"
+          for attempt in 1 2 3 4; do
+            git fetch origin "${GITHUB_REF_NAME}"
+            git reset --hard FETCH_HEAD
+            mkdir -p artifacts/trendscanner/reports
+            cp "${RUNNER_TEMP}/github_strategy_adaptations_latest.json" artifacts/trendscanner/reports/github_strategy_adaptations_latest.json
+            cp "${RUNNER_TEMP}/github_strategy_adaptations_latest.md" artifacts/trendscanner/reports/github_strategy_adaptations_latest.md
+            git add artifacts/trendscanner/reports/github_strategy_adaptations_latest.json artifacts/trendscanner/reports/github_strategy_adaptations_latest.md
+            if git diff --cached --quiet; then break; fi
+            git commit -m "research: 123 source-inspired cases matrix [skip ci]"
+            if git push origin "HEAD:${GITHUB_REF_NAME}"; then break; fi
+            if [ "${attempt}" = 4 ]; then exit 1; fi
+            sleep 3
+          done
+      - name: Archive trade ledger and each candidate
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: github-strategy-adaptations-300
+          path: github-strategy-adaptations-300-full.json
+          if-no-files-found: warn
+          retention-days: 30
